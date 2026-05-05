@@ -234,3 +234,52 @@
     padding: 50px 20px;
     font-size: 16px;
 }
+
+/* ── Políticas ── */
+.fc-politicas {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 10px 20px 40px;
+    font-family: inherit;
+    color: #333;
+    line-height: 1.8;
+    font-size: 15px;
+}
+
+.fc-politicas h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--fc-dark);
+    margin: 36px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--fc-border);
+}
+
+.fc-politicas h2:first-child {
+    margin-top: 0;
+}
+
+.fc-politicas p {
+    margin: 0 0 14px;
+    color: #444;
+}
+
+.fc-politicas ul {
+    margin: 0 0 16px;
+    padding-left: 20px;
+}
+
+.fc-politicas ul li {
+    margin-bottom: 10px;
+    padding-left: 6px;
+    color: #444;
+}
+
+.fc-politicas ul li::marker {
+    color: var(--fc-primary);
+}
+
+.fc-politicas strong {
+    color: var(--fc-primary);
+    font-weight: 600;
+}
