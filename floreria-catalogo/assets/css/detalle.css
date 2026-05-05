@@ -220,6 +220,16 @@
 
 .fc-fecha-wrap {
     cursor: pointer;
+    overflow: hidden;
+    height: 46px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: #fff;
+    transition: border-color 0.2s;
+}
+
+.fc-fecha-wrap:focus-within {
+    border-color: var(--fc-primary);
 }
 
 .fc-pedir-section input[type="date"],
@@ -227,17 +237,26 @@
 .fc-pedir-section select {
     width: 100%;
     padding: 10px 14px;
-    border: 2px solid #e0e0e0;
+    border: none;
     border-radius: 8px;
     font-size: 16px;
     color: #333;
-    background: #fff;
+    background: transparent;
     box-sizing: border-box;
-    transition: border-color 0.2s;
-    appearance: auto;
+    -webkit-appearance: none;
+    appearance: none;
     max-width: 100%;
-    height: 46px;
+    height: 42px;
     line-height: normal;
+    outline: none;
+}
+
+.fc-pedir-section select {
+    border: 2px solid #e0e0e0;
+    background: #fff;
+    height: 46px;
+    -webkit-appearance: auto;
+    appearance: auto;
 }
 
 .fc-fecha-display {
@@ -312,8 +331,6 @@
     margin: 6px 0 0;
 }
 
-.fc-pedir-section input[type="date"]:focus,
-.fc-pedir-section input[type="time"]:focus,
 .fc-pedir-section select:focus {
     outline: none;
     border-color: var(--fc-primary);
