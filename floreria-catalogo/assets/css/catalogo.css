@@ -244,9 +244,21 @@
 
 .fc-pol-tabs {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
     margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.fc-pol-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.fc-pol-tab {
+    flex-shrink: 0;
 }
 
 .fc-pol-tab {
