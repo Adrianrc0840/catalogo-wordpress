@@ -13,6 +13,66 @@
     padding: 20px;
 }
 
+/* ── Buscador ── */
+.fc-buscador-wrap {
+    position: relative;
+    max-width: 480px;
+    margin: 0 auto 24px;
+}
+
+.fc-buscador {
+    width: 100%;
+    padding: 12px 42px 12px 18px;
+    border: 2px solid #e0e0e0;
+    border-radius: 30px;
+    font-size: 15px;
+    color: #333;
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+    outline: none;
+}
+
+.fc-buscador:focus {
+    border-color: var(--fc-primary);
+}
+
+.fc-buscador-icon {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    pointer-events: none;
+}
+
+.fc-sin-resultados {
+    text-align: center;
+    color: #aaa;
+    padding: 40px 20px;
+    font-size: 15px;
+}
+
+/* ── Badge agotado ── */
+.fc-badge-agotado {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(180, 30, 60, 0.88);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.fc-card-agotado .fc-card-img img {
+    filter: grayscale(40%);
+    opacity: 0.8;
+}
+
 /* ── Filtros ── */
 .fc-filtros {
     display: flex;

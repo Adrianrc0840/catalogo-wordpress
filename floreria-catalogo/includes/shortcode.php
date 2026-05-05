@@ -35,6 +35,13 @@ function fc_render_catalogo( $atts ) {
     ob_start();
     ?>
     <div class="fc-catalogo">
+
+        <div class="fc-buscador-wrap">
+            <input type="text" id="fc-buscador" class="fc-buscador" placeholder="Buscar arreglos o categorías..." autocomplete="off" />
+            <span class="fc-buscador-icon">&#128269;</span>
+        </div>
+        <p class="fc-sin-resultados" id="fc-sin-resultados" style="display:none;">No se encontraron arreglos con esa búsqueda.</p>
+
         <?php if ( ! empty( $categorias ) && ! is_wp_error( $categorias ) ) : ?>
         <div class="fc-filtros">
             <button class="fc-filtro-btn active" data-categoria="todos">Todos</button>
@@ -50,6 +57,7 @@ function fc_render_catalogo( $atts ) {
             <?php while ( $query->have_posts() ) : $query->the_post(); ?>
             <?php
                 $tamanos   = get_post_meta( get_the_ID(), '_fc_tamanos', true );
+                $agotado   = get_post_meta( get_the_ID(), '_fc_agotado', true ) === '1';
                 $cats      = get_the_terms( get_the_ID(), 'categoria_arreglo' );
                 $cat_slugs = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ' ', wp_list_pluck( $cats, 'slug' ) ) : '';
                 $cat_name  = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? $cats[0]->name : '';
@@ -67,12 +75,18 @@ function fc_render_catalogo( $atts ) {
                     $precio_desde = min( $precios );
                 }
             ?>
-            <a href="<?php the_permalink(); ?>" class="fc-card <?php echo esc_attr( $cat_slugs ); ?>">
+            <a href="<?php the_permalink(); ?>"
+               class="fc-card <?php echo esc_attr( $cat_slugs ); ?> <?php echo $agotado ? 'fc-card-agotado' : ''; ?>"
+               data-titulo="<?php echo esc_attr( strtolower( get_the_title() ) ); ?>"
+               data-categoria="<?php echo esc_attr( strtolower( $cat_name ) ); ?>">
                 <div class="fc-card-img">
                     <?php if ( $img_url ) : ?>
                     <img src="<?php echo esc_url( $img_url ); ?>" alt="<?php the_title_attribute(); ?>" loading="lazy" />
                     <?php else : ?>
-                    <div class="fc-card-no-img">🌸</div>
+                    <div class="fc-card-no-img">&#127800;</div>
+                    <?php endif; ?>
+                    <?php if ( $agotado ) : ?>
+                    <span class="fc-badge-agotado">Agotado</span>
                     <?php endif; ?>
                 </div>
                 <div class="fc-card-body">

@@ -7,6 +7,7 @@ while ( have_posts() ) : the_post();
     $desc     = get_post_meta( get_the_ID(), '_fc_descripcion', true );
     if ( ! is_array( $tamanos ) ) $tamanos = [];
 
+    $agotado  = get_post_meta( get_the_ID(), '_fc_agotado', true ) === '1';
     $cats     = get_the_terms( get_the_ID(), 'categoria_arreglo' );
     $cat_name = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? $cats[0]->name : '';
     $cat_slug = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? $cats[0]->slug : '';
@@ -85,6 +86,16 @@ while ( have_posts() ) : the_post();
             <?php endif; ?>
 
             <!-- Pedido -->
+            <?php if ( $agotado ) : ?>
+            <div class="fc-agotado-msg">
+                <span class="fc-agotado-icon">&#x1F33A;</span>
+                <div>
+                    <strong>Este arreglo no está disponible</strong>
+                    <p>Actualmente se encuentra fuera de stock. Te invitamos a explorar nuestro catálogo para encontrar otras opciones.</p>
+                    <a href="<?php echo esc_url( $catalog_url ); ?>" class="fc-ver-catalogo-btn">Ver catálogo completo</a>
+                </div>
+            </div>
+            <?php else : ?>
             <div class="fc-pedir-section">
                 <div>
                     <label for="fc-fecha">¿Cuándo lo necesitas?</label>
@@ -116,6 +127,7 @@ while ( have_posts() ) : the_post();
                     Pedir por WhatsApp
                 </a>
             </div>
+            <?php endif; ?>
 
         </div>
     </div>

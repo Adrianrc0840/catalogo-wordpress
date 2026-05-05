@@ -4,7 +4,19 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 add_action( 'add_meta_boxes', 'fc_add_meta_boxes' );
 function fc_add_meta_boxes() {
     add_meta_box( 'fc_descripcion', 'Descripción del arreglo', 'fc_render_descripcion_meta_box', 'arreglo', 'normal', 'high' );
-    add_meta_box( 'fc_tamanos', 'Tamaños y Precios', 'fc_render_tamanos_meta_box', 'arreglo', 'normal', 'high' );
+    add_meta_box( 'fc_tamanos',     'Tamaños y Precios',       'fc_render_tamanos_meta_box',     'arreglo', 'normal', 'high' );
+    add_meta_box( 'fc_disponible',  'Disponibilidad',          'fc_render_disponible_meta_box',  'arreglo', 'side',   'high' );
+}
+
+function fc_render_disponible_meta_box( $post ) {
+    $agotado = get_post_meta( $post->ID, '_fc_agotado', true );
+    ?>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" name="fc_agotado" value="1" <?php checked( $agotado, '1' ); ?> />
+        <span>Marcar como <strong>Fuera de stock</strong></span>
+    </label>
+    <p style="margin:8px 0 0;font-size:12px;color:#888;">El arreglo seguirá visible pero sin opción de pedido.</p>
+    <?php
 }
 
 function fc_render_descripcion_meta_box( $post ) {
@@ -92,6 +104,8 @@ function fc_save_meta( $post_id ) {
     if ( isset( $_POST['fc_descripcion'] ) ) {
         update_post_meta( $post_id, '_fc_descripcion', sanitize_textarea_field( $_POST['fc_descripcion'] ) );
     }
+
+    update_post_meta( $post_id, '_fc_agotado', isset( $_POST['fc_agotado'] ) ? '1' : '0' );
 
     $tamanos = [];
     if ( isset( $_POST['fc_tamanos'] ) && is_array( $_POST['fc_tamanos'] ) ) {
