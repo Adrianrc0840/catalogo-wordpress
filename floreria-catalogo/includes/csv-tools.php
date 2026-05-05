@@ -44,7 +44,7 @@ function fc_handle_export() {
         $agotado = get_post_meta( $post->ID, '_fc_agotado', true ) === '1' ? '1' : '0';
         $desc    = get_post_meta( $post->ID, '_fc_descripcion', true );
         $cats    = get_the_terms( $post->ID, 'categoria_arreglo' );
-        $cat     = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? $cats[0]->name : '';
+        $cat     = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ', ', wp_list_pluck( $cats, 'name' ) ) : '';
 
         $row = [ $post->ID, $post->post_title, $cat, $desc, $agotado ];
 
@@ -95,16 +95,19 @@ function fc_handle_import() {
         // Nombre
         wp_update_post( [ 'ID' => $post_id, 'post_title' => sanitize_text_field( $row[1] ?? '' ) ] );
 
-        // Categoría — busca o crea
+        // Categorías — soporta múltiples separadas por coma
         if ( ! empty( $row[2] ) ) {
-            $term = get_term_by( 'name', $row[2], 'categoria_arreglo' );
-            if ( ! $term ) {
-                $new = wp_insert_term( sanitize_text_field( $row[2] ), 'categoria_arreglo' );
-                if ( ! is_wp_error( $new ) ) $term = get_term( $new['term_id'], 'categoria_arreglo' );
+            $term_ids = [];
+            foreach ( array_map( 'trim', explode( ',', $row[2] ) ) as $cat_name ) {
+                if ( $cat_name === '' ) continue;
+                $term = get_term_by( 'name', $cat_name, 'categoria_arreglo' );
+                if ( ! $term ) {
+                    $new  = wp_insert_term( sanitize_text_field( $cat_name ), 'categoria_arreglo' );
+                    $term = ! is_wp_error( $new ) ? get_term( $new['term_id'], 'categoria_arreglo' ) : null;
+                }
+                if ( $term && ! is_wp_error( $term ) ) $term_ids[] = $term->term_id;
             }
-            if ( $term && ! is_wp_error( $term ) ) {
-                wp_set_post_terms( $post_id, [ $term->term_id ], 'categoria_arreglo' );
-            }
+            if ( ! empty( $term_ids ) ) wp_set_post_terms( $post_id, $term_ids, 'categoria_arreglo' );
         }
 
         // Descripción y disponibilidad

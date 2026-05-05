@@ -8,9 +8,9 @@ while ( have_posts() ) : the_post();
     if ( ! is_array( $tamanos ) ) $tamanos = [];
 
     $agotado  = get_post_meta( get_the_ID(), '_fc_agotado', true ) === '1';
-    $cats     = get_the_terms( get_the_ID(), 'categoria_arreglo' );
-    $cat_name = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? $cats[0]->name : '';
-    $cat_slug = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? $cats[0]->slug : '';
+    $cats      = get_the_terms( get_the_ID(), 'categoria_arreglo' );
+    $cat_name  = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ', ', wp_list_pluck( $cats, 'name' ) ) : '';
+    $cat_slugs = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? wp_list_pluck( $cats, 'slug' ) : [];
 
     $first_img    = ! empty( $tamanos[0]['imagen_url'] ) ? $tamanos[0]['imagen_url'] : get_the_post_thumbnail_url( get_the_ID(), 'large' );
     $first_precio = ! empty( $tamanos[0]['precio'] )     ? $tamanos[0]['precio']     : 0;
@@ -19,7 +19,7 @@ while ( have_posts() ) : the_post();
 
     // Arreglos recomendados de la misma categoría
     $recomendados = [];
-    if ( $cat_slug ) {
+    if ( ! empty( $cat_slugs ) ) {
         $recomendados = new WP_Query( [
             'post_type'      => 'arreglo',
             'post_status'    => 'publish',
@@ -28,7 +28,8 @@ while ( have_posts() ) : the_post();
             'tax_query'      => [ [
                 'taxonomy' => 'categoria_arreglo',
                 'field'    => 'slug',
-                'terms'    => $cat_slug,
+                'terms'    => $cat_slugs,
+                'operator' => 'IN',
             ] ],
         ] );
     }

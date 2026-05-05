@@ -60,7 +60,7 @@ function fc_render_catalogo( $atts ) {
                 $agotado   = get_post_meta( get_the_ID(), '_fc_agotado', true ) === '1';
                 $cats      = get_the_terms( get_the_ID(), 'categoria_arreglo' );
                 $cat_slugs = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ' ', wp_list_pluck( $cats, 'slug' ) ) : '';
-                $cat_name  = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? $cats[0]->name : '';
+                $cat_name  = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ', ', wp_list_pluck( $cats, 'name' ) ) : '';
 
                 $img_url = '';
                 if ( ! empty( $tamanos[0]['imagen_url'] ) ) {
@@ -78,7 +78,7 @@ function fc_render_catalogo( $atts ) {
             <a href="<?php the_permalink(); ?>"
                class="fc-card <?php echo esc_attr( $cat_slugs ); ?> <?php echo $agotado ? 'fc-card-agotado' : ''; ?>"
                data-titulo="<?php echo esc_attr( strtolower( get_the_title() ) ); ?>"
-               data-categoria="<?php echo esc_attr( strtolower( $cat_name ) ); ?>">
+               data-categoria="<?php echo esc_attr( strtolower( str_replace( ', ', ' ', $cat_name ) ) ); ?>">
                 <div class="fc-card-img">
                     <?php if ( $img_url ) : ?>
                     <img src="<?php echo esc_url( $img_url ); ?>" alt="<?php the_title_attribute(); ?>" loading="lazy" />
