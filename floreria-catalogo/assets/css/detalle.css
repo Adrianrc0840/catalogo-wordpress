@@ -205,7 +205,14 @@
     padding-top: 20px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
+}
+
+#fc-envio-section,
+#fc-recoleccion-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 .fc-pedir-section label {
