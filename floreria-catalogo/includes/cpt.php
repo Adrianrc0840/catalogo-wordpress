@@ -19,7 +19,7 @@ function fc_register_cpt() {
         'public'       => true,
         'has_archive'  => false,
         'show_in_menu' => true,
-        'menu_icon'    => 'data:image/svg+xml;base64,' . base64_encode( '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 10 C12 8 12 5 10 3 C8 5 8 8 10 10Z"/><path d="M10 10 C12 8 12 5 10 3 C8 5 8 8 10 10Z" transform="rotate(60 10 10)"/><path d="M10 10 C12 8 12 5 10 3 C8 5 8 8 10 10Z" transform="rotate(120 10 10)"/><path d="M10 10 C12 8 12 5 10 3 C8 5 8 8 10 10Z" transform="rotate(180 10 10)"/><path d="M10 10 C12 8 12 5 10 3 C8 5 8 8 10 10Z" transform="rotate(240 10 10)"/><path d="M10 10 C12 8 12 5 10 3 C8 5 8 8 10 10Z" transform="rotate(300 10 10)"/><circle cx="10" cy="10" r="2.8"/></svg>' ),
+        'menu_icon'    => 'data:image/svg+xml;base64,' . base64_encode( '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><ellipse cx="10" cy="5.5" rx="2" ry="3.5"/><ellipse cx="10" cy="5.5" rx="2" ry="3.5" transform="rotate(72 10 10)"/><ellipse cx="10" cy="5.5" rx="2" ry="3.5" transform="rotate(144 10 10)"/><ellipse cx="10" cy="5.5" rx="2" ry="3.5" transform="rotate(216 10 10)"/><ellipse cx="10" cy="5.5" rx="2" ry="3.5" transform="rotate(288 10 10)"/><circle cx="10" cy="10" r="3"/></svg>' ),
         'supports'     => [ 'title', 'thumbnail' ],
         'rewrite'      => [ 'slug' => 'arreglos' ],
     ] );
