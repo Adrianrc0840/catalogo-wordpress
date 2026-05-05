@@ -9,11 +9,28 @@ while ( have_posts() ) : the_post();
 
     $cats     = get_the_terms( get_the_ID(), 'categoria_arreglo' );
     $cat_name = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? $cats[0]->name : '';
+    $cat_slug = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? $cats[0]->slug : '';
 
     $first_img    = ! empty( $tamanos[0]['imagen_url'] ) ? $tamanos[0]['imagen_url'] : get_the_post_thumbnail_url( get_the_ID(), 'large' );
     $first_precio = ! empty( $tamanos[0]['precio'] )     ? $tamanos[0]['precio']     : 0;
 
     $catalog_url = get_option( 'fc_catalog_page_url', home_url() );
+
+    // Arreglos recomendados de la misma categoría
+    $recomendados = [];
+    if ( $cat_slug ) {
+        $recomendados = new WP_Query( [
+            'post_type'      => 'arreglo',
+            'post_status'    => 'publish',
+            'posts_per_page' => 4,
+            'post__not_in'   => [ get_the_ID() ],
+            'tax_query'      => [ [
+                'taxonomy' => 'categoria_arreglo',
+                'field'    => 'slug',
+                'terms'    => $cat_slug,
+            ] ],
+        ] );
+    }
 ?>
 
 <div class="fc-detalle">
@@ -25,7 +42,8 @@ while ( have_posts() ) : the_post();
         <div>
             <div class="fc-detalle-img-wrap">
                 <?php if ( $first_img ) : ?>
-                <img id="fc-main-img" src="<?php echo esc_url( $first_img ); ?>" alt="<?php the_title_attribute(); ?>" />
+                <img id="fc-main-img" src="<?php echo esc_url( $first_img ); ?>" alt="<?php the_title_attribute(); ?>" class="fc-img-clickable" />
+                <button class="fc-lightbox-trigger" aria-label="Ver imagen ampliada">&#x26F6;</button>
                 <?php endif; ?>
             </div>
         </div>
@@ -102,6 +120,45 @@ while ( have_posts() ) : the_post();
 
         </div>
     </div>
+
+    <!-- Arreglos recomendados -->
+    <?php if ( $recomendados && $recomendados->have_posts() ) : ?>
+    <div class="fc-recomendados">
+        <h2 class="fc-recomendados-titulo">También te puede interesar</h2>
+        <div class="fc-recomendados-grid">
+            <?php while ( $recomendados->have_posts() ) : $recomendados->the_post(); ?>
+            <?php
+                $r_tamanos = get_post_meta( get_the_ID(), '_fc_tamanos', true );
+                $r_img     = ! empty( $r_tamanos[0]['imagen_url'] ) ? $r_tamanos[0]['imagen_url'] : get_the_post_thumbnail_url( get_the_ID(), 'medium' );
+                $r_precios = ! empty( $r_tamanos ) ? array_column( $r_tamanos, 'precio' ) : [];
+                $r_precio  = ! empty( $r_precios ) ? min( $r_precios ) : '';
+            ?>
+            <a href="<?php the_permalink(); ?>" class="fc-card">
+                <div class="fc-card-img">
+                    <?php if ( $r_img ) : ?>
+                    <img src="<?php echo esc_url( $r_img ); ?>" alt="<?php the_title_attribute(); ?>" loading="lazy" />
+                    <?php else : ?>
+                    <div class="fc-card-no-img">&#127800;</div>
+                    <?php endif; ?>
+                </div>
+                <div class="fc-card-body">
+                    <h3 class="fc-card-title"><?php the_title(); ?></h3>
+                    <?php if ( $r_precio !== '' ) : ?>
+                    <p class="fc-card-precio">Desde $<?php echo number_format( $r_precio, 0, '.', ',' ); ?></p>
+                    <?php endif; ?>
+                </div>
+            </a>
+            <?php endwhile; wp_reset_postdata(); ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+</div>
+
+<!-- Lightbox -->
+<div class="fc-lightbox" id="fc-lightbox" role="dialog" aria-modal="true" aria-label="Imagen ampliada">
+    <button class="fc-lightbox-close" id="fc-lightbox-close" aria-label="Cerrar">&times;</button>
+    <img id="fc-lightbox-img" src="" alt="" />
 </div>
 
 <?php endwhile; ?>

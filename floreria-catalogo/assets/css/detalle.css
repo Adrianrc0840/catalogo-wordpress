@@ -266,3 +266,91 @@
     fill: currentColor;
     flex-shrink: 0;
 }
+
+/* ── Botón ampliar imagen ── */
+.fc-detalle-img-wrap {
+    position: relative;
+    cursor: pointer;
+}
+
+.fc-lightbox-trigger {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(255,255,255,0.85);
+    border: none;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    line-height: 1;
+}
+
+.fc-detalle-img-wrap:hover .fc-lightbox-trigger {
+    opacity: 1;
+}
+
+/* ── Lightbox ── */
+.fc-lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.88);
+    z-index: 99999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.fc-lightbox.active {
+    display: flex;
+}
+
+.fc-lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+
+.fc-lightbox-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 36px;
+    cursor: pointer;
+    line-height: 1;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.fc-lightbox-close:hover {
+    opacity: 1;
+}
+
+/* ── Arreglos recomendados ── */
+.fc-recomendados {
+    margin-top: 60px;
+    border-top: 1px solid var(--fc-border);
+    padding-top: 40px;
+}
+
+.fc-recomendados-titulo {
+    font-size: 20px;
+    font-weight: 700;
+    color: #222;
+    margin: 0 0 24px;
+}
+
+.fc-recomendados-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 22px;
+}

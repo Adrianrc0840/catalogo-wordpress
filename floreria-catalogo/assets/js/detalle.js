@@ -128,5 +128,33 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         updateDisplay();
+
+        // ── Lightbox ──
+        var lightbox     = document.getElementById('fc-lightbox');
+        var lightboxImg  = document.getElementById('fc-lightbox-img');
+        var lightboxClose = document.getElementById('fc-lightbox-close');
+        var imgWrap      = document.querySelector('.fc-detalle-img-wrap');
+        var triggerBtn   = document.querySelector('.fc-lightbox-trigger');
+
+        function openLightbox() {
+            if (!lightbox || !imgEl) return;
+            lightboxImg.src = imgEl.src;
+            lightboxImg.alt = imgEl.alt;
+            lightbox.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            if (!lightbox) return;
+            lightbox.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        if (imgWrap)      imgWrap.addEventListener('click', openLightbox);
+        if (triggerBtn)   triggerBtn.addEventListener('click', function(e) { e.stopPropagation(); openLightbox(); });
+        if (lightboxClose) lightboxClose.addEventListener('click', closeLightbox);
+        if (lightbox)     lightbox.addEventListener('click', function(e) { if (e.target === lightbox) closeLightbox(); });
+
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(); });
     });
 })();
