@@ -273,6 +273,7 @@
     margin: 6px 0 0;
     min-height: 18px;
     display: block;
+    text-decoration: none;
 }
 
 /* ── Fuera de stock ── */
@@ -386,6 +387,7 @@
     font-size: 13px;
     font-style: italic;
     margin: 0;
+    text-decoration: none;
 }
 
 /* ── Aviso arreglo especial ── */
