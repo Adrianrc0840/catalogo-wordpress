@@ -19,7 +19,7 @@ function fc_register_cpt() {
         'public'       => true,
         'has_archive'  => false,
         'show_in_menu' => true,
-        'menu_icon'    => 'dashicons-heart',
+        'menu_icon'    => 'data:image/svg+xml;base64,' . base64_encode( '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M10 2 C12 4 12 8 10 10 C8 8 8 4 10 2Z"/><path d="M10 2 C12 4 12 8 10 10 C8 8 8 4 10 2Z" transform="rotate(60 10 10)"/><path d="M10 2 C12 4 12 8 10 10 C8 8 8 4 10 2Z" transform="rotate(120 10 10)"/><path d="M10 2 C12 4 12 8 10 10 C8 8 8 4 10 2Z" transform="rotate(180 10 10)"/><path d="M10 2 C12 4 12 8 10 10 C8 8 8 4 10 2Z" transform="rotate(240 10 10)"/><path d="M10 2 C12 4 12 8 10 10 C8 8 8 4 10 2Z" transform="rotate(300 10 10)"/><circle cx="10" cy="10" r="3"/></svg>' ),
         'supports'     => [ 'title', 'thumbnail' ],
         'rewrite'      => [ 'slug' => 'arreglos' ],
     ] );
