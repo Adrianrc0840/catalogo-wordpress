@@ -19,6 +19,7 @@ require_once FC_PATH . 'includes/meta-boxes.php';
 require_once FC_PATH . 'includes/shortcode.php';
 require_once FC_PATH . 'includes/schedules.php';
 require_once FC_PATH . 'includes/settings.php';
+require_once FC_PATH . 'includes/admin-list.php';
 
 add_action( 'wp_enqueue_scripts', 'fc_enqueue_frontend' );
 function fc_enqueue_frontend() {
