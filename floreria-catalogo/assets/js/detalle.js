@@ -7,6 +7,10 @@
     var titulo    = data.titulo    || '';
 
     var selectedTamano = tamanos.length > 0 ? tamanos[0] : null;
+    var diaDisponible  = true;
+
+    var dias  = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    var meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
     var imgEl          = document.getElementById('fc-main-img');
     var precioEl       = document.getElementById('fc-precio-val');
@@ -17,6 +21,18 @@
     var waBtn          = document.getElementById('fc-wa-btn');
     var cerradoEl      = document.getElementById('fc-cerrado');
     var direccionEl    = document.getElementById('fc-direccion');
+
+    // ── Verifica si todos los campos están llenos ──
+    function checkFormReady() {
+        var fecha     = fechaEl     ? fechaEl.value.trim()    : '';
+        var horario   = horarioEl   ? horarioEl.value.trim()  : '';
+        var direccion = direccionEl ? direccionEl.value.trim() : '';
+        var listo     = fecha !== '' && horario !== '' && direccion !== '' && diaDisponible;
+
+        if (waBtn) {
+            waBtn.classList.toggle('fc-btn-disabled', !listo);
+        }
+    }
 
     // ── Selector de tamaños ──
     document.querySelectorAll('.fc-tamano-btn').forEach(function (btn, i) {
@@ -48,6 +64,47 @@
     }
 
     // ── Fecha → horarios ──
+    function onFechaChange() {
+        var val = fechaEl.value;
+        if (!val) return;
+
+        var date      = new Date(val + 'T12:00:00');
+        var dayOfWeek = String(date.getDay());
+        var daySlots  = schedules[dayOfWeek] || [];
+
+        // Mostrar día completo debajo del input
+        if (fechaDisplayEl) {
+            fechaDisplayEl.textContent = dias[date.getDay()] + ', ' + date.getDate() + ' de ' + meses[date.getMonth()] + ' de ' + date.getFullYear();
+        }
+
+        horarioEl.innerHTML = '<option value="">-- Selecciona un horario --</option>';
+
+        if (daySlots.length === 0) {
+            diaDisponible = false;
+            horarioWrap.classList.remove('visible');
+            if (cerradoEl) {
+                cerradoEl.textContent = date.getDay() === 0
+                    ? 'Lo sentimos, no laboramos los domingos.'
+                    : 'Lo sentimos, ese día no realizamos entregas.';
+                cerradoEl.style.display = 'block';
+            }
+            if (waBtn) { waBtn.style.pointerEvents = 'none'; waBtn.style.opacity = '0.4'; }
+        } else {
+            diaDisponible = true;
+            if (cerradoEl) cerradoEl.style.display = 'none';
+            if (waBtn) { waBtn.style.pointerEvents = ''; waBtn.style.opacity = ''; }
+            daySlots.forEach(function (slot) {
+                var opt         = document.createElement('option');
+                opt.value       = slot;
+                opt.textContent = slot;
+                horarioEl.appendChild(opt);
+            });
+            horarioWrap.classList.add('visible');
+        }
+
+        checkFormReady();
+    }
+
     if (fechaEl) {
         var today = new Date();
         var yyyy  = today.getFullYear();
@@ -55,59 +112,25 @@
         var dd    = String(today.getDate()).padStart(2, '0');
         fechaEl.min = yyyy + '-' + mm + '-' + dd;
 
-        fechaEl.addEventListener('change', function () {
-            var date      = new Date(this.value + 'T12:00:00');
-            var dayOfWeek = String(date.getDay());
-            var daySlots  = schedules[dayOfWeek] || [];
-
-            var dias  = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-            var meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-            if (fechaDisplayEl) {
-                fechaDisplayEl.textContent = dias[date.getDay()] + ', ' + date.getDate() + ' de ' + meses[date.getMonth()] + ' de ' + date.getFullYear();
-            }
-
-            horarioEl.innerHTML = '<option value="">-- Selecciona un horario --</option>';
-
-            if (daySlots.length === 0) {
-                horarioWrap.classList.remove('visible');
-                if (cerradoEl) cerradoEl.style.display = 'block';
-                if (waBtn) { waBtn.style.pointerEvents = 'none'; waBtn.style.opacity = '0.4'; }
-            } else {
-                if (cerradoEl) cerradoEl.style.display = 'none';
-                if (waBtn) { waBtn.style.pointerEvents = ''; waBtn.style.opacity = ''; }
-                daySlots.forEach(function (slot) {
-                    var opt         = document.createElement('option');
-                    opt.value       = slot;
-                    opt.textContent = slot;
-                    horarioEl.appendChild(opt);
-                });
-                horarioWrap.classList.add('visible');
-            }
-        });
+        // Ambos eventos para compatibilidad con móvil
+        fechaEl.addEventListener('change', onFechaChange);
+        fechaEl.addEventListener('input',  onFechaChange);
     }
+
+    if (horarioEl)   horarioEl.addEventListener('change', checkFormReady);
+    if (direccionEl) direccionEl.addEventListener('input',  checkFormReady);
 
     // ── Botón WhatsApp ──
     if (waBtn) {
         waBtn.addEventListener('click', function (e) {
             e.preventDefault();
+            if (this.classList.contains('fc-btn-disabled')) return;
 
-            var fecha     = fechaEl     ? fechaEl.value.trim()     : '';
-            var horario   = horarioEl   ? horarioEl.value.trim()   : '';
-            var direccion = direccionEl ? direccionEl.value.trim()  : '';
+            var fecha     = fechaEl     ? fechaEl.value.trim()    : '';
+            var horario   = horarioEl   ? horarioEl.value.trim()  : '';
+            var direccion = direccionEl ? direccionEl.value.trim() : '';
 
-            if (!fecha) {
-                alert('Por favor selecciona una fecha de entrega.');
-                return;
-            }
-            if (!horario) {
-                alert('Por favor selecciona un horario de entrega.');
-                return;
-            }
-            if (!direccion) {
-                if (direccionEl) direccionEl.focus();
-                alert('Por favor escribe tu direccion de entrega.');
-                return;
-            }
+            if (!fecha || !horario || !direccion) return;
 
             var tamanoNombre = selectedTamano ? selectedTamano.nombre : '';
             var precio = selectedTamano
@@ -115,33 +138,31 @@
                 : '';
 
             var dateObj  = new Date(fecha + 'T12:00:00');
-            var dias     = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
-            var meses    = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
             var fechaStr = dias[dateObj.getDay()] + ', ' + dateObj.getDate() + ' de ' + meses[dateObj.getMonth()] + ' de ' + dateObj.getFullYear();
 
             var mensaje =
                 'Hola! Me interesa ordenar un arreglo.\n\n' +
-                '*Arreglo:* '   + titulo    + '\n' +
+                '*Arreglo:* '   + titulo       + '\n' +
                 '*Tamano:* '    + tamanoNombre + ' (' + precio + ')\n' +
-                '*Fecha:* '     + fechaStr  + '\n' +
-                '*Horario:* '   + horario   + '\n' +
-                '*Direccion:* ' + direccion + '\n' +
-                '*Link:* '      + permalink + '\n\n' +
+                '*Fecha:* '     + fechaStr     + '\n' +
+                '*Horario:* '   + horario      + '\n' +
+                '*Direccion:* ' + direccion    + '\n' +
+                '*Link:* '      + permalink    + '\n\n' +
                 'Esta disponible?';
 
             window.open('https://wa.me/' + whatsapp + '?text=' + encodeURIComponent(mensaje), '_blank');
         });
     }
 
+    // ── Lightbox ──
     document.addEventListener('DOMContentLoaded', function () {
         updateDisplay();
 
-        // ── Lightbox ──
-        var lightbox     = document.getElementById('fc-lightbox');
-        var lightboxImg  = document.getElementById('fc-lightbox-img');
+        var lightbox      = document.getElementById('fc-lightbox');
+        var lightboxImg   = document.getElementById('fc-lightbox-img');
         var lightboxClose = document.getElementById('fc-lightbox-close');
-        var imgWrap      = document.querySelector('.fc-detalle-img-wrap');
-        var triggerBtn   = document.querySelector('.fc-lightbox-trigger');
+        var imgWrap       = document.querySelector('.fc-detalle-img-wrap');
+        var triggerBtn    = document.querySelector('.fc-lightbox-trigger');
 
         function openLightbox() {
             if (!lightbox || !imgEl) return;
@@ -157,11 +178,11 @@
             document.body.style.overflow = '';
         }
 
-        if (imgWrap)      imgWrap.addEventListener('click', openLightbox);
-        if (triggerBtn)   triggerBtn.addEventListener('click', function(e) { e.stopPropagation(); openLightbox(); });
+        if (imgWrap)       imgWrap.addEventListener('click', openLightbox);
+        if (triggerBtn)    triggerBtn.addEventListener('click', function (e) { e.stopPropagation(); openLightbox(); });
         if (lightboxClose) lightboxClose.addEventListener('click', closeLightbox);
-        if (lightbox)     lightbox.addEventListener('click', function(e) { if (e.target === lightbox) closeLightbox(); });
+        if (lightbox)      lightbox.addEventListener('click', function (e) { if (e.target === lightbox) closeLightbox(); });
 
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLightbox(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeLightbox(); });
     });
 })();

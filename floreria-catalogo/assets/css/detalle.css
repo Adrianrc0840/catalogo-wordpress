@@ -185,17 +185,21 @@
     line-height: normal;
 }
 
-.fc-pedir-section input[type="date"] {
-    -webkit-appearance: none;
-    appearance: none;
-}
-
 .fc-fecha-display {
     font-size: 13px;
     color: var(--fc-primary);
     font-weight: 600;
-    margin: 4px 0 0;
+    margin: 6px 0 0;
     min-height: 18px;
+    display: block;
+}
+
+/* ── Botón WhatsApp deshabilitado ── */
+.fc-whatsapp-btn.fc-btn-disabled {
+    background: #b0b0b0;
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.7;
 }
 
 .fc-pedir-section input[type="date"]:focus,
