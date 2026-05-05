@@ -73,13 +73,56 @@
     opacity: 0.8;
 }
 
+/* ── Autocomplete dropdown ── */
+.fc-autocomplete {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 2px solid var(--fc-border);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    z-index: 100;
+    overflow: hidden;
+}
+
+.fc-ac-grupo {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #aaa;
+    padding: 10px 16px 4px;
+}
+
+.fc-ac-item {
+    padding: 10px 16px;
+    font-size: 14px;
+    color: #333;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.fc-ac-item:hover {
+    background: #fdf5f7;
+    color: var(--fc-primary);
+}
+
 /* ── Filtros ── */
 .fc-filtros {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
     margin-bottom: 32px;
-    justify-content: center;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.fc-filtros::-webkit-scrollbar {
+    display: none;
 }
 
 .fc-filtro-btn {
