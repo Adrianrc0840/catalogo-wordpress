@@ -157,22 +157,6 @@ function fc_render_politicas_shortcode() {
             <?php endforeach; ?>
         </div>
     </div>
-    <script>
-    (function () {
-        var tabs   = document.querySelectorAll('.fc-pol-tab');
-        var panels = document.querySelectorAll('.fc-pol-panel');
-        tabs.forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var idx = this.dataset.tab;
-                tabs.forEach(function (b) { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
-                panels.forEach(function (p) { p.classList.remove('active'); });
-                this.classList.add('active');
-                this.setAttribute('aria-selected', 'true');
-                document.querySelector('.fc-pol-panel[data-panel="' + idx + '"]').classList.add('active');
-            });
-        });
-    })();
-    </script>
     <?php
     return ob_get_clean();
 }

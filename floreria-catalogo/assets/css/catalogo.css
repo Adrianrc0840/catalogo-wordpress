@@ -246,43 +246,37 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 0;
-    border-bottom: 2px solid var(--fc-border);
-    padding-bottom: 0;
+    margin-bottom: 16px;
 }
 
 .fc-pol-tab {
-    padding: 10px 24px;
-    border: 2px solid transparent;
-    border-bottom: none;
-    background: transparent;
+    padding: 9px 22px;
+    border: 2px solid var(--fc-border);
+    background: #fff;
     color: #888;
-    border-radius: 8px 8px 0 0;
+    border-radius: 25px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
-    transition: color 0.2s, background 0.2s;
-    position: relative;
-    bottom: -2px;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 
 .fc-pol-tab:hover {
+    border-color: var(--fc-primary);
     color: var(--fc-primary);
 }
 
 .fc-pol-tab.active {
-    color: var(--fc-primary);
-    border-color: var(--fc-border);
-    border-bottom-color: #fff;
-    background: #fff;
+    background: var(--fc-primary);
+    border-color: var(--fc-primary);
+    color: #fff;
 }
 
 .fc-pol-panel {
     display: none;
     background: #fff;
     border: 2px solid var(--fc-border);
-    border-top: none;
-    border-radius: 0 0 10px 10px;
+    border-radius: 12px;
     padding: 28px 32px;
 }
 
@@ -321,7 +315,6 @@
 .fc-politicas strong {
     color: var(--fc-primary);
     font-weight: 600;
-
 }
 
 @media (max-width: 600px) {
