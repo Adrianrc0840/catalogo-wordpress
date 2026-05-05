@@ -8,38 +8,85 @@
 
     var selectedTamano = tamanos.length > 0 ? tamanos[0] : null;
     var diaDisponible  = true;
+    var modoTipo       = 'envio'; // 'envio' | 'recoleccion'
 
     var dias  = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     var meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
-    var imgEl          = document.getElementById('fc-main-img');
-    var precioEl       = document.getElementById('fc-precio-val');
-    var fechaEl        = document.getElementById('fc-fecha');
-    var fechaDisplayEl = document.getElementById('fc-fecha-display');
-    var horarioWrap    = document.getElementById('fc-horario-wrap');
-    var horarioEl      = document.getElementById('fc-horario');
-    var waBtn          = document.getElementById('fc-wa-btn');
-    var cerradoEl      = document.getElementById('fc-cerrado');
-    var direccionEl    = document.getElementById('fc-direccion');
+    // Horario de atención para recolección por día de la semana
+    var horariosRecoleccion = {
+        '1': { min: '10:00', max: '19:00', texto: 'Horario de atención: 10:00am – 7:00pm' },
+        '2': { min: '10:00', max: '19:00', texto: 'Horario de atención: 10:00am – 7:00pm' },
+        '3': { min: '10:00', max: '19:00', texto: 'Horario de atención: 10:00am – 7:00pm' },
+        '4': { min: '10:00', max: '19:00', texto: 'Horario de atención: 10:00am – 7:00pm' },
+        '5': { min: '10:00', max: '19:00', texto: 'Horario de atención: 10:00am – 7:00pm' },
+        '6': { min: '10:00', max: '17:00', texto: 'Horario de atención: 10:00am – 5:00pm' },
+    };
+
+    var imgEl              = document.getElementById('fc-main-img');
+    var precioEl           = document.getElementById('fc-precio-val');
+    var fechaEl            = document.getElementById('fc-fecha');
+    var fechaWrap          = document.getElementById('fc-fecha-wrap');
+    var fechaDisplayEl     = document.getElementById('fc-fecha-display');
+    var horarioWrap        = document.getElementById('fc-horario-wrap');
+    var horarioEl          = document.getElementById('fc-horario');
+    var waBtn              = document.getElementById('fc-wa-btn');
+    var cerradoEl          = document.getElementById('fc-cerrado');
+    var direccionEl        = document.getElementById('fc-direccion');
+    var envioSection       = document.getElementById('fc-envio-section');
+    var recoleccionSection = document.getElementById('fc-recoleccion-section');
+    var horaRecoleccionEl  = document.getElementById('fc-hora-recoleccion');
+    var horarioHint        = document.getElementById('fc-horario-hint');
+    var tipoBtns           = document.querySelectorAll('.fc-tipo-btn');
+
+    // ── Toggle envío / recolección ──
+    tipoBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            tipoBtns.forEach(function (b) { b.classList.remove('active'); });
+            this.classList.add('active');
+            modoTipo = this.dataset.tipo;
+
+            if (modoTipo === 'envio') {
+                if (envioSection)       envioSection.style.display = '';
+                if (recoleccionSection) recoleccionSection.style.display = 'none';
+            } else {
+                if (envioSection)       envioSection.style.display = 'none';
+                if (recoleccionSection) recoleccionSection.style.display = '';
+            }
+
+            if (fechaEl && fechaEl.value) onFechaChange();
+            checkFormReady();
+        });
+    });
+
+    // ── Abrir calendario al picar en cualquier parte del wrapper ──
+    if (fechaWrap && fechaEl) {
+        fechaWrap.addEventListener('click', function () {
+            try { fechaEl.showPicker(); } catch (e) { fechaEl.focus(); }
+        });
+    }
 
     // ── Verifica si todos los campos están llenos ──
     function checkFormReady() {
-        var fecha     = fechaEl     ? fechaEl.value.trim()    : '';
-        var horario   = horarioEl   ? horarioEl.value.trim()  : '';
-        var direccion = direccionEl ? direccionEl.value.trim() : '';
-        var listo     = fecha !== '' && horario !== '' && direccion !== '' && diaDisponible;
+        var fecha = fechaEl ? fechaEl.value.trim() : '';
+        var listo = false;
 
-        if (waBtn) {
-            waBtn.classList.toggle('fc-btn-disabled', !listo);
+        if (modoTipo === 'envio') {
+            var horario   = horarioEl   ? horarioEl.value.trim()  : '';
+            var direccion = direccionEl ? direccionEl.value.trim() : '';
+            listo = fecha !== '' && horario !== '' && direccion !== '' && diaDisponible;
+        } else {
+            var hora = horaRecoleccionEl ? horaRecoleccionEl.value.trim() : '';
+            listo = fecha !== '' && hora !== '' && diaDisponible;
         }
+
+        if (waBtn) waBtn.classList.toggle('fc-btn-disabled', !listo);
     }
 
     // ── Selector de tamaños ──
     document.querySelectorAll('.fc-tamano-btn').forEach(function (btn, i) {
         btn.addEventListener('click', function () {
-            document.querySelectorAll('.fc-tamano-btn').forEach(function (b) {
-                b.classList.remove('active');
-            });
+            document.querySelectorAll('.fc-tamano-btn').forEach(function (b) { b.classList.remove('active'); });
             this.classList.add('active');
             selectedTamano = tamanos[i];
             updateDisplay();
@@ -63,7 +110,7 @@
         }
     }
 
-    // ── Fecha → horarios ──
+    // ── Fecha → actualizar UI según modo ──
     function onFechaChange() {
         var val = fechaEl.value;
         if (!val) return;
@@ -72,34 +119,40 @@
         var dayOfWeek = String(date.getDay());
         var daySlots  = schedules[dayOfWeek] || [];
 
-        // Mostrar día completo debajo del input
         if (fechaDisplayEl) {
             fechaDisplayEl.textContent = dias[date.getDay()] + ', ' + date.getDate() + ' de ' + meses[date.getMonth()] + ' de ' + date.getFullYear();
         }
 
-        horarioEl.innerHTML = '<option value="">-- Selecciona un horario --</option>';
-
         if (daySlots.length === 0) {
             diaDisponible = false;
-            horarioWrap.classList.remove('visible');
+            if (horarioWrap) horarioWrap.classList.remove('visible');
             if (cerradoEl) {
                 cerradoEl.textContent = date.getDay() === 0
                     ? 'Lo sentimos, no laboramos los domingos.'
                     : 'Lo sentimos, ese día no realizamos entregas.';
                 cerradoEl.style.display = 'block';
             }
-            if (waBtn) { waBtn.style.pointerEvents = 'none'; waBtn.style.opacity = '0.4'; }
         } else {
             diaDisponible = true;
             if (cerradoEl) cerradoEl.style.display = 'none';
-            if (waBtn) { waBtn.style.pointerEvents = ''; waBtn.style.opacity = ''; }
-            daySlots.forEach(function (slot) {
-                var opt         = document.createElement('option');
-                opt.value       = slot;
-                opt.textContent = slot;
-                horarioEl.appendChild(opt);
-            });
-            horarioWrap.classList.add('visible');
+
+            if (modoTipo === 'envio') {
+                horarioEl.innerHTML = '<option value="">-- Selecciona un horario --</option>';
+                daySlots.forEach(function (slot) {
+                    var opt = document.createElement('option');
+                    opt.value = opt.textContent = slot;
+                    horarioEl.appendChild(opt);
+                });
+                if (horarioWrap) horarioWrap.classList.add('visible');
+            } else {
+                var rango = horariosRecoleccion[dayOfWeek];
+                if (rango && horaRecoleccionEl) {
+                    horaRecoleccionEl.min = rango.min;
+                    horaRecoleccionEl.max = rango.max;
+                    horaRecoleccionEl.value = '';
+                }
+                if (horarioHint) horarioHint.textContent = rango ? rango.texto : '';
+            }
         }
 
         checkFormReady();
@@ -112,13 +165,14 @@
         var dd    = String(today.getDate()).padStart(2, '0');
         fechaEl.min = yyyy + '-' + mm + '-' + dd;
 
-        // Ambos eventos para compatibilidad con móvil
         fechaEl.addEventListener('change', onFechaChange);
         fechaEl.addEventListener('input',  onFechaChange);
     }
 
-    if (horarioEl)   horarioEl.addEventListener('change', checkFormReady);
-    if (direccionEl) direccionEl.addEventListener('input',  checkFormReady);
+    if (horarioEl)         horarioEl.addEventListener('change', checkFormReady);
+    if (direccionEl)       direccionEl.addEventListener('input',  checkFormReady);
+    if (horaRecoleccionEl) horaRecoleccionEl.addEventListener('change', checkFormReady);
+    if (horaRecoleccionEl) horaRecoleccionEl.addEventListener('input',  checkFormReady);
 
     // ── Botón WhatsApp ──
     if (waBtn) {
@@ -126,11 +180,8 @@
             e.preventDefault();
             if (this.classList.contains('fc-btn-disabled')) return;
 
-            var fecha     = fechaEl     ? fechaEl.value.trim()    : '';
-            var horario   = horarioEl   ? horarioEl.value.trim()  : '';
-            var direccion = direccionEl ? direccionEl.value.trim() : '';
-
-            if (!fecha || !horario || !direccion) return;
+            var fecha = fechaEl ? fechaEl.value.trim() : '';
+            if (!fecha) return;
 
             var tamanoNombre = selectedTamano ? selectedTamano.nombre : '';
             var precio = selectedTamano
@@ -140,15 +191,41 @@
             var dateObj  = new Date(fecha + 'T12:00:00');
             var fechaStr = dias[dateObj.getDay()] + ', ' + dateObj.getDate() + ' de ' + meses[dateObj.getMonth()] + ' de ' + dateObj.getFullYear();
 
-            var mensaje =
-                'Hola! Me interesa ordenar un arreglo.\n\n' +
-                '*Arreglo:* '   + titulo       + '\n' +
-                '*Tamano:* '    + tamanoNombre + ' (' + precio + ')\n' +
-                '*Fecha:* '     + fechaStr     + '\n' +
-                '*Horario:* '   + horario      + '\n' +
-                '*Direccion:* ' + direccion    + '\n' +
-                '*Link:* '      + permalink    + '\n\n' +
-                'Esta disponible?';
+            var mensaje;
+
+            if (modoTipo === 'envio') {
+                var horario   = horarioEl   ? horarioEl.value.trim()  : '';
+                var direccion = direccionEl ? direccionEl.value.trim() : '';
+                mensaje =
+                    'Hola! Me interesa ordenar un arreglo.\n\n' +
+                    '*Arreglo:* '   + titulo       + '\n' +
+                    '*Tamano:* '    + tamanoNombre + ' (' + precio + ')\n' +
+                    '*Tipo:* Envio a domicilio\n' +
+                    '*Fecha:* '     + fechaStr     + '\n' +
+                    '*Horario:* '   + horario      + '\n' +
+                    '*Direccion:* ' + direccion    + '\n' +
+                    '*Link:* '      + permalink    + '\n\n' +
+                    'Esta disponible?';
+            } else {
+                var horaRaw = horaRecoleccionEl ? horaRecoleccionEl.value : '';
+                var horaStr = horaRaw;
+                if (horaRaw) {
+                    var parts = horaRaw.split(':');
+                    var h     = parseInt(parts[0]);
+                    var ampm  = h >= 12 ? 'pm' : 'am';
+                    h         = h % 12 || 12;
+                    horaStr   = h + ':' + parts[1] + ampm;
+                }
+                mensaje =
+                    'Hola! Me interesa ordenar un arreglo.\n\n' +
+                    '*Arreglo:* '  + titulo       + '\n' +
+                    '*Tamano:* '   + tamanoNombre + ' (' + precio + ')\n' +
+                    '*Tipo:* Recoleccion en tienda\n' +
+                    '*Fecha:* '    + fechaStr     + '\n' +
+                    '*Hora:* '     + horaStr      + '\n' +
+                    '*Link:* '     + permalink    + '\n\n' +
+                    'Esta disponible?';
+            }
 
             window.open('https://wa.me/' + whatsapp + '?text=' + encodeURIComponent(mensaje), '_blank');
         });

@@ -169,6 +169,36 @@
     color: #fff;
 }
 
+/* ── Toggle envío / recolección ── */
+.fc-tipo-btns {
+    display: flex;
+    gap: 10px;
+}
+
+.fc-tipo-btn {
+    flex: 1;
+    padding: 9px 14px;
+    border: 2px solid #ddd;
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #555;
+    transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.fc-tipo-btn:hover {
+    border-color: var(--fc-primary);
+    color: var(--fc-primary);
+}
+
+.fc-tipo-btn.active {
+    border-color: var(--fc-primary);
+    background: var(--fc-primary);
+    color: #fff;
+}
+
 /* ── Sección de pedido ── */
 .fc-pedir-section {
     border-top: 1px solid var(--fc-border);
@@ -188,7 +218,12 @@
     letter-spacing: 0.6px;
 }
 
+.fc-fecha-wrap {
+    cursor: pointer;
+}
+
 .fc-pedir-section input[type="date"],
+.fc-pedir-section input[type="time"],
 .fc-pedir-section select {
     width: 100%;
     padding: 10px 14px;
@@ -270,7 +305,15 @@
     opacity: 0.7;
 }
 
+.fc-horario-hint {
+    font-size: 12px;
+    color: #888;
+    font-style: italic;
+    margin: 6px 0 0;
+}
+
 .fc-pedir-section input[type="date"]:focus,
+.fc-pedir-section input[type="time"]:focus,
 .fc-pedir-section select:focus {
     outline: none;
     border-color: var(--fc-primary);

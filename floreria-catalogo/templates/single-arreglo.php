@@ -99,26 +99,48 @@ while ( have_posts() ) : the_post();
             </div>
             <?php else : ?>
             <div class="fc-pedir-section">
+
+                <div>
+                    <label>¿Cómo lo recibirás?</label>
+                    <div class="fc-tipo-btns">
+                        <button type="button" class="fc-tipo-btn active" data-tipo="envio">Envío a domicilio</button>
+                        <button type="button" class="fc-tipo-btn" data-tipo="recoleccion">Recolección en tienda</button>
+                    </div>
+                </div>
+
                 <div>
                     <label for="fc-fecha">¿Cuándo lo necesitas?</label>
-                    <input type="date" id="fc-fecha" name="fc_fecha" />
+                    <div class="fc-fecha-wrap" id="fc-fecha-wrap">
+                        <input type="date" id="fc-fecha" name="fc_fecha" />
+                    </div>
                     <p class="fc-fecha-display" id="fc-fecha-display"></p>
                 </div>
 
                 <p class="fc-cerrado-msg" id="fc-cerrado" style="display:none;"></p>
 
-                <div class="fc-horario-wrap" id="fc-horario-wrap">
-                    <label for="fc-horario">Horario de entrega</label>
-                    <select id="fc-horario" name="fc_horario">
-                        <option value="">-- Selecciona un horario --</option>
-                    </select>
+                <!-- Envío: bloques horarios + dirección -->
+                <div id="fc-envio-section">
+                    <div class="fc-horario-wrap" id="fc-horario-wrap">
+                        <label for="fc-horario">Horario de entrega</label>
+                        <select id="fc-horario" name="fc_horario">
+                            <option value="">-- Selecciona un horario --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="fc-direccion">Dirección de entrega</label>
+                        <div class="fc-direccion-wrap">
+                            <input type="text" id="fc-direccion" name="fc_direccion" placeholder="Calle, número, colonia, ciudad..." autocomplete="off" />
+                            <span class="fc-direccion-icon">&#x1F4CD;</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div>
-                    <label for="fc-direccion">Dirección de entrega</label>
-                    <div class="fc-direccion-wrap">
-                        <input type="text" id="fc-direccion" name="fc_direccion" placeholder="Calle, número, colonia, ciudad..." autocomplete="off" />
-                        <span class="fc-direccion-icon">&#x1F4CD;</span>
+                <!-- Recolección: hora libre dentro del horario -->
+                <div id="fc-recoleccion-section" style="display:none;">
+                    <div>
+                        <label for="fc-hora-recoleccion">Hora de recolección</label>
+                        <input type="time" id="fc-hora-recoleccion" name="fc_hora_recoleccion" />
+                        <p class="fc-horario-hint" id="fc-horario-hint"></p>
                     </div>
                 </div>
 
