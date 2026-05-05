@@ -8,14 +8,15 @@
 
     var selectedTamano = tamanos.length > 0 ? tamanos[0] : null;
 
-    var imgEl       = document.getElementById('fc-main-img');
-    var precioEl    = document.getElementById('fc-precio-val');
-    var fechaEl     = document.getElementById('fc-fecha');
-    var horarioWrap = document.getElementById('fc-horario-wrap');
-    var horarioEl   = document.getElementById('fc-horario');
-    var waBtn       = document.getElementById('fc-wa-btn');
-    var cerradoEl   = document.getElementById('fc-cerrado');
-    var direccionEl = document.getElementById('fc-direccion');
+    var imgEl          = document.getElementById('fc-main-img');
+    var precioEl       = document.getElementById('fc-precio-val');
+    var fechaEl        = document.getElementById('fc-fecha');
+    var fechaDisplayEl = document.getElementById('fc-fecha-display');
+    var horarioWrap    = document.getElementById('fc-horario-wrap');
+    var horarioEl      = document.getElementById('fc-horario');
+    var waBtn          = document.getElementById('fc-wa-btn');
+    var cerradoEl      = document.getElementById('fc-cerrado');
+    var direccionEl    = document.getElementById('fc-direccion');
 
     // ── Selector de tamaños ──
     document.querySelectorAll('.fc-tamano-btn').forEach(function (btn, i) {
@@ -58,6 +59,12 @@
             var date      = new Date(this.value + 'T12:00:00');
             var dayOfWeek = String(date.getDay());
             var daySlots  = schedules[dayOfWeek] || [];
+
+            var dias  = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            var meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+            if (fechaDisplayEl) {
+                fechaDisplayEl.textContent = dias[date.getDay()] + ', ' + date.getDate() + ' de ' + meses[date.getMonth()] + ' de ' + date.getFullYear();
+            }
 
             horarioEl.innerHTML = '<option value="">-- Selecciona un horario --</option>';
 

@@ -89,6 +89,7 @@ while ( have_posts() ) : the_post();
                 <div>
                     <label for="fc-fecha">¿Cuándo lo necesitas?</label>
                     <input type="date" id="fc-fecha" name="fc_fecha" />
+                    <p class="fc-fecha-display" id="fc-fecha-display"></p>
                 </div>
 
                 <p class="fc-cerrado-msg" id="fc-cerrado" style="display:none;">
