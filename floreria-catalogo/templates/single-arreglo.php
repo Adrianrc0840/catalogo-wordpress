@@ -7,7 +7,8 @@ while ( have_posts() ) : the_post();
     $desc     = get_post_meta( get_the_ID(), '_fc_descripcion', true );
     if ( ! is_array( $tamanos ) ) $tamanos = [];
 
-    $agotado  = get_post_meta( get_the_ID(), '_fc_agotado', true ) === '1';
+    $agotado  = get_post_meta( get_the_ID(), '_fc_agotado',  true ) === '1';
+    $especial = get_post_meta( get_the_ID(), '_fc_especial', true ) === '1';
     $cats      = get_the_terms( get_the_ID(), 'categoria_arreglo' );
     $cat_name  = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ', ', wp_list_pluck( $cats, 'name' ) ) : '';
     $cat_slugs = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? wp_list_pluck( $cats, 'slug' ) : [];
@@ -67,6 +68,12 @@ while ( have_posts() ) : the_post();
             <p class="fc-detalle-desc"><?php echo nl2br( esc_html( $desc ) ); ?></p>
             <?php endif; ?>
 
+            <?php if ( $especial ) : ?>
+            <div class="fc-especial-aviso">
+                &#128337; Este arreglo requiere <strong>al menos 2 días hábiles de anticipación</strong>. Sábado y domingo no cuentan como días hábiles.
+            </div>
+            <?php endif; ?>
+
             <p class="fc-detalle-precio">
                 <span id="fc-precio-val">
                     <?php echo $first_precio ? '$' . number_format( (float) $first_precio, 0, '.', ',' ) : ''; ?>
@@ -117,6 +124,7 @@ while ( have_posts() ) : the_post();
                 </div>
 
                 <p class="fc-cerrado-msg" id="fc-cerrado" style="display:none;"></p>
+                <p class="fc-cerrado-msg" id="fc-anticipacion" style="display:none;"></p>
 
                 <!-- Envío: bloques horarios + dirección -->
                 <div id="fc-envio-section">

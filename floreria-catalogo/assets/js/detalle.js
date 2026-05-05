@@ -6,8 +6,10 @@
     var permalink = data.permalink || window.location.href;
     var titulo    = data.titulo    || '';
 
+    var especial       = data.especial || false;
     var selectedTamano = tamanos.length > 0 ? tamanos[0] : null;
     var diaDisponible  = true;
+    var fechaValida    = true; // false cuando especial y no hay 2 días hábiles
     var modoTipo       = 'envio'; // 'envio' | 'recoleccion'
 
     var dias  = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -22,6 +24,21 @@
         '5': { min: '10:00', max: '20:00', texto: 'Horario de atención: 10:00am – 8:00pm' },
         '6': { min: '10:00', max: '17:00', texto: 'Horario de atención: 10:00am – 5:00pm' },
     };
+
+    var anticipacionEl     = document.getElementById('fc-anticipacion');
+
+    // Cuenta días hábiles estrictamente entre dos fechas (sin incluir ninguna de las dos)
+    function countBusinessDays(from, to) {
+        var count = 0;
+        var d = new Date(from);
+        d.setDate(d.getDate() + 1);
+        while (d < to) {
+            var day = d.getDay();
+            if (day !== 0 && day !== 6) count++;
+            d.setDate(d.getDate() + 1);
+        }
+        return count;
+    }
 
     var imgEl              = document.getElementById('fc-main-img');
     var precioEl           = document.getElementById('fc-precio-val');
@@ -81,10 +98,10 @@
         if (modoTipo === 'envio') {
             var horario   = horarioEl   ? horarioEl.value.trim()  : '';
             var direccion = direccionEl ? direccionEl.value.trim() : '';
-            listo = fecha !== '' && horario !== '' && direccion !== '' && diaDisponible;
+            listo = fecha !== '' && horario !== '' && direccion !== '' && diaDisponible && fechaValida;
         } else {
             var hora = horaRecoleccionEl ? horaRecoleccionEl.value.trim() : '';
-            listo = fecha !== '' && hora !== '' && diaDisponible;
+            listo = fecha !== '' && hora !== '' && diaDisponible && fechaValida;
         }
 
         if (waBtn) waBtn.classList.toggle('fc-btn-disabled', !listo);
@@ -128,6 +145,24 @@
 
         if (fechaDisplayEl) {
             fechaDisplayEl.textContent = dias[date.getDay()] + ', ' + date.getDate() + ' de ' + meses[date.getMonth()] + ' de ' + date.getFullYear();
+        }
+
+        // Validación de anticipación para arreglos especiales
+        if (especial) {
+            var hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            var seleccionada = new Date(val + 'T00:00:00');
+            var diasHabiles = countBusinessDays(hoy, seleccionada);
+            if (diasHabiles < 2) {
+                fechaValida = false;
+                if (anticipacionEl) {
+                    anticipacionEl.textContent = 'Este arreglo necesita al menos 2 días hábiles de anticipación. Por favor elige una fecha posterior.';
+                    anticipacionEl.style.display = 'block';
+                }
+            } else {
+                fechaValida = true;
+                if (anticipacionEl) anticipacionEl.style.display = 'none';
+            }
         }
 
         if (daySlots.length === 0) {

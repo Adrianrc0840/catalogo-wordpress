@@ -6,6 +6,18 @@ function fc_add_meta_boxes() {
     add_meta_box( 'fc_descripcion', 'Descripción del arreglo', 'fc_render_descripcion_meta_box', 'arreglo', 'normal', 'high' );
     add_meta_box( 'fc_tamanos',     'Tamaños y Precios',       'fc_render_tamanos_meta_box',     'arreglo', 'normal', 'high' );
     add_meta_box( 'fc_disponible',  'Disponibilidad',          'fc_render_disponible_meta_box',  'arreglo', 'side',   'high' );
+    add_meta_box( 'fc_especial',    'Tipo de pedido',          'fc_render_especial_meta_box',    'arreglo', 'side',   'high' );
+}
+
+function fc_render_especial_meta_box( $post ) {
+    $especial = get_post_meta( $post->ID, '_fc_especial', true );
+    ?>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" name="fc_especial" value="1" <?php checked( $especial, '1' ); ?> />
+        <span>Requiere <strong>anticipación</strong></span>
+    </label>
+    <p style="margin:8px 0 0;font-size:12px;color:#888;">El cliente deberá pedir con al menos 2 días hábiles de anticipación. Sábado y domingo no cuentan.</p>
+    <?php
 }
 
 function fc_render_disponible_meta_box( $post ) {
@@ -105,7 +117,8 @@ function fc_save_meta( $post_id ) {
         update_post_meta( $post_id, '_fc_descripcion', sanitize_textarea_field( $_POST['fc_descripcion'] ) );
     }
 
-    update_post_meta( $post_id, '_fc_agotado', isset( $_POST['fc_agotado'] ) ? '1' : '0' );
+    update_post_meta( $post_id, '_fc_agotado',   isset( $_POST['fc_agotado'] )   ? '1' : '0' );
+    update_post_meta( $post_id, '_fc_especial',  isset( $_POST['fc_especial'] )  ? '1' : '0' );
 
     $tamanos = [];
     if ( isset( $_POST['fc_tamanos'] ) && is_array( $_POST['fc_tamanos'] ) ) {

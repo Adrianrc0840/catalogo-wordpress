@@ -41,6 +41,7 @@ function fc_enqueue_frontend() {
             'schedules' => fc_get_schedules(),
             'permalink' => get_permalink( $post->ID ),
             'titulo'    => get_the_title( $post->ID ),
+            'especial'  => get_post_meta( $post->ID, '_fc_especial', true ) === '1',
         ] );
     } else {
         wp_enqueue_script( 'fc-catalogo', FC_URL . 'assets/js/catalogo.js', [], FC_VERSION, true );
