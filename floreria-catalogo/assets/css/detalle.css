@@ -1,3 +1,11 @@
+/* ── Variables de marca ── */
+:root {
+    --fc-primary:  #c8185a;
+    --fc-dark:     #8b1a47;
+    --fc-light-bg: #fdf5f7;
+    --fc-border:   #f0c0d0;
+}
+
 .fc-detalle {
     max-width: 1100px;
     margin: 0 auto;
@@ -10,7 +18,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: #c07090;
+    color: var(--fc-primary);
     text-decoration: none;
     font-size: 14px;
     font-weight: 500;
@@ -19,7 +27,7 @@
 }
 
 .fc-back-btn:hover {
-    color: #a05070;
+    color: var(--fc-dark);
     text-decoration: none;
 }
 
@@ -42,7 +50,7 @@
 .fc-detalle-img-wrap {
     border-radius: 16px;
     overflow: hidden;
-    background: #f8f0f4;
+    background: var(--fc-light-bg);
     aspect-ratio: 1 / 1;
 }
 
@@ -68,7 +76,7 @@
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: #c07090;
+    color: var(--fc-primary);
     font-weight: 600;
 }
 
@@ -131,19 +139,19 @@
 }
 
 .fc-tamano-btn:hover {
-    border-color: #e8a4b8;
-    color: #c07090;
+    border-color: var(--fc-primary);
+    color: var(--fc-primary);
 }
 
 .fc-tamano-btn.active {
-    border-color: #e8a4b8;
-    background: #e8a4b8;
+    border-color: var(--fc-primary);
+    background: var(--fc-primary);
     color: #fff;
 }
 
 /* ── Sección de pedido ── */
 .fc-pedir-section {
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--fc-border);
     padding-top: 20px;
     display: flex;
     flex-direction: column;
@@ -177,7 +185,7 @@
 .fc-pedir-section input[type="date"]:focus,
 .fc-pedir-section select:focus {
     outline: none;
-    border-color: #e8a4b8;
+    border-color: var(--fc-primary);
 }
 
 .fc-horario-wrap {
@@ -214,7 +222,7 @@
 
 .fc-direccion-wrap input[type="text"]:focus {
     outline: none;
-    border-color: #e8a4b8;
+    border-color: var(--fc-primary);
 }
 
 .fc-direccion-icon {
@@ -226,7 +234,6 @@
     pointer-events: none;
 }
 
-
 /* ── Botón WhatsApp ── */
 .fc-whatsapp-btn {
     display: flex;
@@ -235,7 +242,7 @@
     gap: 10px;
     width: 100%;
     padding: 14px 24px;
-    background: #25d366;
+    background: var(--fc-dark);
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -248,7 +255,7 @@
 }
 
 .fc-whatsapp-btn:hover {
-    background: #1fb855;
+    background: var(--fc-primary);
     color: #fff;
     text-decoration: none;
 }
