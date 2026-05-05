@@ -64,8 +64,10 @@
             if (daySlots.length === 0) {
                 horarioWrap.classList.remove('visible');
                 if (cerradoEl) cerradoEl.style.display = 'block';
+                if (waBtn) { waBtn.style.pointerEvents = 'none'; waBtn.style.opacity = '0.4'; }
             } else {
                 if (cerradoEl) cerradoEl.style.display = 'none';
+                if (waBtn) { waBtn.style.pointerEvents = ''; waBtn.style.opacity = ''; }
                 daySlots.forEach(function (slot) {
                     var opt         = document.createElement('option');
                     opt.value       = slot;
