@@ -26,6 +26,7 @@
     };
 
     var anticipacionEl     = document.getElementById('fc-anticipacion');
+    var politicasCb        = document.getElementById('fc-politicas-cb');
 
     // Cuenta días hábiles estrictamente entre dos fechas (sin incluir ninguna de las dos)
     function countBusinessDays(from, to) {
@@ -92,16 +93,17 @@
 
     // ── Verifica si todos los campos están llenos ──
     function checkFormReady() {
-        var fecha = fechaEl ? fechaEl.value.trim() : '';
-        var listo = false;
+        var fecha      = fechaEl      ? fechaEl.value.trim()       : '';
+        var politicas  = politicasCb  ? politicasCb.checked        : true;
+        var listo      = false;
 
         if (modoTipo === 'envio') {
             var horario   = horarioEl   ? horarioEl.value.trim()  : '';
             var direccion = direccionEl ? direccionEl.value.trim() : '';
-            listo = fecha !== '' && horario !== '' && direccion !== '' && diaDisponible && fechaValida;
+            listo = fecha !== '' && horario !== '' && direccion !== '' && diaDisponible && fechaValida && politicas;
         } else {
             var hora = horaRecoleccionEl ? horaRecoleccionEl.value.trim() : '';
-            listo = fecha !== '' && hora !== '' && diaDisponible && fechaValida;
+            listo = fecha !== '' && hora !== '' && diaDisponible && fechaValida && politicas;
         }
 
         if (waBtn) waBtn.classList.toggle('fc-btn-disabled', !listo);
@@ -211,8 +213,9 @@
         fechaEl.addEventListener('input',  onFechaChange);
     }
 
-    if (horarioEl)   horarioEl.addEventListener('change', checkFormReady);
-    if (direccionEl) direccionEl.addEventListener('input',  checkFormReady);
+    if (horarioEl)   horarioEl.addEventListener('change',  checkFormReady);
+    if (direccionEl) direccionEl.addEventListener('input',   checkFormReady);
+    if (politicasCb) politicasCb.addEventListener('change',  checkFormReady);
 
     function onHoraRecoleccionChange() {
         if (!horaRecoleccionEl || !horaRecoleccionEl.value) { checkFormReady(); return; }

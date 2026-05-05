@@ -21,6 +21,7 @@ require_once FC_PATH . 'includes/schedules.php';
 require_once FC_PATH . 'includes/settings.php';
 require_once FC_PATH . 'includes/admin-list.php';
 require_once FC_PATH . 'includes/csv-tools.php';
+require_once FC_PATH . 'includes/politicas.php';
 
 add_action( 'wp_enqueue_scripts', 'fc_enqueue_frontend' );
 function fc_enqueue_frontend() {
@@ -41,7 +42,8 @@ function fc_enqueue_frontend() {
             'schedules' => fc_get_schedules(),
             'permalink' => get_permalink( $post->ID ),
             'titulo'    => get_the_title( $post->ID ),
-            'especial'  => get_post_meta( $post->ID, '_fc_especial', true ) === '1',
+            'especial'      => get_post_meta( $post->ID, '_fc_especial', true ) === '1',
+            'politicas_url' => get_option( 'fc_politicas_url', '' ),
         ] );
     } else {
         wp_enqueue_script( 'fc-catalogo', FC_URL . 'assets/js/catalogo.js', [], FC_VERSION, true );

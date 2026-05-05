@@ -323,6 +323,36 @@
     text-decoration: none;
 }
 
+/* ── Checkbox políticas ── */
+.fc-politicas-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #555;
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+}
+
+.fc-politicas-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: var(--fc-primary);
+}
+
+.fc-politicas-check a {
+    color: var(--fc-primary);
+    text-decoration: underline;
+}
+
+.fc-politicas-check a:hover {
+    color: var(--fc-dark);
+}
+
 /* ── Botón WhatsApp deshabilitado ── */
 .fc-whatsapp-btn.fc-btn-disabled {
     background: #b0b0b0;

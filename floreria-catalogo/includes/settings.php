@@ -15,13 +15,15 @@ function fc_add_settings_page() {
 
 function fc_render_settings_page() {
     if ( isset( $_POST['fc_save_settings'] ) && check_admin_referer( 'fc_settings' ) ) {
-        update_option( 'fc_whatsapp',         sanitize_text_field( $_POST['fc_whatsapp']        ?? '' ) );
-        update_option( 'fc_catalog_page_url', esc_url_raw(          $_POST['fc_catalog_page_url'] ?? '' ) );
+        update_option( 'fc_whatsapp',          sanitize_text_field( $_POST['fc_whatsapp']         ?? '' ) );
+        update_option( 'fc_catalog_page_url',  esc_url_raw(         $_POST['fc_catalog_page_url']  ?? '' ) );
+        update_option( 'fc_politicas_url',     esc_url_raw(         $_POST['fc_politicas_url']     ?? '' ) );
         echo '<div class="notice notice-success is-dismissible"><p>¡Configuración guardada!</p></div>';
     }
 
-    $whatsapp    = get_option( 'fc_whatsapp',         '' );
-    $catalog_url = get_option( 'fc_catalog_page_url', '' );
+    $whatsapp      = get_option( 'fc_whatsapp',         '' );
+    $catalog_url   = get_option( 'fc_catalog_page_url', '' );
+    $politicas_url = get_option( 'fc_politicas_url',    '' );
     ?>
     <div class="wrap">
         <h1>Configuración del Catálogo</h1>
@@ -40,6 +42,13 @@ function fc_render_settings_page() {
                     <td>
                         <input type="url" name="fc_catalog_page_url" id="fc_catalog_page_url" value="<?php echo esc_attr( $catalog_url ); ?>" class="regular-text" placeholder="https://tufloreria.com/catalogo" />
                         <p class="description">URL de la página con el shortcode <code>[catalogo_floreria]</code>. Se usa para el botón "← Volver al catálogo".</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="fc_politicas_url">URL de políticas</label></th>
+                    <td>
+                        <input type="url" name="fc_politicas_url" id="fc_politicas_url" value="<?php echo esc_attr( $politicas_url ); ?>" class="regular-text" placeholder="https://tufloreria.com/politicas" />
+                        <p class="description">URL de la página con el shortcode <code>[floreria_politicas]</code>. Se usa en el link "Leí las políticas" al hacer un pedido.</p>
                     </td>
                 </tr>
 
