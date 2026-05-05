@@ -67,9 +67,6 @@ while ( have_posts() ) : the_post();
                 <span id="fc-precio-val">
                     <?php echo $first_precio ? '$' . number_format( (float) $first_precio, 0, '.', ',' ) : ''; ?>
                 </span>
-                <?php if ( count( $tamanos ) > 1 ) : ?>
-                <span class="fc-detalle-precio-hint">— elige un tamaño</span>
-                <?php endif; ?>
             </p>
 
             <!-- Selector de tamaños -->
