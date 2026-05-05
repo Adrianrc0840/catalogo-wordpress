@@ -86,7 +86,10 @@ while ( have_posts() ) : the_post();
 
                 <div>
                     <label for="fc-direccion">Dirección de entrega</label>
-                    <input type="text" id="fc-direccion" name="fc_direccion" placeholder="Calle, número, colonia, ciudad..." />
+                    <div class="fc-direccion-wrap">
+                        <input type="text" id="fc-direccion" name="fc_direccion" placeholder="Calle, número, colonia, ciudad..." autocomplete="off" />
+                        <span class="fc-direccion-icon">&#x1F4CD;</span>
+                    </div>
                 </div>
 
                 <a href="#" class="fc-whatsapp-btn" id="fc-wa-btn">
