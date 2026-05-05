@@ -146,4 +146,12 @@
         }
     });
 
+    // ── Activar filtro desde hash (#cat=slug) ──
+    var hash = window.location.hash;
+    if (hash && hash.indexOf('#cat=') === 0) {
+        var slug = hash.replace('#cat=', '');
+        var btnHash = document.querySelector('.fc-filtro-btn[data-categoria="' + slug + '"]');
+        if (btnHash) btnHash.click();
+    }
+
 })();

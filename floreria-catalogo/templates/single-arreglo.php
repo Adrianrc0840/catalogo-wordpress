@@ -55,8 +55,12 @@ while ( have_posts() ) : the_post();
 
             <h1 class="fc-detalle-titulo"><?php the_title(); ?></h1>
 
-            <?php if ( $cat_name ) : ?>
-            <span class="fc-detalle-cat"><?php echo esc_html( $cat_name ); ?></span>
+            <?php if ( ! empty( $cats ) && ! is_wp_error( $cats ) ) : ?>
+            <div class="fc-detalle-cats">
+                <?php foreach ( $cats as $cat ) : ?>
+                <a href="<?php echo esc_url( $catalog_url . '#cat=' . $cat->slug ); ?>" class="fc-detalle-cat"><?php echo esc_html( $cat->name ); ?></a>
+                <?php endforeach; ?>
+            </div>
             <?php endif; ?>
 
             <?php if ( $desc ) : ?>
