@@ -50,7 +50,7 @@
         if (cats.length > 0) {
             html += '<div class="fc-ac-grupo">Categorias</div>';
             cats.forEach(function (s) {
-                html += '<div class="fc-ac-item" data-tipo="categoria" data-slug="' + s.slug + '">' +
+                html += '<div class="fc-ac-item" data-tipo="categoria" data-slug="' + s.slug + '" data-display="' + s.display + '">' +
                         '<span class="fc-ac-icon">&#128194;</span>' + s.display + '</div>';
             });
         }
@@ -58,7 +58,7 @@
         if (arreglos.length > 0) {
             html += '<div class="fc-ac-grupo">Arreglos</div>';
             arreglos.slice(0, 6).forEach(function (s) {
-                html += '<div class="fc-ac-item" data-tipo="arreglo" data-key="' + s.key + '" data-url="' + (s.url || '') + '">' +
+                html += '<div class="fc-ac-item" data-tipo="arreglo" data-key="' + s.key + '" data-url="' + (s.url || '') + '" data-display="' + s.display + '">' +
                         '<span class="fc-ac-icon">&#127800;</span>' + s.display + '</div>';
             });
         }
@@ -84,9 +84,7 @@
         } else {
             // Filtra por nombre del arreglo
             var key = item.dataset.key;
-            buscador.value = item.querySelector('.fc-ac-icon').nextSibling
-                ? item.textContent.replace(/^./, '').trim()
-                : key;
+            buscador.value = item.dataset.display || key;
             busqueda = key;
             aplicarFiltros();
         }
