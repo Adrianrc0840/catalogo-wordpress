@@ -1,0 +1,229 @@
+.fc-detalle {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 20px;
+    font-family: inherit;
+}
+
+/* ── Botón volver ── */
+.fc-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #c07090;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 32px;
+    transition: color 0.2s;
+}
+
+.fc-back-btn:hover {
+    color: #a05070;
+    text-decoration: none;
+}
+
+/* ── Layout dos columnas ── */
+.fc-detalle-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 52px;
+    align-items: start;
+}
+
+@media (max-width: 768px) {
+    .fc-detalle-inner {
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+}
+
+/* ── Imagen ── */
+.fc-detalle-img-wrap {
+    border-radius: 16px;
+    overflow: hidden;
+    background: #f8f0f4;
+    aspect-ratio: 1 / 1;
+}
+
+.fc-detalle-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.28s ease;
+}
+
+.fc-detalle-img-wrap img.fc-fade {
+    opacity: 0;
+}
+
+/* ── Info ── */
+.fc-detalle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.fc-detalle-cat {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #c07090;
+    font-weight: 600;
+}
+
+.fc-detalle-titulo {
+    font-size: 28px;
+    font-weight: 700;
+    color: #222;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.fc-detalle-desc {
+    font-size: 15px;
+    color: #666;
+    line-height: 1.75;
+    margin: 0;
+}
+
+.fc-detalle-precio {
+    font-size: 26px;
+    font-weight: 700;
+    color: #222;
+    margin: 0;
+}
+
+.fc-detalle-precio-hint {
+    font-size: 14px;
+    color: #aaa;
+    font-weight: 400;
+    margin-left: 6px;
+}
+
+/* ── Selector de tamaños ── */
+.fc-tamanos-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.fc-tamanos-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.fc-tamano-btn {
+    padding: 9px 22px;
+    border: 2px solid #ddd;
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #555;
+    transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.fc-tamano-btn:hover {
+    border-color: #e8a4b8;
+    color: #c07090;
+}
+
+.fc-tamano-btn.active {
+    border-color: #e8a4b8;
+    background: #e8a4b8;
+    color: #fff;
+}
+
+/* ── Sección de pedido ── */
+.fc-pedir-section {
+    border-top: 1px solid #eee;
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.fc-pedir-section label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    display: block;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.fc-pedir-section input[type="date"],
+.fc-pedir-section select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #333;
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+    appearance: auto;
+}
+
+.fc-pedir-section input[type="date"]:focus,
+.fc-pedir-section select:focus {
+    outline: none;
+    border-color: #e8a4b8;
+}
+
+.fc-horario-wrap {
+    display: none;
+}
+
+.fc-horario-wrap.visible {
+    display: block;
+}
+
+.fc-cerrado-msg {
+    color: #d44;
+    font-size: 13px;
+    font-style: italic;
+    margin: 0;
+}
+
+/* ── Botón WhatsApp ── */
+.fc-whatsapp-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px 24px;
+    background: #25d366;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s;
+    box-sizing: border-box;
+}
+
+.fc-whatsapp-btn:hover {
+    background: #1fb855;
+    color: #fff;
+    text-decoration: none;
+}
+
+.fc-whatsapp-btn svg {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+    flex-shrink: 0;
+}

@@ -1,0 +1,124 @@
+.fc-catalogo {
+    font-family: inherit;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* ── Filtros ── */
+.fc-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 32px;
+    justify-content: center;
+}
+
+.fc-filtro-btn {
+    padding: 8px 22px;
+    border: 2px solid #e8a4b8;
+    background: transparent;
+    color: #c07090;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.22s, color 0.22s;
+}
+
+.fc-filtro-btn:hover,
+.fc-filtro-btn.active {
+    background: #e8a4b8;
+    color: #fff;
+}
+
+/* ── Grid ── */
+.fc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 26px;
+}
+
+/* ── Tarjeta ── */
+.fc-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: #fff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.08);
+    transition: transform 0.24s ease, box-shadow 0.24s ease;
+}
+
+.fc-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.13);
+    text-decoration: none;
+    color: inherit;
+}
+
+.fc-card.hidden {
+    display: none;
+}
+
+.fc-card-img {
+    width: 100%;
+    height: 220px;
+    overflow: hidden;
+    background: #f8f0f4;
+}
+
+.fc-card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.fc-card:hover .fc-card-img img {
+    transform: scale(1.06);
+}
+
+.fc-card-no-img {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 60px;
+}
+
+.fc-card-body {
+    padding: 16px 18px 20px;
+}
+
+.fc-card-cat {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #c07090;
+    font-weight: 600;
+}
+
+.fc-card-title {
+    margin: 6px 0 8px;
+    font-size: 17px;
+    font-weight: 600;
+    color: #222;
+    line-height: 1.3;
+}
+
+.fc-card-precio {
+    margin: 0;
+    font-size: 15px;
+    color: #888;
+    font-weight: 500;
+}
+
+.fc-no-results {
+    text-align: center;
+    color: #aaa;
+    padding: 50px 20px;
+    font-size: 16px;
+}

@@ -1,0 +1,93 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+add_shortcode( 'catalogo_floreria', 'fc_render_catalogo' );
+function fc_render_catalogo( $atts ) {
+    $atts = shortcode_atts( [
+        'categoria' => '',
+        'limite'    => -1,
+    ], $atts );
+
+    $args = [
+        'post_type'      => 'arreglo',
+        'post_status'    => 'publish',
+        'posts_per_page' => intval( $atts['limite'] ),
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+    ];
+
+    if ( ! empty( $atts['categoria'] ) ) {
+        $args['tax_query'] = [ [
+            'taxonomy' => 'categoria_arreglo',
+            'field'    => 'slug',
+            'terms'    => $atts['categoria'],
+        ] ];
+    }
+
+    $query = new WP_Query( $args );
+
+    if ( ! $query->have_posts() ) {
+        return '<p class="fc-no-results">No hay arreglos disponibles.</p>';
+    }
+
+    $categorias = get_terms( [ 'taxonomy' => 'categoria_arreglo', 'hide_empty' => true ] );
+
+    ob_start();
+    ?>
+    <div class="fc-catalogo">
+        <?php if ( ! empty( $categorias ) && ! is_wp_error( $categorias ) ) : ?>
+        <div class="fc-filtros">
+            <button class="fc-filtro-btn active" data-categoria="todos">Todos</button>
+            <?php foreach ( $categorias as $cat ) : ?>
+            <button class="fc-filtro-btn" data-categoria="<?php echo esc_attr( $cat->slug ); ?>">
+                <?php echo esc_html( $cat->name ); ?>
+            </button>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
+
+        <div class="fc-grid">
+            <?php while ( $query->have_posts() ) : $query->the_post(); ?>
+            <?php
+                $tamanos   = get_post_meta( get_the_ID(), '_fc_tamanos', true );
+                $cats      = get_the_terms( get_the_ID(), 'categoria_arreglo' );
+                $cat_slugs = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ' ', wp_list_pluck( $cats, 'slug' ) ) : '';
+                $cat_name  = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? $cats[0]->name : '';
+
+                $img_url = '';
+                if ( ! empty( $tamanos[0]['imagen_url'] ) ) {
+                    $img_url = $tamanos[0]['imagen_url'];
+                } elseif ( has_post_thumbnail() ) {
+                    $img_url = get_the_post_thumbnail_url( get_the_ID(), 'medium' );
+                }
+
+                $precio_desde = '';
+                if ( ! empty( $tamanos ) ) {
+                    $precios      = array_column( $tamanos, 'precio' );
+                    $precio_desde = min( $precios );
+                }
+            ?>
+            <a href="<?php the_permalink(); ?>" class="fc-card <?php echo esc_attr( $cat_slugs ); ?>">
+                <div class="fc-card-img">
+                    <?php if ( $img_url ) : ?>
+                    <img src="<?php echo esc_url( $img_url ); ?>" alt="<?php the_title_attribute(); ?>" loading="lazy" />
+                    <?php else : ?>
+                    <div class="fc-card-no-img">🌸</div>
+                    <?php endif; ?>
+                </div>
+                <div class="fc-card-body">
+                    <?php if ( $cat_name ) : ?>
+                    <span class="fc-card-cat"><?php echo esc_html( $cat_name ); ?></span>
+                    <?php endif; ?>
+                    <h3 class="fc-card-title"><?php the_title(); ?></h3>
+                    <?php if ( $precio_desde !== '' ) : ?>
+                    <p class="fc-card-precio">Desde $<?php echo number_format( $precio_desde, 0, '.', ',' ); ?></p>
+                    <?php endif; ?>
+                </div>
+            </a>
+            <?php endwhile; wp_reset_postdata(); ?>
+        </div>
+    </div>
+    <?php
+    return ob_get_clean();
+}
