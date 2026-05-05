@@ -43,7 +43,7 @@ function fc_politicas_tabs_default() {
 <p>En los mismos horarios <strong>comienza la atención</strong> a través de nuestras redes sociales y canales digitales. Cualquier mensaje recibido <strong>fuera</strong> de este horario será respondido al <strong>inicio de la siguiente jornada laboral.</strong></p>',
         ],
         [
-            'titulo' => 'Entregas a domicilio',
+            'titulo' => 'Envíos a domicilio',
             'contenido' => '<p>Envíos a domicilio se realizan a <strong>partir de las 10:00 a.m.</strong>, organizados en <strong>bloques de dos horas</strong>, con el fin de optimizar las rutas de reparto y garantizar un mejor servicio:</p>
 <ul>
     <li>10:00 a.m. – 12:00 p.m.</li>
