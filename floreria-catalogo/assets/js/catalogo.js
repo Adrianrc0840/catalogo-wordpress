@@ -1,6 +1,4 @@
 (function () {
-    // El script carga en el footer — el DOM ya está listo, no necesita DOMContentLoaded
-
     var filtros       = document.querySelectorAll('.fc-filtro-btn');
     var cards         = document.querySelectorAll('.fc-card');
     var buscador      = document.getElementById('fc-buscador');
@@ -9,86 +7,97 @@
     var filtroActivo = 'todos';
     var busqueda     = '';
 
-    // ── Construir lista de sugerencias desde el DOM ──
+    // ── Sugerencias: categorías de los botones + títulos de las tarjetas ──
     var sugerencias = [];
-    var categoriasVistas = {};
 
-    cards.forEach(function (card) {
-        var tituloKey = card.dataset.titulo || '';
-        var catKey    = card.dataset.categoria || '';
-        var tituloDisplay = card.querySelector('.fc-card-title')
-            ? card.querySelector('.fc-card-title').textContent.trim()
-            : tituloKey;
-        var catDisplay = card.querySelector('.fc-card-cat')
-            ? card.querySelector('.fc-card-cat').textContent.trim()
-            : catKey;
-
-        if (tituloKey) {
-            sugerencias.push({ tipo: 'arreglo', key: tituloKey, display: tituloDisplay });
-        }
-        if (catKey && !categoriasVistas[catKey]) {
-            categoriasVistas[catKey] = true;
-            sugerencias.push({ tipo: 'categoria', key: catKey, display: catDisplay });
+    filtros.forEach(function (btn) {
+        var slug = btn.dataset.categoria;
+        var name = btn.textContent.trim();
+        if (slug && slug !== 'todos') {
+            sugerencias.push({ tipo: 'categoria', display: name, slug: slug, key: name.toLowerCase() });
         }
     });
 
-    // ── Autocomplete dropdown ──
+    cards.forEach(function (card) {
+        var key     = card.dataset.titulo || '';
+        var titleEl = card.querySelector('.fc-card-title');
+        var display = titleEl ? titleEl.textContent.trim() : key;
+        if (key) {
+            sugerencias.push({ tipo: 'arreglo', display: display, key: key, url: card.href });
+        }
+    });
+
+    // ── Dropdown ──
     var dropdown = document.createElement('div');
     dropdown.className = 'fc-autocomplete';
     dropdown.style.display = 'none';
-    if (buscador) {
-        buscador.parentNode.appendChild(dropdown);
+    if (buscador) buscador.parentNode.appendChild(dropdown);
+
+    function cerrarDropdown() {
+        dropdown.style.display = 'none';
     }
 
     function mostrarSugerencias(query) {
-        if (!query || query.length < 1) {
-            dropdown.style.display = 'none';
-            return;
-        }
+        if (!query) { cerrarDropdown(); return; }
 
-        var arreglosMatch   = sugerencias.filter(function (s) { return s.tipo === 'arreglo'   && s.key.includes(query); });
-        var categoriasMatch = sugerencias.filter(function (s) { return s.tipo === 'categoria' && s.key.includes(query); });
+        var cats     = sugerencias.filter(function (s) { return s.tipo === 'categoria' && s.key.includes(query); });
+        var arreglos = sugerencias.filter(function (s) { return s.tipo === 'arreglo'   && s.key.includes(query); });
 
-        if (arreglosMatch.length === 0 && categoriasMatch.length === 0) {
-            dropdown.style.display = 'none';
-            return;
-        }
+        if (cats.length === 0 && arreglos.length === 0) { cerrarDropdown(); return; }
 
         var html = '';
 
-        if (categoriasMatch.length > 0) {
-            html += '<div class="fc-ac-grupo">Categorías</div>';
-            categoriasMatch.forEach(function (s) {
-                html += '<div class="fc-ac-item" data-key="' + s.key + '" data-tipo="categoria">&#128194; ' + s.display + '</div>';
+        if (cats.length > 0) {
+            html += '<div class="fc-ac-grupo">Categorias</div>';
+            cats.forEach(function (s) {
+                html += '<div class="fc-ac-item" data-tipo="categoria" data-slug="' + s.slug + '">' +
+                        '<span class="fc-ac-icon">&#128194;</span>' + s.display + '</div>';
             });
         }
 
-        if (arreglosMatch.length > 0) {
+        if (arreglos.length > 0) {
             html += '<div class="fc-ac-grupo">Arreglos</div>';
-            arreglosMatch.slice(0, 6).forEach(function (s) {
-                html += '<div class="fc-ac-item" data-key="' + s.key + '" data-tipo="arreglo">&#127800; ' + s.display + '</div>';
+            arreglos.slice(0, 6).forEach(function (s) {
+                html += '<div class="fc-ac-item" data-tipo="arreglo" data-key="' + s.key + '" data-url="' + (s.url || '') + '">' +
+                        '<span class="fc-ac-icon">&#127800;</span>' + s.display + '</div>';
             });
         }
 
         dropdown.innerHTML = html;
         dropdown.style.display = 'block';
-
-        dropdown.querySelectorAll('.fc-ac-item').forEach(function (item) {
-            item.addEventListener('mousedown', function (e) {
-                e.preventDefault();
-                var key = this.dataset.key;
-                buscador.value = this.textContent.trim().substring(2); // quitar el emoji prefix
-                busqueda = key;
-                dropdown.style.display = 'none';
-                aplicarFiltros();
-            });
-        });
     }
 
-    // ── Aplicar filtros combinados ──
+    // Click en sugerencia — usa click, no mousedown, para evitar conflicto con blur
+    dropdown.addEventListener('click', function (e) {
+        var item = e.target.closest('.fc-ac-item');
+        if (!item) return;
+
+        if (item.dataset.tipo === 'categoria') {
+            // Activa el botón de filtro correspondiente
+            var slug = item.dataset.slug;
+            var btn  = document.querySelector('.fc-filtro-btn[data-categoria="' + slug + '"]');
+            if (btn) {
+                buscador.value = '';
+                busqueda = '';
+                btn.click();
+            }
+        } else {
+            // Filtra por nombre del arreglo
+            var key = item.dataset.key;
+            buscador.value = item.querySelector('.fc-ac-icon').nextSibling
+                ? item.textContent.replace(/^./, '').trim()
+                : key;
+            busqueda = key;
+            aplicarFiltros();
+        }
+
+        cerrarDropdown();
+        buscador.blur();
+    });
+
+    // ── Filtros por categoría ──
     function aplicarFiltros() {
         var visibles = 0;
-
         cards.forEach(function (card) {
             var titulo    = card.dataset.titulo    || '';
             var categoria = card.dataset.categoria || '';
@@ -106,7 +115,6 @@
         }
     }
 
-    // ── Filtros por categoría ──
     filtros.forEach(function (btn) {
         btn.addEventListener('click', function () {
             filtros.forEach(function (b) { b.classList.remove('active'); });
@@ -124,21 +132,19 @@
             aplicarFiltros();
         });
 
+        // Pequeño delay en blur para que el click del dropdown alcance a disparar
         buscador.addEventListener('blur', function () {
-            setTimeout(function () { dropdown.style.display = 'none'; }, 150);
+            setTimeout(cerrarDropdown, 200);
         });
 
         buscador.addEventListener('focus', function () {
-            if (this.value.trim().length > 0) {
-                mostrarSugerencias(this.value.toLowerCase().trim());
-            }
+            if (this.value.trim()) mostrarSugerencias(this.value.toLowerCase().trim());
         });
     }
 
-    // Cerrar dropdown al hacer clic fuera
     document.addEventListener('click', function (e) {
-        if (buscador && !buscador.contains(e.target) && !dropdown.contains(e.target)) {
-            dropdown.style.display = 'none';
+        if (buscador && !buscador.parentNode.contains(e.target)) {
+            cerrarDropdown();
         }
     });
 
