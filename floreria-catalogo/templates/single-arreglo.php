@@ -53,11 +53,11 @@ while ( have_posts() ) : the_post();
         <!-- Columna info -->
         <div class="fc-detalle-info">
 
+            <h1 class="fc-detalle-titulo"><?php the_title(); ?></h1>
+
             <?php if ( $cat_name ) : ?>
             <span class="fc-detalle-cat"><?php echo esc_html( $cat_name ); ?></span>
             <?php endif; ?>
-
-            <h1 class="fc-detalle-titulo"><?php the_title(); ?></h1>
 
             <?php if ( $desc ) : ?>
             <p class="fc-detalle-desc"><?php echo nl2br( esc_html( $desc ) ); ?></p>
