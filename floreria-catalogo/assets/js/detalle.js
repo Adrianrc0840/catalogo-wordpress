@@ -176,10 +176,35 @@
         fechaEl.addEventListener('input',  onFechaChange);
     }
 
-    if (horarioEl)         horarioEl.addEventListener('change', checkFormReady);
-    if (direccionEl)       direccionEl.addEventListener('input',  checkFormReady);
-    if (horaRecoleccionEl) horaRecoleccionEl.addEventListener('change', checkFormReady);
-    if (horaRecoleccionEl) horaRecoleccionEl.addEventListener('input',  checkFormReady);
+    if (horarioEl)   horarioEl.addEventListener('change', checkFormReady);
+    if (direccionEl) direccionEl.addEventListener('input',  checkFormReady);
+
+    function onHoraRecoleccionChange() {
+        if (!horaRecoleccionEl || !horaRecoleccionEl.value) { checkFormReady(); return; }
+
+        var min  = horaRecoleccionEl.min || '10:00';
+        var max  = horaRecoleccionEl.max || '20:00';
+        var val  = horaRecoleccionEl.value;
+
+        // Comparar como strings HH:MM es suficiente (mismo formato)
+        if (val < min || val > max) {
+            horaRecoleccionEl.value = '';
+            if (horarioHint) {
+                var textoOriginal = horarioHint.textContent;
+                horarioHint.style.color = '#c44';
+                horarioHint.textContent = 'Elige una hora dentro del horario de atención.';
+                setTimeout(function () {
+                    horarioHint.style.color = '';
+                    horarioHint.textContent = textoOriginal;
+                }, 2500);
+            }
+        }
+
+        checkFormReady();
+    }
+
+    if (horaRecoleccionEl) horaRecoleccionEl.addEventListener('change', onHoraRecoleccionChange);
+    if (horaRecoleccionEl) horaRecoleccionEl.addEventListener('input',  onHoraRecoleccionChange);
 
     // ── Botón WhatsApp ──
     if (waBtn) {
