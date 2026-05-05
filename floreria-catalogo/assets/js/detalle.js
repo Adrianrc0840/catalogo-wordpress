@@ -15,11 +15,11 @@
 
     // Horario de atención para recolección por día de la semana
     var horariosRecoleccion = {
-        '1': { min: '10:00', max: '19:00', texto: 'Horario de atención: 10:00am – 7:00pm' },
-        '2': { min: '10:00', max: '19:00', texto: 'Horario de atención: 10:00am – 7:00pm' },
-        '3': { min: '10:00', max: '19:00', texto: 'Horario de atención: 10:00am – 7:00pm' },
-        '4': { min: '10:00', max: '19:00', texto: 'Horario de atención: 10:00am – 7:00pm' },
-        '5': { min: '10:00', max: '19:00', texto: 'Horario de atención: 10:00am – 7:00pm' },
+        '1': { min: '10:00', max: '20:00', texto: 'Horario de atención: 10:00am – 8:00pm' },
+        '2': { min: '10:00', max: '20:00', texto: 'Horario de atención: 10:00am – 8:00pm' },
+        '3': { min: '10:00', max: '20:00', texto: 'Horario de atención: 10:00am – 8:00pm' },
+        '4': { min: '10:00', max: '20:00', texto: 'Horario de atención: 10:00am – 8:00pm' },
+        '5': { min: '10:00', max: '20:00', texto: 'Horario de atención: 10:00am – 8:00pm' },
         '6': { min: '10:00', max: '17:00', texto: 'Horario de atención: 10:00am – 5:00pm' },
     };
 
@@ -59,10 +59,17 @@
         });
     });
 
-    // ── Abrir calendario al picar en cualquier parte del wrapper ──
+    // ── Abrir calendario / reloj al picar en cualquier parte del wrapper ──
     if (fechaWrap && fechaEl) {
         fechaWrap.addEventListener('click', function () {
             try { fechaEl.showPicker(); } catch (e) { fechaEl.focus(); }
+        });
+    }
+
+    var horaWrap = document.getElementById('fc-hora-wrap');
+    if (horaWrap && horaRecoleccionEl) {
+        horaWrap.addEventListener('click', function () {
+            try { horaRecoleccionEl.showPicker(); } catch (e) { horaRecoleccionEl.focus(); }
         });
     }
 

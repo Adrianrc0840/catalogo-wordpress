@@ -139,7 +139,9 @@ while ( have_posts() ) : the_post();
                 <div id="fc-recoleccion-section" style="display:none;">
                     <div>
                         <label for="fc-hora-recoleccion">Hora de recolección</label>
-                        <input type="time" id="fc-hora-recoleccion" name="fc_hora_recoleccion" />
+                        <div class="fc-fecha-wrap" id="fc-hora-wrap">
+                            <input type="time" id="fc-hora-recoleccion" name="fc_hora_recoleccion" />
+                        </div>
                         <p class="fc-horario-hint" id="fc-horario-hint"></p>
                     </div>
                 </div>
