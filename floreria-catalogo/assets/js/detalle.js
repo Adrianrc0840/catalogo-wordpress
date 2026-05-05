@@ -1,13 +1,12 @@
 (function () {
     var data      = window.fcArreglo || {};
-    var tamanos   = data.tamanos      || [];
-    var schedules = data.schedules    || {};
-    var whatsapp  = data.whatsapp     || '';
-    var permalink = data.permalink    || window.location.href;
-    var titulo    = data.titulo       || '';
+    var tamanos   = data.tamanos   || [];
+    var schedules = data.schedules || {};
+    var whatsapp  = data.whatsapp  || '';
+    var permalink = data.permalink || window.location.href;
+    var titulo    = data.titulo    || '';
 
-    var selectedTamano    = tamanos.length > 0 ? tamanos[0] : null;
-    var selectedDireccion = '';   // dirección validada por Google Places
+    var selectedTamano = tamanos.length > 0 ? tamanos[0] : null;
 
     var imgEl       = document.getElementById('fc-main-img');
     var precioEl    = document.getElementById('fc-precio-val');
@@ -78,42 +77,14 @@
         });
     }
 
-    // ── Google Places Autocomplete ──
-    // Llamado como callback cuando la API de Google carga (ver floreria-catalogo.php)
-    window.fcInitAutocomplete = function () {
-        if (!direccionEl) return;
-
-        var autocomplete = new google.maps.places.Autocomplete(direccionEl, {
-            types:                 ['address'],
-            componentRestrictions: { country: 'mx' },
-            fields:                ['formatted_address'],
-        });
-
-        // Cuando el usuario elige una sugerencia
-        autocomplete.addListener('place_changed', function () {
-            var place = autocomplete.getPlace();
-            if (place && place.formatted_address) {
-                selectedDireccion = place.formatted_address;
-                direccionEl.value = place.formatted_address;
-                direccionEl.classList.remove('fc-direccion-error');
-                direccionEl.classList.add('fc-direccion-ok');
-            }
-        });
-
-        // Si el usuario edita el campo manualmente, la dirección ya no está validada
-        direccionEl.addEventListener('input', function () {
-            selectedDireccion = '';
-            direccionEl.classList.remove('fc-direccion-ok');
-        });
-    };
-
     // ── Botón WhatsApp ──
     if (waBtn) {
         waBtn.addEventListener('click', function (e) {
             e.preventDefault();
 
-            var fecha   = fechaEl   ? fechaEl.value   : '';
-            var horario = horarioEl ? horarioEl.value : '';
+            var fecha     = fechaEl     ? fechaEl.value.trim()     : '';
+            var horario   = horarioEl   ? horarioEl.value.trim()   : '';
+            var direccion = direccionEl ? direccionEl.value.trim()  : '';
 
             if (!fecha) {
                 alert('Por favor selecciona una fecha de entrega.');
@@ -123,12 +94,9 @@
                 alert('Por favor selecciona un horario de entrega.');
                 return;
             }
-            if (!selectedDireccion) {
-                if (direccionEl) {
-                    direccionEl.classList.add('fc-direccion-error');
-                    direccionEl.focus();
-                }
-                alert('Por favor selecciona tu dirección de las sugerencias que aparecen al escribir.');
+            if (!direccion) {
+                if (direccionEl) direccionEl.focus();
+                alert('Por favor escribe tu direccion de entrega.');
                 return;
             }
 
@@ -138,33 +106,25 @@
                 : '';
 
             var dateObj  = new Date(fecha + 'T12:00:00');
-            var dias     = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            var dias     = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
             var meses    = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
             var fechaStr = dias[dateObj.getDay()] + ', ' + dateObj.getDate() + ' de ' + meses[dateObj.getMonth()] + ' de ' + dateObj.getFullYear();
 
             var mensaje =
-                '¡Hola! Me interesa ordenar un arreglo 🌸\n\n' +
-                '🌺 *Arreglo:* '    + titulo           + '\n' +
-                '📦 *Tamaño:* '     + tamanoNombre     + ' (' + precio + ')\n' +
-                '📅 *Fecha:* '      + fechaStr         + '\n' +
-                '🕐 *Horario:* '    + horario          + '\n' +
-                '📍 *Dirección:* '  + selectedDireccion + '\n' +
-                '🔗 '               + permalink        + '\n\n' +
-                '¿Está disponible?';
+                'Hola! Me interesa ordenar un arreglo.\n\n' +
+                '*Arreglo:* '   + titulo    + '\n' +
+                '*Tamano:* '    + tamanoNombre + ' (' + precio + ')\n' +
+                '*Fecha:* '     + fechaStr  + '\n' +
+                '*Horario:* '   + horario   + '\n' +
+                '*Direccion:* ' + direccion + '\n' +
+                '*Link:* '      + permalink + '\n\n' +
+                'Esta disponible?';
 
             window.open('https://wa.me/' + whatsapp + '?text=' + encodeURIComponent(mensaje), '_blank');
         });
     }
 
-    // ── Inicializar ──
     document.addEventListener('DOMContentLoaded', function () {
         updateDisplay();
-
-        // Si Google Maps no está configurado, el campo de dirección funciona como texto libre
-        if (!data.gmapsEnabled && direccionEl) {
-            direccionEl.addEventListener('input', function () {
-                selectedDireccion = this.value.trim();
-            });
-        }
     });
 })();
