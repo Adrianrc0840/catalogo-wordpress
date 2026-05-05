@@ -140,10 +140,12 @@ while ( have_posts() ) : the_post();
         <div class="fc-recomendados-grid">
             <?php while ( $recomendados->have_posts() ) : $recomendados->the_post(); ?>
             <?php
-                $r_tamanos = get_post_meta( get_the_ID(), '_fc_tamanos', true );
-                $r_img     = ! empty( $r_tamanos[0]['imagen_url'] ) ? $r_tamanos[0]['imagen_url'] : get_the_post_thumbnail_url( get_the_ID(), 'medium' );
-                $r_precios = ! empty( $r_tamanos ) ? array_column( $r_tamanos, 'precio' ) : [];
-                $r_precio  = ! empty( $r_precios ) ? min( $r_precios ) : '';
+                $r_tamanos  = get_post_meta( get_the_ID(), '_fc_tamanos', true );
+                $r_img      = ! empty( $r_tamanos[0]['imagen_url'] ) ? $r_tamanos[0]['imagen_url'] : get_the_post_thumbnail_url( get_the_ID(), 'medium' );
+                $r_precios  = ! empty( $r_tamanos ) ? array_column( $r_tamanos, 'precio' ) : [];
+                $r_precio   = ! empty( $r_precios ) ? min( $r_precios ) : '';
+                $r_cats     = get_the_terms( get_the_ID(), 'categoria_arreglo' );
+                $r_cat_name = ( ! empty( $r_cats ) && ! is_wp_error( $r_cats ) ) ? implode( ', ', wp_list_pluck( $r_cats, 'name' ) ) : '';
             ?>
             <a href="<?php the_permalink(); ?>" class="fc-card">
                 <div class="fc-card-img">
@@ -154,6 +156,9 @@ while ( have_posts() ) : the_post();
                     <?php endif; ?>
                 </div>
                 <div class="fc-card-body">
+                    <?php if ( $r_cat_name ) : ?>
+                    <span class="fc-card-cat"><?php echo esc_html( $r_cat_name ); ?></span>
+                    <?php endif; ?>
                     <h3 class="fc-card-title"><?php the_title(); ?></h3>
                     <?php if ( $r_precio !== '' ) : ?>
                     <p class="fc-card-precio">Desde $<?php echo number_format( $r_precio, 0, '.', ',' ); ?></p>
