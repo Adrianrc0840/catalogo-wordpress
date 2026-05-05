@@ -174,12 +174,13 @@
     padding: 10px 14px;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 16px;
     color: #333;
     background: #fff;
     box-sizing: border-box;
     transition: border-color 0.2s;
     appearance: auto;
+    max-width: 100%;
 }
 
 .fc-pedir-section input[type="date"]:focus,
