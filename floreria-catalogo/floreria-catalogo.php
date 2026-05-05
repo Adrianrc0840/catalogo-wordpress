@@ -26,6 +26,18 @@ function fc_enqueue_frontend() {
 
     if ( is_singular( 'arreglo' ) ) {
         wp_enqueue_style( 'fc-detalle', FC_URL . 'assets/css/detalle.css', [], FC_VERSION );
+
+        $gmaps_key = get_option( 'fc_gmaps_key', '' );
+        if ( $gmaps_key ) {
+            wp_enqueue_script(
+                'google-places',
+                'https://maps.googleapis.com/maps/api/js?key=' . urlencode( $gmaps_key ) . '&libraries=places&loading=async&callback=fcInitAutocomplete',
+                [],
+                null,
+                true
+            );
+        }
+
         wp_enqueue_script( 'fc-detalle', FC_URL . 'assets/js/detalle.js', [], FC_VERSION, true );
 
         global $post;
@@ -33,11 +45,12 @@ function fc_enqueue_frontend() {
         if ( ! is_array( $tamanos ) ) $tamanos = [];
 
         wp_localize_script( 'fc-detalle', 'fcArreglo', [
-            'tamanos'   => $tamanos,
-            'whatsapp'  => get_option( 'fc_whatsapp', '' ),
-            'schedules' => fc_get_schedules(),
-            'permalink' => get_permalink( $post->ID ),
-            'titulo'    => get_the_title( $post->ID ),
+            'tamanos'      => $tamanos,
+            'whatsapp'     => get_option( 'fc_whatsapp', '' ),
+            'schedules'    => fc_get_schedules(),
+            'permalink'    => get_permalink( $post->ID ),
+            'titulo'       => get_the_title( $post->ID ),
+            'gmapsEnabled' => ! empty( $gmaps_key ),
         ] );
     } else {
         wp_enqueue_script( 'fc-catalogo', FC_URL . 'assets/js/catalogo.js', [], FC_VERSION, true );
