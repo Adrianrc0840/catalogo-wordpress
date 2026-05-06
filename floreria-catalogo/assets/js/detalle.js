@@ -226,13 +226,15 @@
             diaDisponible = true;
             if (cerradoEl) cerradoEl.style.display = 'none';
 
+            // Hora actual en Ensenada BC (usada en ambos modos)
+            var ahora    = getNowTijuana();
+            var esHoy    = (date.getFullYear() === ahora.getFullYear() &&
+                            date.getMonth()    === ahora.getMonth()    &&
+                            date.getDate()     === ahora.getDate());
+            var ahoraMin = ahora.getHours() * 60 + ahora.getMinutes();
+
             if (modoTipo === 'envio') {
-                // Si es hoy, filtrar bloques cuya hora de inicio ya pasó (hora de Ensenada BC)
-                var ahora     = getNowTijuana();
-                var esHoy     = (date.getFullYear() === ahora.getFullYear() &&
-                                 date.getMonth()    === ahora.getMonth()    &&
-                                 date.getDate()     === ahora.getDate());
-                var ahoraMin  = ahora.getHours() * 60 + ahora.getMinutes();
+                // Si es hoy, filtrar bloques cuya hora de inicio ya pasó
 
                 var slotsFiltrados = esHoy
                     ? daySlots.filter(function (s) { return parseSlotStartMinutes(s) > ahoraMin; })
@@ -260,11 +262,48 @@
             } else {
                 var rango = horariosRecoleccion[dayOfWeek];
                 if (rango && horaRecoleccionEl) {
-                    horaRecoleccionEl.min = rango.min;
+                    // Si es hoy, el mínimo es la hora actual (si es mayor que la apertura)
+                    var minEfectivo = rango.min;
+                    if (esHoy) {
+                        var ahoraH   = String(ahora.getHours()).padStart(2, '0');
+                        var ahoraM   = String(ahora.getMinutes()).padStart(2, '0');
+                        var ahoraStr = ahoraH + ':' + ahoraM;
+                        if (ahoraStr > rango.min) minEfectivo = ahoraStr;
+                    }
+
+                    // Si ya pasó el horario de cierre, mostrar mensaje de cerrado
+                    var maxMin = (function () {
+                        var p = rango.max.split(':');
+                        return parseInt(p[0]) * 60 + parseInt(p[1]);
+                    })();
+
+                    if (esHoy && ahoraMin >= maxMin) {
+                        diaDisponible = false;
+                        if (cerradoEl) {
+                            cerradoEl.textContent = 'Ya no hay horarios de recolección disponibles para hoy. Por favor elige otra fecha.';
+                            cerradoEl.style.display = 'block';
+                        }
+                        checkFormReady();
+                        return;
+                    }
+
+                    horaRecoleccionEl.min = minEfectivo;
                     horaRecoleccionEl.max = rango.max;
                     horaRecoleccionEl.value = '';
+
+                    if (horarioHint) {
+                        // Actualizar texto del hint con la hora mínima efectiva si cambió
+                        if (esHoy && minEfectivo !== rango.min) {
+                            var hh   = parseInt(minEfectivo.split(':')[0]);
+                            var mm   = minEfectivo.split(':')[1];
+                            var ampm = hh >= 12 ? 'pm' : 'am';
+                            var hd   = hh % 12 || 12;
+                            horarioHint.textContent = 'Horario disponible: ' + hd + ':' + mm + ampm + ' – ' + (rango.max === '20:00' ? '8:00pm' : '5:00pm');
+                        } else {
+                            horarioHint.textContent = rango.texto;
+                        }
+                    }
                 }
-                if (horarioHint) horarioHint.textContent = rango ? rango.texto : '';
             }
         }
 
