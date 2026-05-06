@@ -63,7 +63,7 @@
 /* Móvil: título → imagen → selectores+pedido */
 @media (max-width: 768px) {
     .fc-detalle {
-        padding: 20px 18px;
+        padding: 20px 14px;
         overflow-x: hidden;
     }
 
