@@ -30,7 +30,7 @@ function fc_render_catalogo( $atts ) {
         return '<p class="fc-no-results">No hay arreglos disponibles.</p>';
     }
 
-    $categorias = get_terms( [ 'taxonomy' => 'categoria_arreglo', 'hide_empty' => true ] );
+    $categorias = get_terms( [ 'taxonomy' => 'categoria_arreglo', 'hide_empty' => true, 'orderby' => 'name', 'order' => 'ASC' ] );
 
     ob_start();
     ?>
