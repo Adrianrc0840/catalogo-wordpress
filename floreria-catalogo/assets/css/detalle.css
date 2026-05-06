@@ -583,8 +583,10 @@
     line-height: 1;
 }
 
-.fc-detalle-img-wrap:hover .fc-lightbox-trigger {
-    opacity: 1;
+@media (hover: hover) {
+    .fc-detalle-img-wrap:hover .fc-lightbox-trigger {
+        opacity: 1;
+    }
 }
 
 /* Leyenda "tap para ver completa" */
@@ -603,8 +605,10 @@
     transition: opacity 0.3s;
 }
 
-.fc-detalle-img-wrap:hover .fc-img-hint {
-    opacity: 0;
+@media (hover: hover) {
+    .fc-detalle-img-wrap:hover .fc-img-hint {
+        opacity: 0;
+    }
 }
 
 /* ── Lightbox ── */
