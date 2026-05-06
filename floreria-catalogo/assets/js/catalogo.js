@@ -157,6 +157,11 @@
             this.classList.add('active');
             filtroActivo = this.dataset.categoria;
 
+            // Limpiar buscador
+            if (buscador) buscador.value = '';
+            busqueda = '';
+            cerrarDropdown();
+
             // Actualizar etiqueta del botón toggle
             if (filtroLabel) {
                 filtroLabel.textContent = filtroActivo === 'todos'
