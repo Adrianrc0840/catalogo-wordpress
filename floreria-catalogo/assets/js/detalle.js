@@ -25,6 +25,18 @@
         '6': { min: '10:00', max: '17:00', texto: 'Horario de atención: 10:00am – 5:00pm' },
     };
 
+    // ── Convierte "10:00am" o "1:00pm" a minutos desde medianoche ──
+    function parseSlotStartMinutes(slot) {
+        var startStr = slot.split('–')[0].trim(); // "10:00am"
+        var isPm     = /pm$/i.test(startStr);
+        var parts    = startStr.replace(/[apm]/gi, '').split(':');
+        var h        = parseInt(parts[0]);
+        var m        = parseInt(parts[1]) || 0;
+        if (isPm && h !== 12) h += 12;
+        if (!isPm && h === 12) h = 0;
+        return h * 60 + m;
+    }
+
     var anticipacionEl     = document.getElementById('fc-anticipacion');
     var politicasCb        = document.getElementById('fc-politicas-cb');
     var direccionHint      = document.getElementById('fc-direccion-hint');
@@ -207,8 +219,29 @@
             if (cerradoEl) cerradoEl.style.display = 'none';
 
             if (modoTipo === 'envio') {
+                // Si es hoy, filtrar bloques cuya hora de inicio ya pasó
+                var hoy       = new Date();
+                var esHoy     = (date.toDateString() === hoy.toDateString());
+                var ahoraMin  = hoy.getHours() * 60 + hoy.getMinutes();
+
+                var slotsFiltrados = esHoy
+                    ? daySlots.filter(function (s) { return parseSlotStartMinutes(s) > ahoraMin; })
+                    : daySlots;
+
+                if (slotsFiltrados.length === 0) {
+                    // No quedan horarios disponibles para hoy
+                    diaDisponible = false;
+                    if (horarioWrap) horarioWrap.classList.remove('visible');
+                    if (cerradoEl) {
+                        cerradoEl.textContent = 'Ya no hay horarios disponibles para hoy. Por favor elige otra fecha.';
+                        cerradoEl.style.display = 'block';
+                    }
+                    checkFormReady();
+                    return;
+                }
+
                 horarioEl.innerHTML = '<option value="">-- Selecciona un horario --</option>';
-                daySlots.forEach(function (slot) {
+                slotsFiltrados.forEach(function (slot) {
                     var opt = document.createElement('option');
                     opt.value = opt.textContent = slot;
                     horarioEl.appendChild(opt);
