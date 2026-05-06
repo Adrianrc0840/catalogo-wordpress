@@ -32,28 +32,28 @@ function fc_handle_export() {
 
     fputcsv( $out, [
         'Arreglo_ID', 'Nombre', 'Categoria', 'Descripcion', 'Agotado', 'Especial',
-        'Tamanos (nombre:precio separados por |)',
-        'Colores (nombre:hex separados por |)',
+        'Tamanos (nombre:precio:color1=hex1;color2=hex2 separados por |)',
     ] );
 
     foreach ( $posts as $post ) {
-        $tamanos = get_post_meta( $post->ID, '_fc_tamanos', true ) ?: [];
-        $colores = get_post_meta( $post->ID, '_fc_colores',  true ) ?: [];
-        $agotado = get_post_meta( $post->ID, '_fc_agotado',  true ) === '1' ? '1' : '0';
+        $tamanos  = get_post_meta( $post->ID, '_fc_tamanos', true ) ?: [];
+        $agotado  = get_post_meta( $post->ID, '_fc_agotado',  true ) === '1' ? '1' : '0';
         $especial = get_post_meta( $post->ID, '_fc_especial', true ) === '1' ? '1' : '0';
-        $desc    = get_post_meta( $post->ID, '_fc_descripcion', true );
-        $cats    = get_the_terms( $post->ID, 'categoria_arreglo' );
-        $cat     = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ', ', wp_list_pluck( $cats, 'name' ) ) : '';
+        $desc     = get_post_meta( $post->ID, '_fc_descripcion', true );
+        $cats     = get_the_terms( $post->ID, 'categoria_arreglo' );
+        $cat      = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ', ', wp_list_pluck( $cats, 'name' ) ) : '';
 
-        // Empacar tamaños: "6 flores:299|12 flores:450"
+        // Empacar tamaños: "6 flores:299:Rojo=#FF0000;Rosa=#FF69B4|12 flores:450"
         $tamanos_str = implode( '|', array_map( function( $t ) {
-            return ( $t['nombre'] ?? '' ) . ':' . ( $t['precio'] ?? '0' );
+            $base = ( $t['nombre'] ?? '' ) . ':' . ( $t['precio'] ?? '0' );
+            if ( ! empty( $t['colores'] ) && is_array( $t['colores'] ) ) {
+                $colores_part = implode( ';', array_map( function( $c ) {
+                    return ( $c['nombre'] ?? '' ) . '=' . ( $c['hex'] ?? '#000000' );
+                }, $t['colores'] ) );
+                $base .= ':' . $colores_part;
+            }
+            return $base;
         }, $tamanos ) );
-
-        // Empacar colores: "Rojo:#FF0000|Rosa:#FF69B4"
-        $colores_str = implode( '|', array_map( function( $c ) {
-            return ( $c['nombre'] ?? '' ) . ':' . ( $c['hex'] ?? '#000000' );
-        }, $colores ) );
 
         fputcsv( $out, [
             $post->ID,
@@ -63,7 +63,6 @@ function fc_handle_export() {
             $agotado,
             $especial,
             $tamanos_str,
-            $colores_str,
         ] );
     }
 
@@ -126,7 +125,7 @@ function fc_handle_import() {
         update_post_meta( $post_id, '_fc_agotado',    ( $row[4] ?? '0' ) === '1' ? '1' : '0' );
         update_post_meta( $post_id, '_fc_especial',   ( $row[5] ?? '0' ) === '1' ? '1' : '0' );
 
-        // Tamaños — "6 flores:299|12 flores:450"
+        // Tamaños — "6 flores:299:Rojo=#FF0000;Rosa=#FF69B4|12 flores:450"
         // Indexar existentes por nombre para conservar fotos aunque cambie la posición
         $existentes_tam     = get_post_meta( $post_id, '_fc_tamanos', true ) ?: [];
         $existentes_tam_map = [];
@@ -137,49 +136,52 @@ function fc_handle_import() {
 
         if ( ! empty( $row[6] ) ) {
             foreach ( explode( '|', $row[6] ) as $parte ) {
-                $partes = explode( ':', trim( $parte ), 2 );
-                $nombre = sanitize_text_field( $partes[0] ?? '' );
-                $precio = floatval( $partes[1] ?? 0 );
+                $segmentos = explode( ':', trim( $parte ), 3 );
+                $nombre    = sanitize_text_field( $segmentos[0] ?? '' );
+                $precio    = floatval( $segmentos[1] ?? 0 );
                 if ( $nombre === '' ) continue;
 
-                // Buscar foto por nombre exacto, si no existe queda vacía
-                $existente   = $existentes_tam_map[ $nombre ] ?? [];
+                // Buscar tamaño existente para conservar fotos
+                $existente_tam = $existentes_tam_map[ $nombre ] ?? [];
+
+                // Indexar colores existentes de este tamaño por nombre
+                $existentes_col_map = [];
+                if ( ! empty( $existente_tam['colores'] ) && is_array( $existente_tam['colores'] ) ) {
+                    foreach ( $existente_tam['colores'] as $c ) {
+                        if ( ! empty( $c['nombre'] ) ) $existentes_col_map[ $c['nombre'] ] = $c;
+                    }
+                }
+
+                // Parsear colores del tercer segmento: "Rojo=#FF0000;Rosa=#FF69B4"
+                $colores = [];
+                if ( ! empty( $segmentos[2] ) ) {
+                    foreach ( explode( ';', $segmentos[2] ) as $color_part ) {
+                        $cp         = explode( '=', trim( $color_part ), 2 );
+                        $col_nombre = sanitize_text_field( $cp[0] ?? '' );
+                        $col_hex    = sanitize_hex_color( $cp[1] ?? '' ) ?: '#000000';
+                        if ( $col_nombre === '' ) continue;
+
+                        $existente_col = $existentes_col_map[ $col_nombre ] ?? [];
+                        $colores[] = [
+                            'nombre'     => $col_nombre,
+                            'hex'        => $col_hex,
+                            'imagen_id'  => $existente_col['imagen_id']  ?? 0,
+                            'imagen_url' => $existente_col['imagen_url'] ?? '',
+                        ];
+                    }
+                }
+
                 $nuevos_tam[] = [
                     'nombre'     => $nombre,
                     'precio'     => $precio,
-                    'imagen_id'  => $existente['imagen_id']  ?? 0,
-                    'imagen_url' => $existente['imagen_url'] ?? '',
+                    'imagen_id'  => $existente_tam['imagen_id']  ?? 0,
+                    'imagen_url' => $existente_tam['imagen_url'] ?? '',
+                    'foto_catalogo' => $existente_tam['foto_catalogo'] ?? '0',
+                    'colores'    => $colores,
                 ];
             }
         }
         update_post_meta( $post_id, '_fc_tamanos', $nuevos_tam );
-
-        // Colores — "Rojo:#FF0000|Rosa:#FF69B4"
-        // Indexar existentes por nombre para conservar fotos aunque cambie la posición
-        $existentes_col     = get_post_meta( $post_id, '_fc_colores', true ) ?: [];
-        $existentes_col_map = [];
-        foreach ( $existentes_col as $c ) {
-            if ( ! empty( $c['nombre'] ) ) $existentes_col_map[ $c['nombre'] ] = $c;
-        }
-        $nuevos_col = [];
-
-        if ( ! empty( $row[7] ) ) {
-            foreach ( explode( '|', $row[7] ) as $parte ) {
-                $partes = explode( ':', trim( $parte ), 2 );
-                $nombre = sanitize_text_field( $partes[0] ?? '' );
-                $hex    = sanitize_hex_color( $partes[1] ?? '' ) ?: '#000000';
-                if ( $nombre === '' ) continue;
-
-                $existente    = $existentes_col_map[ $nombre ] ?? [];
-                $nuevos_col[] = [
-                    'nombre'     => $nombre,
-                    'hex'        => $hex,
-                    'imagen_id'  => $existente['imagen_id']  ?? 0,
-                    'imagen_url' => $existente['imagen_url'] ?? '',
-                ];
-            }
-        }
-        update_post_meta( $post_id, '_fc_colores', $nuevos_col );
 
         $updated++;
     }
@@ -234,15 +236,16 @@ function fc_render_csv_page() {
         <div style="max-width:900px;background:#fff;border:1px solid #ccd0d4;border-radius:4px;padding:24px;margin-top:24px;">
             <h3 style="margin-top:0;">&#128196; Estructura del CSV</h3>
             <p style="font-size:13px;color:#555;margin-bottom:16px;">
-                Los tamaños y colores se guardan en una sola celda, separados por <code>|</code>.<br>
-                <strong>Tamaños:</strong> <code>nombre:precio|nombre:precio</code> &nbsp;→&nbsp; <code>6 flores:299|12 flores:450|24 flores:800</code><br>
-                <strong>Colores:</strong> <code>nombre:#hex|nombre:#hex</code> &nbsp;→&nbsp; <code>Rojo:#FF0000|Rosa:#FF69B4</code>
+                Los tamaños se guardan en una sola celda, separados por <code>|</code>. Cada tamaño tiene sus propios colores en el tercer segmento.<br>
+                <strong>Tamaños:</strong> <code>nombre:precio:color1=hex1;color2=hex2|nombre2:precio2</code><br>
+                Ejemplo: <code>6 flores:299:Rojo=#FF0000;Rosa=#FF69B4|12 flores:450:Rojo=#FF0000</code><br>
+                Si un tamaño no tiene colores, omite el tercer segmento: <code>6 flores:299</code>
             </p>
             <table class="widefat striped" style="font-size:12px;">
                 <thead>
                     <tr>
                         <th>ID</th><th>Nombre</th><th>Categoria</th><th>Descripcion</th>
-                        <th>Agotado</th><th>Especial</th><th>Tamaños</th><th>Colores</th>
+                        <th>Agotado</th><th>Especial</th><th>Tamaños</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -253,8 +256,7 @@ function fc_render_csv_page() {
                         <td>Descripción aquí</td>
                         <td>0</td>
                         <td>0</td>
-                        <td>6 flores:299|12 flores:450</td>
-                        <td>Rojo:#FF0000|Rosa:#FF69B4</td>
+                        <td>6 flores:299:Rojo=#FF0000;Rosa=#FF69B4|12 flores:450:Rojo=#FF0000</td>
                     </tr>
                 </tbody>
             </table>

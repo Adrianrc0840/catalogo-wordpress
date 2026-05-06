@@ -13,9 +13,6 @@ while ( have_posts() ) : the_post();
     $cat_name  = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ', ', wp_list_pluck( $cats, 'name' ) ) : '';
     $cat_slugs = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? wp_list_pluck( $cats, 'slug' ) : [];
 
-    $colores      = get_post_meta( get_the_ID(), '_fc_colores', true );
-    if ( ! is_array( $colores ) ) $colores = [];
-
     // Índice y foto del tamaño principal
     $tamano_principal_idx = 0;
     foreach ( $tamanos as $i => $t ) {
@@ -113,24 +110,29 @@ while ( have_posts() ) : the_post();
             </div>
             <?php endif; ?>
 
-            <!-- Selector de colores -->
-            <?php if ( ! empty( $colores ) ) : ?>
-            <div>
+            <!-- Selectores de colores por tamaño -->
+            <?php foreach ($tamanos as $ti => $tamano) : ?>
+              <?php if (!empty($tamano['colores'])) : ?>
+              <div class="fc-colores-para-tamano"
+                   data-tamano="<?php echo $ti; ?>"
+                   <?php echo $ti !== $tamano_principal_idx ? 'style="display:none"' : ''; ?>>
                 <span class="fc-tamanos-label">Color</span>
                 <div class="fc-colores-btns">
-                    <?php foreach ( $colores as $i => $color ) : ?>
-                    <button type="button"
-                            class="fc-color-btn <?php echo $i === 0 ? 'active' : ''; ?>"
-                            data-index="<?php echo $i; ?>"
-                            data-imagen="<?php echo esc_attr( $color['imagen_url'] ?? '' ); ?>"
-                            title="<?php echo esc_attr( $color['nombre'] ); ?>">
-                        <span class="fc-color-swatch" style="background:<?php echo esc_attr( $color['hex'] ?? '#ccc' ); ?>;"></span>
-                        <span class="fc-color-name"><?php echo esc_html( $color['nombre'] ); ?></span>
-                    </button>
-                    <?php endforeach; ?>
+                  <?php foreach ($tamano['colores'] as $ci => $color) : ?>
+                  <button type="button"
+                          class="fc-color-btn <?php echo $ci === 0 ? 'active' : ''; ?>"
+                          data-tamano="<?php echo $ti; ?>"
+                          data-index="<?php echo $ci; ?>"
+                          data-imagen="<?php echo esc_attr($color['imagen_url'] ?? ''); ?>"
+                          title="<?php echo esc_attr($color['nombre']); ?>">
+                    <span class="fc-color-swatch" style="background:<?php echo esc_attr($color['hex'] ?? '#ccc'); ?>;"></span>
+                    <span class="fc-color-name"><?php echo esc_html($color['nombre']); ?></span>
+                  </button>
+                  <?php endforeach; ?>
                 </div>
-            </div>
-            <?php endif; ?>
+              </div>
+              <?php endif; ?>
+            <?php endforeach; ?>
 
             <!-- Pedido -->
             <?php if ( $agotado ) : ?>

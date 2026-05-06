@@ -5,7 +5,6 @@ add_action( 'add_meta_boxes', 'fc_add_meta_boxes' );
 function fc_add_meta_boxes() {
     add_meta_box( 'fc_descripcion', 'Descripción del arreglo', 'fc_render_descripcion_meta_box', 'arreglo', 'normal', 'high' );
     add_meta_box( 'fc_tamanos',     'Tamaños y Precios',       'fc_render_tamanos_meta_box',     'arreglo', 'normal', 'high' );
-    add_meta_box( 'fc_colores',     'Colores disponibles',     'fc_render_colores_meta_box',     'arreglo', 'normal', 'high' );
     add_meta_box( 'fc_disponible',  'Disponibilidad',          'fc_render_disponible_meta_box',  'arreglo', 'side',   'high' );
     add_meta_box( 'fc_especial',    'Tipo de pedido',          'fc_render_especial_meta_box',    'arreglo', 'side',   'high' );
 }
@@ -47,7 +46,7 @@ function fc_render_tamanos_meta_box( $post ) {
     <div id="fc-tamanos-wrap">
         <div id="fc-tamanos-list">
             <?php foreach ( $tamanos as $i => $tamano ) : ?>
-            <div class="fc-tamano-row">
+            <div class="fc-tamano-row" data-tamano-index="<?php echo $i; ?>">
                 <div class="fc-field">
                     <label>Tamaño</label>
                     <input type="text" name="fc_tamanos[<?php echo $i; ?>][nombre]" value="<?php echo esc_attr( $tamano['nombre'] ?? '' ); ?>" placeholder="Ej: Chico" />
@@ -80,6 +79,44 @@ function fc_render_tamanos_meta_box( $post ) {
                 <div class="fc-field fc-field-remove">
                     <button type="button" class="button button-link-delete fc-remove-row">✕ Eliminar</button>
                 </div>
+
+                <!-- Colores anidados -->
+                <div class="fc-tamano-colores" style="width:100%;">
+                    <p class="fc-tamano-colores-titulo">Colores de este tamaño</p>
+                    <div class="fc-tamano-colores-list">
+                        <?php $colores = is_array( $tamano['colores'] ?? null ) ? $tamano['colores'] : []; ?>
+                        <?php foreach ( $colores as $ci => $color ) : ?>
+                        <div class="fc-color-row">
+                            <div class="fc-field">
+                                <label>Nombre</label>
+                                <input type="text" name="fc_tamanos[<?php echo $i; ?>][colores][<?php echo $ci; ?>][nombre]" value="<?php echo esc_attr( $color['nombre'] ?? '' ); ?>" placeholder="Ej: Rojo" />
+                            </div>
+                            <div class="fc-field fc-field-hex">
+                                <label>Color</label>
+                                <input type="color" name="fc_tamanos[<?php echo $i; ?>][colores][<?php echo $ci; ?>][hex]" value="<?php echo esc_attr( $color['hex'] ?? '#c8185a' ); ?>" class="fc-color-picker" />
+                            </div>
+                            <div class="fc-field fc-field-foto">
+                                <label>Foto</label>
+                                <div class="fc-foto-inner">
+                                    <input type="hidden" name="fc_tamanos[<?php echo $i; ?>][colores][<?php echo $ci; ?>][imagen_id]" class="fc-imagen-id" value="<?php echo esc_attr( $color['imagen_id'] ?? '' ); ?>" />
+                                    <input type="hidden" name="fc_tamanos[<?php echo $i; ?>][colores][<?php echo $ci; ?>][imagen_url]" class="fc-imagen-url" value="<?php echo esc_attr( $color['imagen_url'] ?? '' ); ?>" />
+                                    <img class="fc-preview-img" src="<?php echo esc_url( $color['imagen_url'] ?? '' ); ?>" style="<?php echo empty( $color['imagen_url'] ) ? 'display:none;' : ''; ?>" />
+                                    <div class="fc-foto-btns">
+                                        <button type="button" class="button fc-upload-btn"><?php echo ! empty( $color['imagen_url'] ) ? 'Cambiar foto' : 'Subir foto'; ?></button>
+                                        <?php if ( ! empty( $color['imagen_url'] ) ) : ?>
+                                        <button type="button" class="button fc-remove-img-btn">Quitar</button>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="fc-field fc-field-remove">
+                                <button type="button" class="button button-link-delete fc-remove-color-row">✕ Eliminar color</button>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <button type="button" class="button button-secondary fc-add-color-btn fc-add-color-btn">+ Añadir color</button>
+                </div>
             </div>
             <?php endforeach; ?>
         </div>
@@ -87,7 +124,7 @@ function fc_render_tamanos_meta_box( $post ) {
     </div>
 
     <script type="text/html" id="fc-tamano-template">
-        <div class="fc-tamano-row">
+        <div class="fc-tamano-row" data-tamano-index="{{INDEX}}">
             <div class="fc-field">
                 <label>Tamaño</label>
                 <input type="text" name="fc_tamanos[{{INDEX}}][nombre]" value="" placeholder="Ej: Chico" />
@@ -117,66 +154,31 @@ function fc_render_tamanos_meta_box( $post ) {
             <div class="fc-field fc-field-remove">
                 <button type="button" class="button button-link-delete fc-remove-row">✕ Eliminar</button>
             </div>
+
+            <!-- Colores anidados -->
+            <div class="fc-tamano-colores" style="width:100%;">
+                <p class="fc-tamano-colores-titulo">Colores de este tamaño</p>
+                <div class="fc-tamano-colores-list"></div>
+                <button type="button" class="button button-secondary fc-add-color-btn">+ Añadir color</button>
+            </div>
         </div>
     </script>
-    <?php
-}
 
-function fc_render_colores_meta_box( $post ) {
-    $colores = get_post_meta( $post->ID, '_fc_colores', true );
-    if ( ! is_array( $colores ) ) $colores = [];
-    ?>
-    <p style="margin:0 0 12px;font-size:12px;color:#888;">Añade una entrada por cada variante de color. Si no hay colores, el selector no aparecerá en el catálogo.</p>
-    <div id="fc-colores-wrap">
-        <div id="fc-colores-list">
-            <?php foreach ( $colores as $i => $color ) : ?>
-            <div class="fc-color-row">
-                <div class="fc-field">
-                    <label>Nombre</label>
-                    <input type="text" name="fc_colores[<?php echo $i; ?>][nombre]" value="<?php echo esc_attr( $color['nombre'] ?? '' ); ?>" placeholder="Ej: Rojo" />
-                </div>
-                <div class="fc-field fc-field-hex">
-                    <label>Color</label>
-                    <input type="color" name="fc_colores[<?php echo $i; ?>][hex]" value="<?php echo esc_attr( $color['hex'] ?? '#c8185a' ); ?>" class="fc-color-picker" />
-                </div>
-                <div class="fc-field fc-field-foto">
-                    <label>Foto</label>
-                    <div class="fc-foto-inner">
-                        <input type="hidden" name="fc_colores[<?php echo $i; ?>][imagen_id]" class="fc-imagen-id" value="<?php echo esc_attr( $color['imagen_id'] ?? '' ); ?>" />
-                        <input type="hidden" name="fc_colores[<?php echo $i; ?>][imagen_url]" class="fc-imagen-url" value="<?php echo esc_attr( $color['imagen_url'] ?? '' ); ?>" />
-                        <img class="fc-preview-img" src="<?php echo esc_url( $color['imagen_url'] ?? '' ); ?>" style="<?php echo empty( $color['imagen_url'] ) ? 'display:none;' : ''; ?>" />
-                        <div class="fc-foto-btns">
-                            <button type="button" class="button fc-upload-btn"><?php echo ! empty( $color['imagen_url'] ) ? 'Cambiar foto' : 'Subir foto'; ?></button>
-                            <?php if ( ! empty( $color['imagen_url'] ) ) : ?>
-                            <button type="button" class="button fc-remove-img-btn">Quitar</button>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-                <div class="fc-field fc-field-remove">
-                    <button type="button" class="button button-link-delete fc-remove-row">✕ Eliminar</button>
-                </div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <button type="button" class="button button-secondary" id="fc-add-color">+ Añadir color</button>
-    </div>
-
-    <script type="text/html" id="fc-color-template">
+    <script type="text/html" id="fc-color-row-template">
         <div class="fc-color-row">
             <div class="fc-field">
                 <label>Nombre</label>
-                <input type="text" name="fc_colores[{{INDEX}}][nombre]" value="" placeholder="Ej: Rojo" />
+                <input type="text" name="fc_tamanos[{{TAMANO_INDEX}}][colores][{{COLOR_INDEX}}][nombre]" value="" placeholder="Ej: Rojo" />
             </div>
             <div class="fc-field fc-field-hex">
                 <label>Color</label>
-                <input type="color" name="fc_colores[{{INDEX}}][hex]" value="#c8185a" class="fc-color-picker" />
+                <input type="color" name="fc_tamanos[{{TAMANO_INDEX}}][colores][{{COLOR_INDEX}}][hex]" value="#c8185a" class="fc-color-picker" />
             </div>
             <div class="fc-field fc-field-foto">
                 <label>Foto</label>
                 <div class="fc-foto-inner">
-                    <input type="hidden" name="fc_colores[{{INDEX}}][imagen_id]" class="fc-imagen-id" value="" />
-                    <input type="hidden" name="fc_colores[{{INDEX}}][imagen_url]" class="fc-imagen-url" value="" />
+                    <input type="hidden" name="fc_tamanos[{{TAMANO_INDEX}}][colores][{{COLOR_INDEX}}][imagen_id]" class="fc-imagen-id" value="" />
+                    <input type="hidden" name="fc_tamanos[{{TAMANO_INDEX}}][colores][{{COLOR_INDEX}}][imagen_url]" class="fc-imagen-url" value="" />
                     <img class="fc-preview-img" src="" style="display:none;" />
                     <div class="fc-foto-btns">
                         <button type="button" class="button fc-upload-btn">Subir foto</button>
@@ -184,7 +186,7 @@ function fc_render_colores_meta_box( $post ) {
                 </div>
             </div>
             <div class="fc-field fc-field-remove">
-                <button type="button" class="button button-link-delete fc-remove-row">✕ Eliminar</button>
+                <button type="button" class="button button-link-delete fc-remove-color-row">✕ Eliminar color</button>
             </div>
         </div>
     </script>
@@ -208,34 +210,33 @@ function fc_save_meta( $post_id ) {
 
     $tamanos = [];
     if ( isset( $_POST['fc_tamanos'] ) && is_array( $_POST['fc_tamanos'] ) ) {
-        $idx = 0;
-        foreach ( $_POST['fc_tamanos'] as $orig_idx => $tamano ) {
-            if ( empty( $tamano['nombre'] ) ) continue;
+        foreach ( $_POST['fc_tamanos'] as $orig_idx => $tamano_data ) {
+            if ( empty( $tamano_data['nombre'] ) ) continue;
+
+            $colores = [];
+            if ( ! empty( $tamano_data['colores'] ) && is_array( $tamano_data['colores'] ) ) {
+                foreach ( $tamano_data['colores'] as $color ) {
+                    if ( empty( $color['nombre'] ) ) continue;
+                    $colores[] = [
+                        'nombre'     => sanitize_text_field( $color['nombre'] ),
+                        'hex'        => sanitize_hex_color( $color['hex'] ?? '#c8185a' ) ?: '#c8185a',
+                        'imagen_id'  => intval( $color['imagen_id'] ?? 0 ),
+                        'imagen_url' => esc_url_raw( $color['imagen_url'] ?? '' ),
+                    ];
+                }
+            }
+
             $tamanos[] = [
-                'nombre'        => sanitize_text_field( $tamano['nombre'] ),
-                'precio'        => floatval( $tamano['precio'] ?? 0 ),
-                'imagen_id'     => intval( $tamano['imagen_id'] ?? 0 ),
-                'imagen_url'    => esc_url_raw( $tamano['imagen_url'] ?? '' ),
+                'nombre'        => sanitize_text_field( $tamano_data['nombre'] ),
+                'precio'        => floatval( $tamano_data['precio'] ?? 0 ),
+                'imagen_id'     => intval( $tamano_data['imagen_id'] ?? 0 ),
+                'imagen_url'    => esc_url_raw( $tamano_data['imagen_url'] ?? '' ),
                 'foto_catalogo' => ( intval( $orig_idx ) === $foto_catalogo_idx ) ? '1' : '0',
+                'colores'       => $colores,
             ];
-            $idx++;
         }
     }
     update_post_meta( $post_id, '_fc_tamanos', $tamanos );
-
-    $colores = [];
-    if ( isset( $_POST['fc_colores'] ) && is_array( $_POST['fc_colores'] ) ) {
-        foreach ( $_POST['fc_colores'] as $color ) {
-            if ( empty( $color['nombre'] ) ) continue;
-            $colores[] = [
-                'nombre'     => sanitize_text_field( $color['nombre'] ),
-                'hex'        => sanitize_hex_color( $color['hex'] ?? '#c8185a' ) ?: '#c8185a',
-                'imagen_id'  => intval( $color['imagen_id'] ?? 0 ),
-                'imagen_url' => esc_url_raw( $color['imagen_url'] ?? '' ),
-            ];
-        }
-    }
-    update_post_meta( $post_id, '_fc_colores', $colores );
 }
 
 add_action( 'admin_enqueue_scripts', 'fc_admin_enqueue' );

@@ -117,3 +117,32 @@
     cursor: pointer;
     background: #fff;
 }
+
+/* Sección de colores dentro de tamano */
+.fc-tamano-colores {
+    width: 100%;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #ddd;
+}
+.fc-tamano-colores-titulo {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #555;
+    margin: 0 0 10px;
+}
+.fc-tamano-colores-list .fc-color-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    background: #f0f0f0;
+    border-left: 3px solid #c8185a;
+    border-radius: 4px;
+}
+.fc-add-color-btn {
+    margin-top: 6px;
+}

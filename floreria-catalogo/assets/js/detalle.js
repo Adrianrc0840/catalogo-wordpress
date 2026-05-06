@@ -1,7 +1,6 @@
 (function () {
     var data      = window.fcArreglo || {};
     var tamanos   = data.tamanos   || [];
-    var colores   = data.colores   || [];
     var schedules = data.schedules || {};
     var whatsapp  = data.whatsapp  || '';
     var permalink = data.permalink || window.location.href;
@@ -10,7 +9,8 @@
     var especial          = data.especial || false;
     var tamanoPrincipal   = parseInt( data.tamano_principal ) || 0;
     var selectedTamano    = tamanos.length > 0 ? tamanos[ tamanoPrincipal ] : null;
-    var selectedColor  = colores.length  > 0 ? colores[0] : null;
+    var selectedColor     = (selectedTamano && selectedTamano.colores && selectedTamano.colores.length > 0)
+                            ? selectedTamano.colores[0] : null;
     var diaDisponible  = true;
     var fechaValida    = true; // false cuando especial y no hay 2 días hábiles
     var modoTipo       = 'envio'; // 'envio' | 'recoleccion'
@@ -158,22 +158,65 @@
         if (waBtn) waBtn.classList.toggle('fc-btn-disabled', !listo);
     }
 
+    // ── updateColores: muestra los colores del tamaño activo ──
+    function updateColores(tamanoIdx) {
+        var allColorDivs = document.querySelectorAll('.fc-colores-para-tamano');
+        var targetDiv = null;
+        allColorDivs.forEach(function (div) {
+            if (parseInt(div.dataset.tamano) === tamanoIdx) {
+                div.style.display = '';
+                targetDiv = div;
+            } else {
+                div.style.display = 'none';
+            }
+        });
+
+        var tamano = tamanos[tamanoIdx] || null;
+        var colores = (tamano && tamano.colores) ? tamano.colores : [];
+
+        // Intentar mantener el color seleccionado por nombre; si no, elegir el primero
+        var prevNombre = selectedColor ? selectedColor.nombre : null;
+        var matched = null;
+        if (prevNombre) {
+            colores.forEach(function (c) { if (c.nombre === prevNombre) matched = c; });
+        }
+        selectedColor = matched || (colores.length > 0 ? colores[0] : null);
+
+        // Actualizar clases active en los botones de color del div visible
+        if (targetDiv) {
+            targetDiv.querySelectorAll('.fc-color-btn').forEach(function (btn) {
+                var btnTamano = parseInt(btn.dataset.tamano);
+                var btnIdx    = parseInt(btn.dataset.index);
+                var c = tamanos[btnTamano] && tamanos[btnTamano].colores ? tamanos[btnTamano].colores[btnIdx] : null;
+                var isActive = c && selectedColor && c.nombre === selectedColor.nombre;
+                btn.classList.toggle('active', !!isActive);
+            });
+        }
+    }
+
     // ── Selector de tamaños ──
     document.querySelectorAll('.fc-tamano-btn').forEach(function (btn, i) {
         btn.addEventListener('click', function () {
             document.querySelectorAll('.fc-tamano-btn').forEach(function (b) { b.classList.remove('active'); });
             this.classList.add('active');
             selectedTamano = tamanos[i];
+            updateColores(i);
             updateDisplay();
         });
     });
 
     // ── Selector de colores ──
-    document.querySelectorAll('.fc-color-btn').forEach(function (btn, i) {
+    document.querySelectorAll('.fc-color-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            document.querySelectorAll('.fc-color-btn').forEach(function (b) { b.classList.remove('active'); });
+            var tamanoIdx = parseInt(this.dataset.tamano);
+            var colorIdx  = parseInt(this.dataset.index);
+            // Solo deseleccionar botones del mismo tamaño
+            document.querySelectorAll('.fc-color-btn[data-tamano="' + tamanoIdx + '"]').forEach(function (b) {
+                b.classList.remove('active');
+            });
             this.classList.add('active');
-            selectedColor = colores[i];
+            selectedColor = tamanos[tamanoIdx] && tamanos[tamanoIdx].colores
+                ? tamanos[tamanoIdx].colores[colorIdx] : null;
             updateDisplay();
         });
     });
@@ -437,6 +480,7 @@
 
     // ── Lightbox ──
     document.addEventListener('DOMContentLoaded', function () {
+        updateColores(tamanoPrincipal);
         updateDisplay();
 
         var lightbox      = document.getElementById('fc-lightbox');
