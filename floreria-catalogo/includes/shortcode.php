@@ -12,8 +12,8 @@ function fc_render_catalogo( $atts ) {
         'post_type'      => 'arreglo',
         'post_status'    => 'publish',
         'posts_per_page' => intval( $atts['limite'] ),
-        'orderby'        => 'date',
-        'order'          => 'DESC',
+        'orderby'        => 'menu_order',
+        'order'          => 'ASC',
     ];
 
     if ( ! empty( $atts['categoria'] ) ) {
