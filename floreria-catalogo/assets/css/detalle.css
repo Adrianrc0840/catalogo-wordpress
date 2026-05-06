@@ -110,7 +110,8 @@
 
 .fc-detalle-desc {
     font-size: 15px;
-    color: #666;
+    font-weight: 500;
+    color: #555;
     line-height: 1.75;
     margin: 0;
 }
