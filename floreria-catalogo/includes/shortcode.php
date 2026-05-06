@@ -43,13 +43,19 @@ function fc_render_catalogo( $atts ) {
         <p class="fc-sin-resultados" id="fc-sin-resultados" style="display:none;">No se encontraron arreglos con esa búsqueda.</p>
 
         <?php if ( ! empty( $categorias ) && ! is_wp_error( $categorias ) ) : ?>
-        <div class="fc-filtros">
-            <button class="fc-filtro-btn active" data-categoria="todos">Todos</button>
-            <?php foreach ( $categorias as $cat ) : ?>
-            <button class="fc-filtro-btn" data-categoria="<?php echo esc_attr( $cat->slug ); ?>">
-                <?php echo esc_html( $cat->name ); ?>
+        <div class="fc-filtro-wrap">
+            <button class="fc-filtro-toggle" id="fc-filtro-toggle" aria-expanded="false">
+                <span id="fc-filtro-label">Todas las categorías</span>
+                <span class="fc-filtro-chevron">&#9660;</span>
             </button>
-            <?php endforeach; ?>
+            <div class="fc-filtro-panel" id="fc-filtro-panel">
+                <button class="fc-filtro-btn active" data-categoria="todos">Todas</button>
+                <?php foreach ( $categorias as $cat ) : ?>
+                <button class="fc-filtro-btn" data-categoria="<?php echo esc_attr( $cat->slug ); ?>">
+                    <?php echo esc_html( $cat->name ); ?>
+                </button>
+                <?php endforeach; ?>
+            </div>
         </div>
         <?php endif; ?>
 

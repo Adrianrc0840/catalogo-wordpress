@@ -1,11 +1,50 @@
 (function () {
-    var filtros       = document.querySelectorAll('.fc-filtro-btn');
-    var cards         = document.querySelectorAll('.fc-card');
-    var buscador      = document.getElementById('fc-buscador');
-    var sinResultados = document.getElementById('fc-sin-resultados');
+    var filtros        = document.querySelectorAll('.fc-filtro-btn');
+    var cards          = document.querySelectorAll('.fc-card');
+    var buscador       = document.getElementById('fc-buscador');
+    var sinResultados  = document.getElementById('fc-sin-resultados');
+    var filtroToggle   = document.getElementById('fc-filtro-toggle');
+    var filtroPanel    = document.getElementById('fc-filtro-panel');
+    var filtroLabel    = document.getElementById('fc-filtro-label');
 
     var filtroActivo = 'todos';
     var busqueda     = '';
+
+    // ── Toggle del panel de filtros ──
+    function abrirPanel() {
+        if (!filtroPanel) return;
+        filtroPanel.style.display = 'flex';
+        requestAnimationFrame(function () {
+            filtroPanel.classList.add('abierto');
+            filtroToggle.classList.add('abierto');
+            filtroToggle.setAttribute('aria-expanded', 'true');
+        });
+    }
+
+    function cerrarPanel() {
+        if (!filtroPanel) return;
+        filtroPanel.classList.remove('abierto');
+        filtroToggle.classList.remove('abierto');
+        filtroToggle.setAttribute('aria-expanded', 'false');
+        setTimeout(function () {
+            if (!filtroPanel.classList.contains('abierto')) {
+                filtroPanel.style.display = 'none';
+            }
+        }, 200);
+    }
+
+    if (filtroToggle) {
+        filtroToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            filtroPanel.classList.contains('abierto') ? cerrarPanel() : abrirPanel();
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (filtroPanel && !filtroPanel.contains(e.target) && e.target !== filtroToggle) {
+            cerrarPanel();
+        }
+    });
 
     // ── Sugerencias: categorías de los botones + títulos de las tarjetas ──
     var sugerencias = [];
@@ -73,13 +112,12 @@
         if (!item) return;
 
         if (item.dataset.tipo === 'categoria') {
-            // Activa el botón de filtro correspondiente
             var slug = item.dataset.slug;
             var btn  = document.querySelector('.fc-filtro-btn[data-categoria="' + slug + '"]');
             if (btn) {
                 buscador.value = '';
                 busqueda = '';
-                btn.click();
+                btn.click(); // ya actualiza label y cierra panel
             }
         } else {
             // Filtra por nombre del arreglo
@@ -118,6 +156,15 @@
             filtros.forEach(function (b) { b.classList.remove('active'); });
             this.classList.add('active');
             filtroActivo = this.dataset.categoria;
+
+            // Actualizar etiqueta del botón toggle
+            if (filtroLabel) {
+                filtroLabel.textContent = filtroActivo === 'todos'
+                    ? 'Todas las categorías'
+                    : this.textContent.trim();
+            }
+
+            cerrarPanel();
             aplicarFiltros();
         });
     });

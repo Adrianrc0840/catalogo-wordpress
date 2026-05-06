@@ -109,37 +109,87 @@
     color: var(--fc-primary);
 }
 
-/* ── Filtros ── */
-.fc-filtros {
-    display: flex;
-    flex-wrap: nowrap;
+/* ── Filtro desplegable ── */
+.fc-filtro-wrap {
+    position: relative;
+    margin-bottom: 28px;
+}
+
+.fc-filtro-toggle {
+    display: inline-flex;
+    align-items: center;
     gap: 10px;
-    margin-bottom: 32px;
-    overflow-x: auto;
-    padding-bottom: 6px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-}
-
-.fc-filtros::-webkit-scrollbar {
-    display: none;
-}
-
-.fc-filtro-btn {
-    padding: 8px 22px;
+    padding: 10px 20px;
     border: 2px solid var(--fc-primary);
-    background: transparent;
+    background: #fff;
     color: var(--fc-primary);
     border-radius: 25px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 600;
+    transition: background 0.2s, color 0.2s;
+}
+
+.fc-filtro-toggle:hover,
+.fc-filtro-toggle.abierto {
+    background: var(--fc-primary);
+    color: #fff;
+}
+
+.fc-filtro-chevron {
+    font-size: 11px;
+    transition: transform 0.25s;
+    display: inline-block;
+}
+
+.fc-filtro-toggle.abierto .fc-filtro-chevron {
+    transform: rotate(180deg);
+}
+
+.fc-filtro-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    background: #fff;
+    border: 2px solid var(--fc-border);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    z-index: 50;
+    min-width: 260px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-6px);
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.fc-filtro-panel.abierto {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateY(0);
+}
+
+.fc-filtro-btn {
+    padding: 7px 18px;
+    border: 2px solid var(--fc-border);
+    background: #fff;
+    color: #555;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
     font-weight: 500;
-    transition: background 0.22s, color 0.22s;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    white-space: nowrap;
 }
 
 .fc-filtro-btn:hover,
 .fc-filtro-btn.active {
     background: var(--fc-primary);
+    border-color: var(--fc-primary);
     color: #fff;
 }
 
