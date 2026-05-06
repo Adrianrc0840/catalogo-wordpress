@@ -137,10 +137,10 @@ while ( have_posts() ) : the_post();
                     <div>
                         <label for="fc-direccion">Dirección de entrega</label>
                         <div class="fc-direccion-wrap">
-                            <input type="text" id="fc-direccion" name="fc_direccion" placeholder="Calle, número, colonia, ciudad..." autocomplete="off" />
+                            <input type="text" id="fc-direccion" name="fc_direccion" placeholder="Escribe tu dirección o pega un link de Google Maps..." autocomplete="off" />
                             <span class="fc-direccion-icon">&#x1F4CD;</span>
                         </div>
-                        <p id="fc-direccion-hint" class="fc-direccion-hint" style="display:none;">Incluye calle, número y colonia (mín. 15 caracteres).</p>
+                        <p id="fc-direccion-hint" class="fc-direccion-hint" style="display:none;">Escribe tu dirección (calle y número) o pega un link de Google Maps.</p>
                     </div>
                 </div>
 

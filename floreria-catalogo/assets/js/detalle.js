@@ -31,9 +31,13 @@
 
     // ── Validación de dirección ──
     function esDireccionValida(val) {
-        if (val.length < 15)          return false; // mínimo 15 caracteres
-        if (!/\d/.test(val))          return false; // al menos un número
-        if (val.trim().split(/\s+/).length < 2) return false; // al menos 2 palabras
+        // Si parece un link, verificar que sea de Google Maps
+        if (/https?:\/\//i.test(val)) {
+            return /maps\.google\.|goo\.gl\/maps|maps\.app\.goo\.gl|google\.[a-z]+\/maps/i.test(val);
+        }
+        // Dirección escrita: al menos un número y al menos 2 palabras
+        if (!/\d/.test(val)) return false;
+        if (val.trim().split(/\s+/).length < 2) return false;
         return true;
     }
 
