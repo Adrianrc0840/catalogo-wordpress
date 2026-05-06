@@ -31,7 +31,7 @@ function fc_handle_export() {
     fputs( $out, "\xEF\xBB\xBF" ); // BOM para Excel
 
     fputcsv( $out, [
-        'ID', 'Nombre', 'Categoria', 'Descripcion', 'Agotado', 'Especial',
+        'Arreglo_ID', 'Nombre', 'Categoria', 'Descripcion', 'Agotado', 'Especial',
         'Tamanos (nombre:precio separados por |)',
         'Colores (nombre:hex separados por |)',
     ] );
