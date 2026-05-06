@@ -25,6 +25,14 @@
         '6': { min: '10:00', max: '17:00', texto: 'Horario de atención: 10:00am – 5:00pm' },
     };
 
+    // ── Hora actual en Ensenada, BC (America/Tijuana) ──
+    function getNowTijuana() {
+        // toLocaleString con la zona horaria devuelve una cadena que new Date() interpreta
+        // como hora local, dando un objeto Date "desplazado" al tiempo de Tijuana.
+        var str = new Date().toLocaleString('en-US', { timeZone: 'America/Tijuana' });
+        return new Date(str);
+    }
+
     // ── Convierte "10:00am" o "1:00pm" a minutos desde medianoche ──
     function parseSlotStartMinutes(slot) {
         var startStr = slot.split('–')[0].trim(); // "10:00am"
@@ -219,10 +227,12 @@
             if (cerradoEl) cerradoEl.style.display = 'none';
 
             if (modoTipo === 'envio') {
-                // Si es hoy, filtrar bloques cuya hora de inicio ya pasó
-                var hoy       = new Date();
-                var esHoy     = (date.toDateString() === hoy.toDateString());
-                var ahoraMin  = hoy.getHours() * 60 + hoy.getMinutes();
+                // Si es hoy, filtrar bloques cuya hora de inicio ya pasó (hora de Ensenada BC)
+                var ahora     = getNowTijuana();
+                var esHoy     = (date.getFullYear() === ahora.getFullYear() &&
+                                 date.getMonth()    === ahora.getMonth()    &&
+                                 date.getDate()     === ahora.getDate());
+                var ahoraMin  = ahora.getHours() * 60 + ahora.getMinutes();
 
                 var slotsFiltrados = esHoy
                     ? daySlots.filter(function (s) { return parseSlotStartMinutes(s) > ahoraMin; })
