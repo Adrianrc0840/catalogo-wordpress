@@ -62,6 +62,10 @@
 
 /* Móvil: título → imagen → selectores+pedido */
 @media (max-width: 768px) {
+    .fc-detalle {
+        padding: 20px 14px;
+    }
+
     .fc-detalle-inner {
         display: flex;
         flex-direction: column;
@@ -71,6 +75,10 @@
     .fc-col-info-top    { order: 1; }
     .fc-col-imagen      { order: 2; }
     .fc-col-info-bottom { order: 3; }
+
+    .fc-detalle-desc {
+        font-size: 14px;
+    }
 }
 
 /* ── Imagen ── */
