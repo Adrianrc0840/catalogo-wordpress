@@ -68,10 +68,17 @@ function fc_render_catalogo( $atts ) {
                 $cat_slugs = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ' ', wp_list_pluck( $cats, 'slug' ) ) : '';
                 $cat_name  = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ', ', wp_list_pluck( $cats, 'name' ) ) : '';
 
+                // Usar la foto marcada como principal del catálogo; si no hay, usar la primera
                 $img_url = '';
-                if ( ! empty( $tamanos[0]['imagen_url'] ) ) {
+                foreach ( $tamanos as $t ) {
+                    if ( ! empty( $t['foto_catalogo'] ) && $t['foto_catalogo'] === '1' && ! empty( $t['imagen_url'] ) ) {
+                        $img_url = $t['imagen_url'];
+                        break;
+                    }
+                }
+                if ( ! $img_url && ! empty( $tamanos[0]['imagen_url'] ) ) {
                     $img_url = $tamanos[0]['imagen_url'];
-                } elseif ( has_post_thumbnail() ) {
+                } elseif ( ! $img_url && has_post_thumbnail() ) {
                     $img_url = get_the_post_thumbnail_url( get_the_ID(), 'medium' );
                 }
 

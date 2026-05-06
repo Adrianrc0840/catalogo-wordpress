@@ -16,7 +16,15 @@ while ( have_posts() ) : the_post();
     $colores      = get_post_meta( get_the_ID(), '_fc_colores', true );
     if ( ! is_array( $colores ) ) $colores = [];
 
-    $first_img    = ! empty( $tamanos[0]['imagen_url'] ) ? $tamanos[0]['imagen_url'] : get_the_post_thumbnail_url( get_the_ID(), 'large' );
+    // Foto principal: la marcada como catálogo, si no la primera disponible
+    $first_img = '';
+    foreach ( $tamanos as $t ) {
+        if ( ! empty( $t['foto_catalogo'] ) && $t['foto_catalogo'] === '1' && ! empty( $t['imagen_url'] ) ) {
+            $first_img = $t['imagen_url'];
+            break;
+        }
+    }
+    if ( ! $first_img ) $first_img = ! empty( $tamanos[0]['imagen_url'] ) ? $tamanos[0]['imagen_url'] : get_the_post_thumbnail_url( get_the_ID(), 'large' );
     $first_precio = ! empty( $tamanos[0]['precio'] )     ? $tamanos[0]['precio']     : 0;
 
     $catalog_url = get_option( 'fc_catalog_page_url', home_url() );

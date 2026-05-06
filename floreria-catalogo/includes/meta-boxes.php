@@ -70,6 +70,13 @@ function fc_render_tamanos_meta_box( $post ) {
                         </div>
                     </div>
                 </div>
+                <div class="fc-field fc-field-catalogo">
+                    <label>Catálogo</label>
+                    <label class="fc-catalogo-check" title="Usar esta foto en la tarjeta del catálogo">
+                        <input type="radio" name="fc_catalogo_foto" value="<?php echo $i; ?>" <?php checked( ! empty( $tamano['foto_catalogo'] ) ); ?> />
+                        <span>⭐ Principal</span>
+                    </label>
+                </div>
                 <div class="fc-field fc-field-remove">
                     <button type="button" class="button button-link-delete fc-remove-row">✕ Eliminar</button>
                 </div>
@@ -99,6 +106,13 @@ function fc_render_tamanos_meta_box( $post ) {
                         <button type="button" class="button fc-upload-btn">Subir foto</button>
                     </div>
                 </div>
+            </div>
+            <div class="fc-field fc-field-catalogo">
+                <label>Catálogo</label>
+                <label class="fc-catalogo-check" title="Usar esta foto en la tarjeta del catálogo">
+                    <input type="radio" name="fc_catalogo_foto" value="{{INDEX}}" />
+                    <span>⭐ Principal</span>
+                </label>
             </div>
             <div class="fc-field fc-field-remove">
                 <button type="button" class="button button-link-delete fc-remove-row">✕ Eliminar</button>
@@ -190,16 +204,21 @@ function fc_save_meta( $post_id ) {
     update_post_meta( $post_id, '_fc_agotado',   isset( $_POST['fc_agotado'] )   ? '1' : '0' );
     update_post_meta( $post_id, '_fc_especial',  isset( $_POST['fc_especial'] )  ? '1' : '0' );
 
+    $foto_catalogo_idx = isset( $_POST['fc_catalogo_foto'] ) ? intval( $_POST['fc_catalogo_foto'] ) : 0;
+
     $tamanos = [];
     if ( isset( $_POST['fc_tamanos'] ) && is_array( $_POST['fc_tamanos'] ) ) {
-        foreach ( $_POST['fc_tamanos'] as $tamano ) {
+        $idx = 0;
+        foreach ( $_POST['fc_tamanos'] as $orig_idx => $tamano ) {
             if ( empty( $tamano['nombre'] ) ) continue;
             $tamanos[] = [
-                'nombre'     => sanitize_text_field( $tamano['nombre'] ),
-                'precio'     => floatval( $tamano['precio'] ?? 0 ),
-                'imagen_id'  => intval( $tamano['imagen_id'] ?? 0 ),
-                'imagen_url' => esc_url_raw( $tamano['imagen_url'] ?? '' ),
+                'nombre'        => sanitize_text_field( $tamano['nombre'] ),
+                'precio'        => floatval( $tamano['precio'] ?? 0 ),
+                'imagen_id'     => intval( $tamano['imagen_id'] ?? 0 ),
+                'imagen_url'    => esc_url_raw( $tamano['imagen_url'] ?? '' ),
+                'foto_catalogo' => ( intval( $orig_idx ) === $foto_catalogo_idx ) ? '1' : '0',
             ];
+            $idx++;
         }
     }
     update_post_meta( $post_id, '_fc_tamanos', $tamanos );
