@@ -406,6 +406,14 @@
     position: relative;
 }
 
+.fc-direccion-hint {
+    font-size: 12px;
+    color: #c44;
+    margin: 5px 0 0;
+    font-style: italic;
+    text-decoration: none;
+}
+
 .fc-direccion-wrap input[type="text"] {
     width: 100%;
     padding: 10px 38px 10px 14px;
@@ -421,6 +429,10 @@
 .fc-direccion-wrap input[type="text"]:focus {
     outline: none;
     border-color: var(--fc-primary);
+}
+
+.fc-direccion-wrap input.fc-input-error {
+    border-color: #c44;
 }
 
 .fc-direccion-icon {

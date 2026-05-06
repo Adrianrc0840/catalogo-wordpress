@@ -140,6 +140,7 @@ while ( have_posts() ) : the_post();
                             <input type="text" id="fc-direccion" name="fc_direccion" placeholder="Calle, número, colonia, ciudad..." autocomplete="off" />
                             <span class="fc-direccion-icon">&#x1F4CD;</span>
                         </div>
+                        <p id="fc-direccion-hint" class="fc-direccion-hint" style="display:none;">Incluye calle, número y colonia (mín. 15 caracteres).</p>
                     </div>
                 </div>
 

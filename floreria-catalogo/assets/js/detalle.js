@@ -27,6 +27,17 @@
 
     var anticipacionEl     = document.getElementById('fc-anticipacion');
     var politicasCb        = document.getElementById('fc-politicas-cb');
+    var direccionHint      = document.getElementById('fc-direccion-hint');
+
+    // ── Validación de dirección ──
+    function esDireccionValida(val) {
+        if (val.length < 15)          return false; // mínimo 15 caracteres
+        if (!/\d/.test(val))          return false; // al menos un número
+        if (val.trim().split(/\s+/).length < 2) return false; // al menos 2 palabras
+        return true;
+    }
+
+    var direccionTocada = false; // solo mostrar hint si el usuario ya escribió algo
 
     // Cuenta días hábiles estrictamente entre dos fechas (sin incluir ninguna de las dos)
     function countBusinessDays(from, to) {
@@ -100,7 +111,18 @@
         if (modoTipo === 'envio') {
             var horario   = horarioEl   ? horarioEl.value.trim()  : '';
             var direccion = direccionEl ? direccionEl.value.trim() : '';
-            listo = fecha !== '' && horario !== '' && direccion !== '' && diaDisponible && fechaValida && politicas;
+            var dirValida = esDireccionValida(direccion);
+
+            // Mostrar/ocultar hint y borde de error solo si el usuario ya escribió algo
+            if (direccionTocada && direccion !== '') {
+                if (direccionHint) direccionHint.style.display = !dirValida ? 'block' : 'none';
+                if (direccionEl)   direccionEl.classList.toggle('fc-input-error', !dirValida);
+            } else {
+                if (direccionHint) direccionHint.style.display = 'none';
+                if (direccionEl)   direccionEl.classList.remove('fc-input-error');
+            }
+
+            listo = fecha !== '' && horario !== '' && dirValida && diaDisponible && fechaValida && politicas;
         } else {
             var hora = horaRecoleccionEl ? horaRecoleccionEl.value.trim() : '';
             listo = fecha !== '' && hora !== '' && diaDisponible && fechaValida && politicas;
@@ -214,7 +236,10 @@
     }
 
     if (horarioEl)   horarioEl.addEventListener('change',  checkFormReady);
-    if (direccionEl) direccionEl.addEventListener('input',   checkFormReady);
+    if (direccionEl) direccionEl.addEventListener('input', function () {
+        direccionTocada = true;
+        checkFormReady();
+    });
     if (politicasCb) politicasCb.addEventListener('change',  checkFormReady);
 
     function onHoraRecoleccionChange() {
