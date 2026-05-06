@@ -50,6 +50,7 @@ while ( have_posts() ) : the_post();
                 <?php if ( $first_img ) : ?>
                 <img id="fc-main-img" src="<?php echo esc_url( $first_img ); ?>" alt="<?php the_title_attribute(); ?>" class="fc-img-clickable" />
                 <button class="fc-lightbox-trigger" aria-label="Ver imagen ampliada">&#x26F6;</button>
+                <span class="fc-img-hint">&#128269; Toca para ver completa</span>
                 <?php endif; ?>
             </div>
         </div>
