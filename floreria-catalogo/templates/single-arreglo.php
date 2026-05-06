@@ -77,7 +77,18 @@ while ( have_posts() ) : the_post();
             <?php endif; ?>
 
             <?php if ( $desc ) : ?>
-            <p class="fc-detalle-desc"><?php echo nl2br( esc_html( $desc ) ); ?></p>
+            <div class="fc-detalle-desc">
+                <?php
+                $lineas     = preg_split( '/\r\n|\r|\n/', $desc );
+                $prev_vacia = false;
+                foreach ( $lineas as $linea ) :
+                    $es_vacia = trim( $linea ) === '';
+                    $clase    = ( $prev_vacia && ! $es_vacia ) ? 'fc-desc-linea fc-desc-nuevo-parrafo' : 'fc-desc-linea';
+                    $prev_vacia = $es_vacia;
+                ?>
+                <span class="<?php echo $clase; ?>"><?php echo esc_html( $linea ); ?></span>
+                <?php endforeach; ?>
+            </div>
             <?php endif; ?>
 
             <?php if ( $especial ) : ?>

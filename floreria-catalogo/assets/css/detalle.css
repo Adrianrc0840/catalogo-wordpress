@@ -60,6 +60,15 @@
     align-self: start;
 }
 
+.fc-desc-linea {
+    display: block;
+    min-height: 0.3em;
+}
+
+.fc-desc-nuevo-parrafo {
+    margin-top: 0.6em;
+}
+
 /* Móvil: título → imagen → selectores+pedido */
 @media (max-width: 768px) {
     .fc-detalle {
@@ -73,12 +82,30 @@
         gap: 20px;
     }
 
-    .fc-col-info-top    { order: 1; }
+    .fc-col-info-top {
+        order: 1;
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
     .fc-col-imagen      { order: 2; }
-    .fc-col-info-bottom { order: 3; }
+    .fc-col-info-bottom {
+        order: 3;
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
 
     .fc-detalle-desc {
         font-size: 14px;
+        word-break: break-word;
+    }
+
+}
+
+@media (max-width: 392px) {
+    .fc-desc-nuevo-parrafo {
+        margin-top: 15px;
     }
 }
 
@@ -148,14 +175,15 @@
     font-size: 15px;
     font-weight: 500;
     color: #555;
-    line-height: 1.75;
+    line-height: 1.6;
     margin: 0;
     padding: 0;
-    text-indent: 0;
     max-width: 100%;
     overflow-wrap: break-word;
     word-break: normal;
 }
+
+
 
 .fc-detalle-precio {
     font-size: 26px;
