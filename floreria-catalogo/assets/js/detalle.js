@@ -1,6 +1,7 @@
 (function () {
     var data      = window.fcArreglo || {};
     var tamanos   = data.tamanos   || [];
+    var colores   = data.colores   || [];
     var schedules = data.schedules || {};
     var whatsapp  = data.whatsapp  || '';
     var permalink = data.permalink || window.location.href;
@@ -8,6 +9,7 @@
 
     var especial       = data.especial || false;
     var selectedTamano = tamanos.length > 0 ? tamanos[0] : null;
+    var selectedColor  = colores.length  > 0 ? colores[0] : null;
     var diaDisponible  = true;
     var fechaValida    = true; // false cuando especial y no hay 2 días hábiles
     var modoTipo       = 'envio'; // 'envio' | 'recoleccion'
@@ -165,20 +167,37 @@
         });
     });
 
+    // ── Selector de colores ──
+    document.querySelectorAll('.fc-color-btn').forEach(function (btn, i) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.fc-color-btn').forEach(function (b) { b.classList.remove('active'); });
+            this.classList.add('active');
+            selectedColor = colores[i];
+            updateDisplay();
+        });
+    });
+
+    function setImage(url) {
+        if (!imgEl || !url) return;
+        imgEl.classList.add('fc-fade');
+        setTimeout(function () {
+            imgEl.src = url;
+            imgEl.classList.remove('fc-fade');
+        }, 220);
+    }
+
     function updateDisplay() {
-        if (!selectedTamano) return;
-
-        if (imgEl && selectedTamano.imagen_url) {
-            imgEl.classList.add('fc-fade');
-            setTimeout(function () {
-                imgEl.src = selectedTamano.imagen_url;
-                imgEl.classList.remove('fc-fade');
-            }, 220);
-        }
-
-        if (precioEl && selectedTamano.precio) {
+        // Precio: siempre del tamaño seleccionado
+        if (precioEl && selectedTamano && selectedTamano.precio) {
             var p = parseFloat(selectedTamano.precio);
             precioEl.textContent = '$' + p.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        }
+
+        // Imagen: color tiene prioridad sobre tamaño
+        if (selectedColor && selectedColor.imagen_url) {
+            setImage(selectedColor.imagen_url);
+        } else if (selectedTamano && selectedTamano.imagen_url) {
+            setImage(selectedTamano.imagen_url);
         }
     }
 
@@ -365,6 +384,7 @@
             if (!fecha) return;
 
             var tamanoNombre = selectedTamano ? selectedTamano.nombre : '';
+            var colorNombre  = selectedColor  ? selectedColor.nombre  : '';
             var precio = selectedTamano
                 ? '$' + parseFloat(selectedTamano.precio).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
                 : '';
@@ -381,6 +401,7 @@
                     'Hola! Me interesa ordenar un arreglo.\n\n' +
                     '*Arreglo:* '   + titulo       + '\n' +
                     '*Tamano:* '    + tamanoNombre + ' (' + precio + ')\n' +
+                    (colorNombre ? '*Color:* '    + colorNombre  + '\n' : '') +
                     '*Tipo:* Envio a domicilio\n' +
                     '*Fecha:* '     + fechaStr     + '\n' +
                     '*Horario:* '   + horario      + '\n' +
@@ -401,6 +422,7 @@
                     'Hola! Me interesa ordenar un arreglo.\n\n' +
                     '*Arreglo:* '  + titulo       + '\n' +
                     '*Tamano:* '   + tamanoNombre + ' (' + precio + ')\n' +
+                    (colorNombre ? '*Color:* '   + colorNombre  + '\n' : '') +
                     '*Tipo:* Recoleccion en tienda\n' +
                     '*Fecha:* '    + fechaStr     + '\n' +
                     '*Hora:* '     + horaStr      + '\n' +

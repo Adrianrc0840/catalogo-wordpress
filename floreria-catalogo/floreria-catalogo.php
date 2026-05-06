@@ -36,8 +36,12 @@ function fc_enqueue_frontend() {
         $tamanos = get_post_meta( $post->ID, '_fc_tamanos', true );
         if ( ! is_array( $tamanos ) ) $tamanos = [];
 
+        $colores = get_post_meta( $post->ID, '_fc_colores', true );
+        if ( ! is_array( $colores ) ) $colores = [];
+
         wp_localize_script( 'fc-detalle', 'fcArreglo', [
             'tamanos'   => $tamanos,
+            'colores'   => $colores,
             'whatsapp'  => get_option( 'fc_whatsapp', '' ),
             'schedules' => fc_get_schedules(),
             'permalink' => get_permalink( $post->ID ),

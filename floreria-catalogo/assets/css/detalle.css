@@ -170,6 +170,36 @@
     color: #fff;
 }
 
+/* ── Selector de colores ── */
+.fc-colores-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.fc-color-btn {
+    padding: 9px 22px;
+    border: 2px solid #ddd;
+    background: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #555;
+    transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.fc-color-btn:hover {
+    border-color: var(--fc-primary);
+    color: var(--fc-primary);
+}
+
+.fc-color-btn.active {
+    border-color: var(--fc-primary);
+    background: var(--fc-primary);
+    color: #fff;
+}
+
 /* ── Toggle envío / recolección ── */
 .fc-tipo-btns {
     display: flex;

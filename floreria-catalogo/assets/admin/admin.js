@@ -1,21 +1,29 @@
 jQuery(function ($) {
-    let rowIndex = $('#fc-tamanos-list .fc-tamano-row').length;
+    let tamanoIndex = $('#fc-tamanos-list .fc-tamano-row').length;
+    let colorIndex  = $('#fc-colores-list .fc-color-row').length;
 
-    // Añadir nuevo tamaño
+    // ── Añadir tamaño ──
     $('#fc-add-tamano').on('click', function () {
-        const template = $('#fc-tamano-template').html().replace(/\{\{INDEX\}\}/g, rowIndex);
+        const template = $('#fc-tamano-template').html().replace(/\{\{INDEX\}\}/g, tamanoIndex);
         $('#fc-tamanos-list').append(template);
-        rowIndex++;
+        tamanoIndex++;
     });
 
-    // Eliminar fila
+    // ── Añadir color ──
+    $('#fc-add-color').on('click', function () {
+        const template = $('#fc-color-template').html().replace(/\{\{INDEX\}\}/g, colorIndex);
+        $('#fc-colores-list').append(template);
+        colorIndex++;
+    });
+
+    // ── Eliminar fila (tamaño o color) ──
     $(document).on('click', '.fc-remove-row', function () {
-        $(this).closest('.fc-tamano-row').remove();
+        $(this).closest('.fc-tamano-row, .fc-color-row').remove();
     });
 
-    // Quitar foto
+    // ── Quitar foto ──
     $(document).on('click', '.fc-remove-img-btn', function () {
-        const $row = $(this).closest('.fc-tamano-row');
+        const $row = $(this).closest('.fc-tamano-row, .fc-color-row');
         $row.find('.fc-imagen-id').val('');
         $row.find('.fc-imagen-url').val('');
         $row.find('.fc-preview-img').attr('src', '').hide();
@@ -23,14 +31,14 @@ jQuery(function ($) {
         $(this).remove();
     });
 
-    // Media uploader de WordPress
+    // ── Media uploader ──
     $(document).on('click', '.fc-upload-btn', function (e) {
         e.preventDefault();
         const $btn = $(this);
-        const $row = $btn.closest('.fc-tamano-row');
+        const $row = $btn.closest('.fc-tamano-row, .fc-color-row');
 
         const frame = wp.media({
-            title: 'Seleccionar foto del tamaño',
+            title: 'Seleccionar foto',
             button: { text: 'Usar esta foto' },
             multiple: false,
             library: { type: 'image' },

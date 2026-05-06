@@ -13,6 +13,9 @@ while ( have_posts() ) : the_post();
     $cat_name  = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ', ', wp_list_pluck( $cats, 'name' ) ) : '';
     $cat_slugs = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? wp_list_pluck( $cats, 'slug' ) : [];
 
+    $colores      = get_post_meta( get_the_ID(), '_fc_colores', true );
+    if ( ! is_array( $colores ) ) $colores = [];
+
     $first_img    = ! empty( $tamanos[0]['imagen_url'] ) ? $tamanos[0]['imagen_url'] : get_the_post_thumbnail_url( get_the_ID(), 'large' );
     $first_precio = ! empty( $tamanos[0]['precio'] )     ? $tamanos[0]['precio']     : 0;
 
@@ -88,6 +91,23 @@ while ( have_posts() ) : the_post();
                     <?php foreach ( $tamanos as $i => $tamano ) : ?>
                     <button type="button" class="fc-tamano-btn <?php echo $i === 0 ? 'active' : ''; ?>">
                         <?php echo esc_html( $tamano['nombre'] ); ?>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Selector de colores -->
+            <?php if ( ! empty( $colores ) ) : ?>
+            <div>
+                <span class="fc-tamanos-label">Color</span>
+                <div class="fc-colores-btns">
+                    <?php foreach ( $colores as $i => $color ) : ?>
+                    <button type="button"
+                            class="fc-color-btn <?php echo $i === 0 ? 'active' : ''; ?>"
+                            data-index="<?php echo $i; ?>"
+                            data-imagen="<?php echo esc_attr( $color['imagen_url'] ?? '' ); ?>">
+                        <?php echo esc_html( $color['nombre'] ); ?>
                     </button>
                     <?php endforeach; ?>
                 </div>
