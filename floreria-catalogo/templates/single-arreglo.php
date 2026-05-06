@@ -45,7 +45,7 @@ while ( have_posts() ) : the_post();
     <div class="fc-detalle-inner">
 
         <!-- Columna imagen -->
-        <div>
+        <div class="fc-col-imagen">
             <div class="fc-detalle-img-wrap">
                 <?php if ( $first_img ) : ?>
                 <img id="fc-main-img" src="<?php echo esc_url( $first_img ); ?>" alt="<?php the_title_attribute(); ?>" class="fc-img-clickable" />
@@ -55,9 +55,8 @@ while ( have_posts() ) : the_post();
             </div>
         </div>
 
-        <!-- Columna info -->
-        <div class="fc-detalle-info">
-
+        <!-- Parte superior info: título, categorías, descripción -->
+        <div class="fc-col-info-top">
             <h1 class="fc-detalle-titulo"><?php the_title(); ?></h1>
 
             <?php if ( ! empty( $cats ) && ! is_wp_error( $cats ) ) : ?>
@@ -77,6 +76,10 @@ while ( have_posts() ) : the_post();
                 &#128337; Este arreglo requiere <strong>al menos 2 días hábiles de anticipación</strong>. Sábado y domingo no cuentan como días hábiles.
             </div>
             <?php endif; ?>
+        </div>
+
+        <!-- Parte inferior info: precio, selectores, pedido -->
+        <div class="fc-col-info-bottom fc-detalle-info">
 
             <p class="fc-detalle-precio">
                 <span id="fc-precio-val">

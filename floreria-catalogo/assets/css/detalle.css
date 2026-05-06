@@ -35,15 +35,42 @@
 .fc-detalle-inner {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 52px;
+    grid-template-rows: auto 1fr;
+    gap: 0 52px;
     align-items: start;
 }
 
+.fc-col-imagen {
+    grid-column: 1;
+    grid-row: 1 / 3;
+}
+
+.fc-col-info-top {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding-bottom: 18px;
+}
+
+.fc-col-info-bottom {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+}
+
+/* Móvil: título → imagen → selectores+pedido */
 @media (max-width: 768px) {
     .fc-detalle-inner {
-        grid-template-columns: 1fr;
-        gap: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
     }
+
+    .fc-col-info-top    { order: 1; }
+    .fc-col-imagen      { order: 2; }
+    .fc-col-info-bottom { order: 3; }
 }
 
 /* ── Imagen ── */
