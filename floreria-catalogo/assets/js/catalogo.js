@@ -13,12 +13,9 @@
     // ── Toggle del panel de filtros ──
     function abrirPanel() {
         if (!filtroPanel) return;
-        filtroPanel.style.display = 'flex';
-        requestAnimationFrame(function () {
-            filtroPanel.classList.add('abierto');
-            filtroToggle.classList.add('abierto');
-            filtroToggle.setAttribute('aria-expanded', 'true');
-        });
+        filtroPanel.classList.add('abierto');
+        filtroToggle.classList.add('abierto');
+        filtroToggle.setAttribute('aria-expanded', 'true');
     }
 
     function cerrarPanel() {
@@ -26,11 +23,6 @@
         filtroPanel.classList.remove('abierto');
         filtroToggle.classList.remove('abierto');
         filtroToggle.setAttribute('aria-expanded', 'false');
-        setTimeout(function () {
-            if (!filtroPanel.classList.contains('abierto')) {
-                filtroPanel.style.display = 'none';
-            }
-        }, 200);
     }
 
     if (filtroToggle) {

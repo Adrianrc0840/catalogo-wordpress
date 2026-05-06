@@ -158,19 +158,12 @@
     box-shadow: 0 8px 24px rgba(0,0,0,0.10);
     z-index: 50;
     min-width: 260px;
-    display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-6px);
-    transition: opacity 0.2s, transform 0.2s;
 }
 
 .fc-filtro-panel.abierto {
-    opacity: 1;
-    pointer-events: all;
-    transform: translateY(0);
+    display: flex;
 }
 
 .fc-filtro-btn {
