@@ -106,8 +106,10 @@ while ( have_posts() ) : the_post();
                     <button type="button"
                             class="fc-color-btn <?php echo $i === 0 ? 'active' : ''; ?>"
                             data-index="<?php echo $i; ?>"
-                            data-imagen="<?php echo esc_attr( $color['imagen_url'] ?? '' ); ?>">
-                        <?php echo esc_html( $color['nombre'] ); ?>
+                            data-imagen="<?php echo esc_attr( $color['imagen_url'] ?? '' ); ?>"
+                            title="<?php echo esc_attr( $color['nombre'] ); ?>">
+                        <span class="fc-color-swatch" style="background:<?php echo esc_attr( $color['hex'] ?? '#ccc' ); ?>;"></span>
+                        <span class="fc-color-name"><?php echo esc_html( $color['nombre'] ); ?></span>
                     </button>
                     <?php endforeach; ?>
                 </div>

@@ -57,7 +57,7 @@
 .fc-detalle-img-wrap img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     transition: opacity 0.28s ease;
 }
 
@@ -174,30 +174,49 @@
 .fc-colores-btns {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 14px;
 }
 
 .fc-color-btn {
-    padding: 9px 22px;
-    border: 2px solid #ddd;
-    background: #fff;
-    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
     cursor: pointer;
-    font-size: 14px;
+    padding: 4px;
+}
+
+.fc-color-swatch {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 0, 0, 0.12);
+    transition: transform 0.18s, box-shadow 0.18s;
+    display: block;
+}
+
+.fc-color-btn:hover .fc-color-swatch {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 3px rgba(200, 24, 90, 0.25);
+}
+
+.fc-color-btn.active .fc-color-swatch {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 3px var(--fc-primary);
+}
+
+.fc-color-name {
+    font-size: 11px;
+    color: #777;
     font-weight: 500;
-    color: #555;
-    transition: border-color 0.2s, background 0.2s, color 0.2s;
+    transition: color 0.18s;
 }
 
-.fc-color-btn:hover {
-    border-color: var(--fc-primary);
+.fc-color-btn.active .fc-color-name {
     color: var(--fc-primary);
-}
-
-.fc-color-btn.active {
-    border-color: var(--fc-primary);
-    background: var(--fc-primary);
-    color: #fff;
+    font-weight: 700;
 }
 
 /* ── Toggle envío / recolección ── */

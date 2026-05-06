@@ -118,8 +118,12 @@ function fc_render_colores_meta_box( $post ) {
             <?php foreach ( $colores as $i => $color ) : ?>
             <div class="fc-color-row">
                 <div class="fc-field">
-                    <label>Color</label>
+                    <label>Nombre</label>
                     <input type="text" name="fc_colores[<?php echo $i; ?>][nombre]" value="<?php echo esc_attr( $color['nombre'] ?? '' ); ?>" placeholder="Ej: Rojo" />
+                </div>
+                <div class="fc-field fc-field-hex">
+                    <label>Color</label>
+                    <input type="color" name="fc_colores[<?php echo $i; ?>][hex]" value="<?php echo esc_attr( $color['hex'] ?? '#c8185a' ); ?>" class="fc-color-picker" />
                 </div>
                 <div class="fc-field fc-field-foto">
                     <label>Foto</label>
@@ -147,8 +151,12 @@ function fc_render_colores_meta_box( $post ) {
     <script type="text/html" id="fc-color-template">
         <div class="fc-color-row">
             <div class="fc-field">
-                <label>Color</label>
+                <label>Nombre</label>
                 <input type="text" name="fc_colores[{{INDEX}}][nombre]" value="" placeholder="Ej: Rojo" />
+            </div>
+            <div class="fc-field fc-field-hex">
+                <label>Color</label>
+                <input type="color" name="fc_colores[{{INDEX}}][hex]" value="#c8185a" class="fc-color-picker" />
             </div>
             <div class="fc-field fc-field-foto">
                 <label>Foto</label>
@@ -202,6 +210,7 @@ function fc_save_meta( $post_id ) {
             if ( empty( $color['nombre'] ) ) continue;
             $colores[] = [
                 'nombre'     => sanitize_text_field( $color['nombre'] ),
+                'hex'        => sanitize_hex_color( $color['hex'] ?? '#c8185a' ) ?: '#c8185a',
                 'imagen_id'  => intval( $color['imagen_id'] ?? 0 ),
                 'imagen_url' => esc_url_raw( $color['imagen_url'] ?? '' ),
             ];

@@ -63,6 +63,36 @@
     padding-bottom: 2px;
 }
 
-#fc-add-tamano {
+#fc-add-tamano,
+#fc-add-color {
     margin-top: 8px;
+}
+
+/* Filas de color */
+#fc-colores-list .fc-color-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    background: #fafafa;
+    border: 1px solid #ddd;
+    border-left: 3px solid #c8185a;
+    border-radius: 4px;
+}
+
+/* Color picker */
+.fc-field-hex {
+    flex-shrink: 0;
+}
+
+.fc-color-picker {
+    width: 52px;
+    height: 36px;
+    padding: 2px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    background: #fff;
 }
