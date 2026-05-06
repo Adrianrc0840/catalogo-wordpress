@@ -7,8 +7,9 @@
     var permalink = data.permalink || window.location.href;
     var titulo    = data.titulo    || '';
 
-    var especial       = data.especial || false;
-    var selectedTamano = tamanos.length > 0 ? tamanos[0] : null;
+    var especial          = data.especial || false;
+    var tamanoPrincipal   = parseInt( data.tamano_principal ) || 0;
+    var selectedTamano    = tamanos.length > 0 ? tamanos[ tamanoPrincipal ] : null;
     var selectedColor  = colores.length  > 0 ? colores[0] : null;
     var diaDisponible  = true;
     var fechaValida    = true; // false cuando especial y no hay 2 días hábiles

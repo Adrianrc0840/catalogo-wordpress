@@ -36,12 +36,22 @@ function fc_enqueue_frontend() {
         $tamanos = get_post_meta( $post->ID, '_fc_tamanos', true );
         if ( ! is_array( $tamanos ) ) $tamanos = [];
 
+        // Índice del tamaño marcado como principal
+        $tamano_principal = 0;
+        foreach ( $tamanos as $i => $t ) {
+            if ( ! empty( $t['foto_catalogo'] ) && $t['foto_catalogo'] === '1' ) {
+                $tamano_principal = $i;
+                break;
+            }
+        }
+
         $colores = get_post_meta( $post->ID, '_fc_colores', true );
         if ( ! is_array( $colores ) ) $colores = [];
 
         wp_localize_script( 'fc-detalle', 'fcArreglo', [
-            'tamanos'   => $tamanos,
-            'colores'   => $colores,
+            'tamanos'          => $tamanos,
+            'tamano_principal' => $tamano_principal,
+            'colores'          => $colores,
             'whatsapp'  => get_option( 'fc_whatsapp', '' ),
             'schedules' => fc_get_schedules(),
             'permalink' => get_permalink( $post->ID ),
