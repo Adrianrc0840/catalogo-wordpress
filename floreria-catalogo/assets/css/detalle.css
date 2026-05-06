@@ -63,7 +63,8 @@
 /* Móvil: título → imagen → selectores+pedido */
 @media (max-width: 768px) {
     .fc-detalle {
-        padding: 20px 14px;
+        padding: 20px 18px;
+        overflow-x: hidden;
     }
 
     .fc-detalle-inner {
@@ -149,6 +150,11 @@
     color: #555;
     line-height: 1.75;
     margin: 0;
+    padding: 0;
+    text-indent: 0;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: normal;
 }
 
 .fc-detalle-precio {
