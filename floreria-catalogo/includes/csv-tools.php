@@ -127,43 +127,55 @@ function fc_handle_import() {
         update_post_meta( $post_id, '_fc_especial',   ( $row[5] ?? '0' ) === '1' ? '1' : '0' );
 
         // Tamaños — "6 flores:299|12 flores:450"
-        $existentes_tam = get_post_meta( $post_id, '_fc_tamanos', true ) ?: [];
-        $nuevos_tam     = [];
+        // Indexar existentes por nombre para conservar fotos aunque cambie la posición
+        $existentes_tam     = get_post_meta( $post_id, '_fc_tamanos', true ) ?: [];
+        $existentes_tam_map = [];
+        foreach ( $existentes_tam as $t ) {
+            if ( ! empty( $t['nombre'] ) ) $existentes_tam_map[ $t['nombre'] ] = $t;
+        }
+        $nuevos_tam = [];
 
         if ( ! empty( $row[6] ) ) {
-            foreach ( explode( '|', $row[6] ) as $i => $parte ) {
+            foreach ( explode( '|', $row[6] ) as $parte ) {
                 $partes = explode( ':', trim( $parte ), 2 );
                 $nombre = sanitize_text_field( $partes[0] ?? '' );
                 $precio = floatval( $partes[1] ?? 0 );
                 if ( $nombre === '' ) continue;
 
-                // Intentar conservar foto del tamaño en la misma posición
+                // Buscar foto por nombre exacto, si no existe queda vacía
+                $existente   = $existentes_tam_map[ $nombre ] ?? [];
                 $nuevos_tam[] = [
                     'nombre'     => $nombre,
                     'precio'     => $precio,
-                    'imagen_id'  => $existentes_tam[ $i ]['imagen_id']  ?? 0,
-                    'imagen_url' => $existentes_tam[ $i ]['imagen_url'] ?? '',
+                    'imagen_id'  => $existente['imagen_id']  ?? 0,
+                    'imagen_url' => $existente['imagen_url'] ?? '',
                 ];
             }
         }
         update_post_meta( $post_id, '_fc_tamanos', $nuevos_tam );
 
         // Colores — "Rojo:#FF0000|Rosa:#FF69B4"
-        $existentes_col = get_post_meta( $post_id, '_fc_colores', true ) ?: [];
-        $nuevos_col     = [];
+        // Indexar existentes por nombre para conservar fotos aunque cambie la posición
+        $existentes_col     = get_post_meta( $post_id, '_fc_colores', true ) ?: [];
+        $existentes_col_map = [];
+        foreach ( $existentes_col as $c ) {
+            if ( ! empty( $c['nombre'] ) ) $existentes_col_map[ $c['nombre'] ] = $c;
+        }
+        $nuevos_col = [];
 
         if ( ! empty( $row[7] ) ) {
-            foreach ( explode( '|', $row[7] ) as $i => $parte ) {
+            foreach ( explode( '|', $row[7] ) as $parte ) {
                 $partes = explode( ':', trim( $parte ), 2 );
                 $nombre = sanitize_text_field( $partes[0] ?? '' );
                 $hex    = sanitize_hex_color( $partes[1] ?? '' ) ?: '#000000';
                 if ( $nombre === '' ) continue;
 
+                $existente    = $existentes_col_map[ $nombre ] ?? [];
                 $nuevos_col[] = [
                     'nombre'     => $nombre,
                     'hex'        => $hex,
-                    'imagen_id'  => $existentes_col[ $i ]['imagen_id']  ?? 0,
-                    'imagen_url' => $existentes_col[ $i ]['imagen_url'] ?? '',
+                    'imagen_id'  => $existente['imagen_id']  ?? 0,
+                    'imagen_url' => $existente['imagen_url'] ?? '',
                 ];
             }
         }
