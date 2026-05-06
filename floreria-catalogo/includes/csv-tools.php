@@ -21,7 +21,7 @@ function fc_handle_export() {
     if ( ! check_admin_referer( 'fc_export' ) ) return;
     if ( ! current_user_can( 'manage_options' ) ) return;
 
-    $posts = get_posts( [ 'post_type' => 'arreglo', 'posts_per_page' => -1, 'post_status' => 'any' ] );
+    $posts = get_posts( [ 'post_type' => 'arreglo', 'posts_per_page' => -1, 'post_status' => 'any', 'orderby' => 'title', 'order' => 'ASC' ] );
 
     header( 'Content-Type: text/csv; charset=UTF-8' );
     header( 'Content-Disposition: attachment; filename="arreglos-' . date( 'Y-m-d' ) . '.csv"' );
@@ -31,29 +31,40 @@ function fc_handle_export() {
     fputs( $out, "\xEF\xBB\xBF" ); // BOM para Excel
 
     fputcsv( $out, [
-        'ID', 'Nombre', 'Categoria', 'Descripcion', 'Agotado',
-        'Tamano_1', 'Precio_1',
-        'Tamano_2', 'Precio_2',
-        'Tamano_3', 'Precio_3',
-        'Tamano_4', 'Precio_4',
-        'Tamano_5', 'Precio_5',
+        'ID', 'Nombre', 'Categoria', 'Descripcion', 'Agotado', 'Especial',
+        'Tamanos (nombre:precio separados por |)',
+        'Colores (nombre:hex separados por |)',
     ] );
 
     foreach ( $posts as $post ) {
         $tamanos = get_post_meta( $post->ID, '_fc_tamanos', true ) ?: [];
-        $agotado = get_post_meta( $post->ID, '_fc_agotado', true ) === '1' ? '1' : '0';
+        $colores = get_post_meta( $post->ID, '_fc_colores',  true ) ?: [];
+        $agotado = get_post_meta( $post->ID, '_fc_agotado',  true ) === '1' ? '1' : '0';
+        $especial = get_post_meta( $post->ID, '_fc_especial', true ) === '1' ? '1' : '0';
         $desc    = get_post_meta( $post->ID, '_fc_descripcion', true );
         $cats    = get_the_terms( $post->ID, 'categoria_arreglo' );
         $cat     = ( ! empty( $cats ) && ! is_wp_error( $cats ) ) ? implode( ', ', wp_list_pluck( $cats, 'name' ) ) : '';
 
-        $row = [ $post->ID, $post->post_title, $cat, $desc, $agotado ];
+        // Empacar tamaños: "6 flores:299|12 flores:450"
+        $tamanos_str = implode( '|', array_map( function( $t ) {
+            return ( $t['nombre'] ?? '' ) . ':' . ( $t['precio'] ?? '0' );
+        }, $tamanos ) );
 
-        for ( $i = 0; $i < 5; $i++ ) {
-            $row[] = $tamanos[ $i ]['nombre'] ?? '';
-            $row[] = $tamanos[ $i ]['precio'] ?? '';
-        }
+        // Empacar colores: "Rojo:#FF0000|Rosa:#FF69B4"
+        $colores_str = implode( '|', array_map( function( $c ) {
+            return ( $c['nombre'] ?? '' ) . ':' . ( $c['hex'] ?? '#000000' );
+        }, $colores ) );
 
-        fputcsv( $out, $row );
+        fputcsv( $out, [
+            $post->ID,
+            $post->post_title,
+            $cat,
+            $desc,
+            $agotado,
+            $especial,
+            $tamanos_str,
+            $colores_str,
+        ] );
     }
 
     fclose( $out );
@@ -95,7 +106,7 @@ function fc_handle_import() {
         // Nombre
         wp_update_post( [ 'ID' => $post_id, 'post_title' => sanitize_text_field( $row[1] ?? '' ) ] );
 
-        // Categorías — soporta múltiples separadas por coma
+        // Categorías — múltiples separadas por coma
         if ( ! empty( $row[2] ) ) {
             $term_ids = [];
             foreach ( array_map( 'trim', explode( ',', $row[2] ) ) as $cat_name ) {
@@ -110,28 +121,54 @@ function fc_handle_import() {
             if ( ! empty( $term_ids ) ) wp_set_post_terms( $post_id, $term_ids, 'categoria_arreglo' );
         }
 
-        // Descripción y disponibilidad
+        // Descripción, agotado, especial
         update_post_meta( $post_id, '_fc_descripcion', sanitize_textarea_field( $row[3] ?? '' ) );
         update_post_meta( $post_id, '_fc_agotado',    ( $row[4] ?? '0' ) === '1' ? '1' : '0' );
+        update_post_meta( $post_id, '_fc_especial',   ( $row[5] ?? '0' ) === '1' ? '1' : '0' );
 
-        // Tamaños — actualiza nombre y precio, conserva fotos existentes
-        $existentes  = get_post_meta( $post_id, '_fc_tamanos', true ) ?: [];
-        $nuevos      = [];
+        // Tamaños — "6 flores:299|12 flores:450"
+        $existentes_tam = get_post_meta( $post_id, '_fc_tamanos', true ) ?: [];
+        $nuevos_tam     = [];
 
-        for ( $i = 0; $i < 5; $i++ ) {
-            $nombre = sanitize_text_field( $row[ 5 + $i * 2 ] ?? '' );
-            $precio = floatval( $row[ 6 + $i * 2 ] ?? 0 );
-            if ( $nombre === '' ) continue;
+        if ( ! empty( $row[6] ) ) {
+            foreach ( explode( '|', $row[6] ) as $i => $parte ) {
+                $partes = explode( ':', trim( $parte ), 2 );
+                $nombre = sanitize_text_field( $partes[0] ?? '' );
+                $precio = floatval( $partes[1] ?? 0 );
+                if ( $nombre === '' ) continue;
 
-            $nuevos[] = [
-                'nombre'     => $nombre,
-                'precio'     => $precio,
-                'imagen_id'  => $existentes[ $i ]['imagen_id']  ?? 0,   // foto intacta
-                'imagen_url' => $existentes[ $i ]['imagen_url'] ?? '',   // foto intacta
-            ];
+                // Intentar conservar foto del tamaño en la misma posición
+                $nuevos_tam[] = [
+                    'nombre'     => $nombre,
+                    'precio'     => $precio,
+                    'imagen_id'  => $existentes_tam[ $i ]['imagen_id']  ?? 0,
+                    'imagen_url' => $existentes_tam[ $i ]['imagen_url'] ?? '',
+                ];
+            }
         }
+        update_post_meta( $post_id, '_fc_tamanos', $nuevos_tam );
 
-        update_post_meta( $post_id, '_fc_tamanos', $nuevos );
+        // Colores — "Rojo:#FF0000|Rosa:#FF69B4"
+        $existentes_col = get_post_meta( $post_id, '_fc_colores', true ) ?: [];
+        $nuevos_col     = [];
+
+        if ( ! empty( $row[7] ) ) {
+            foreach ( explode( '|', $row[7] ) as $i => $parte ) {
+                $partes = explode( ':', trim( $parte ), 2 );
+                $nombre = sanitize_text_field( $partes[0] ?? '' );
+                $hex    = sanitize_hex_color( $partes[1] ?? '' ) ?: '#000000';
+                if ( $nombre === '' ) continue;
+
+                $nuevos_col[] = [
+                    'nombre'     => $nombre,
+                    'hex'        => $hex,
+                    'imagen_id'  => $existentes_col[ $i ]['imagen_id']  ?? 0,
+                    'imagen_url' => $existentes_col[ $i ]['imagen_url'] ?? '',
+                ];
+            }
+        }
+        update_post_meta( $post_id, '_fc_colores', $nuevos_col );
+
         $updated++;
     }
 
@@ -164,7 +201,7 @@ function fc_render_csv_page() {
             <div style="background:#fff;border:1px solid #ccd0d4;border-radius:4px;padding:24px;">
                 <h2 style="margin-top:0;">&#11015; Exportar CSV</h2>
                 <p>Descarga todos tus arreglos en un archivo CSV para editarlos en Excel o Google Sheets.</p>
-                <p style="font-size:12px;color:#888;">Las fotos <strong>no</strong> se exportan, solo texto y precios.</p>
+                <p style="font-size:12px;color:#888;">Las fotos <strong>no</strong> se exportan, solo texto, precios y colores.</p>
                 <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'edit.php?post_type=arreglo&fc_export=1' ), 'fc_export' ) ); ?>"
                    class="button button-primary">Descargar CSV</a>
             </div>
@@ -184,24 +221,35 @@ function fc_render_csv_page() {
 
         <div style="max-width:900px;background:#fff;border:1px solid #ccd0d4;border-radius:4px;padding:24px;margin-top:24px;">
             <h3 style="margin-top:0;">&#128196; Estructura del CSV</h3>
+            <p style="font-size:13px;color:#555;margin-bottom:16px;">
+                Los tamaños y colores se guardan en una sola celda, separados por <code>|</code>.<br>
+                <strong>Tamaños:</strong> <code>nombre:precio|nombre:precio</code> &nbsp;→&nbsp; <code>6 flores:299|12 flores:450|24 flores:800</code><br>
+                <strong>Colores:</strong> <code>nombre:#hex|nombre:#hex</code> &nbsp;→&nbsp; <code>Rojo:#FF0000|Rosa:#FF69B4</code>
+            </p>
             <table class="widefat striped" style="font-size:12px;">
                 <thead>
                     <tr>
                         <th>ID</th><th>Nombre</th><th>Categoria</th><th>Descripcion</th>
-                        <th>Agotado</th><th>Tamano_1</th><th>Precio_1</th><th>Tamano_2</th><th>Precio_2</th><th>...</th>
+                        <th>Agotado</th><th>Especial</th><th>Tamaños</th><th>Colores</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>42</td><td>Ramo Rosas</td><td>Rosas</td><td>Descripción aquí</td>
-                        <td>0</td><td>Chico</td><td>299</td><td>Grande</td><td>499</td><td>...</td>
+                        <td>42</td>
+                        <td>Pink Touch</td>
+                        <td>Gerberas, Ramos</td>
+                        <td>Descripción aquí</td>
+                        <td>0</td>
+                        <td>0</td>
+                        <td>6 flores:299|12 flores:450</td>
+                        <td>Rojo:#FF0000|Rosa:#FF69B4</td>
                     </tr>
                 </tbody>
             </table>
             <p style="font-size:12px;color:#888;margin:12px 0 0;">
                 <strong>ID:</strong> No modificar &nbsp;|&nbsp;
-                <strong>Agotado:</strong> 0 = Disponible, 1 = Agotado &nbsp;|&nbsp;
-                Soporta hasta 5 tamaños por arreglo.
+                <strong>Agotado / Especial:</strong> 0 = No, 1 = Sí &nbsp;|&nbsp;
+                Sin límite de tamaños ni colores por arreglo.
             </p>
         </div>
     </div>
