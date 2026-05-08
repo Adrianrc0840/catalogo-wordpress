@@ -709,53 +709,89 @@ function fc_print_pedido_page() {
     margin-top: 3px;
   }
 
-  /* Cuerpo: tabla de 2 columnas (más compatible en print que CSS grid) */
+  /* ── Cuerpo: foto izquierda (prominente) | datos derecha ── */
   .fc-doc-body {
     width: 100%;
     border-collapse: collapse;
   }
-  .fc-info-col {
-    padding: 22px 26px;
-    vertical-align: top;
-    border-right: 1px solid #e5e7eb;
-    width: calc(100% - 190px);
-  }
+
+  /* Columna foto — izquierda, ancha, con fondo rosado suave */
   .fc-photo-col {
-    padding: 22px 18px;
-    vertical-align: top;
+    width: 250px;
+    background: #fdf2f8;
+    vertical-align: middle;
     text-align: center;
-    width: 190px;
-    background: #f8fafc;
+    padding: 28px 22px;
+    border-right: 1px solid #f3e8f0;
+  }
+  .fc-photo-col img {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 2px solid #f9a8d4;
+    display: block;
+    margin: 0 auto;
+  }
+  .fc-no-photo {
+    width: 200px;
+    height: 200px;
+    border-radius: 12px;
+    border: 2px dashed #f9a8d4;
+    display: table-cell;
+    vertical-align: middle;
+    color: #c084a8;
+    font-size: 11px;
+    text-align: center;
+    background: #fff;
+  }
+  .fc-photo-name {
+    margin-top: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #9d174d;
+    word-break: break-word;
+  }
+  .fc-photo-detail {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #9ca3af;
+    word-break: break-word;
+  }
+
+  /* Columna info — derecha */
+  .fc-info-col {
+    padding: 22px 24px;
+    vertical-align: top;
   }
 
   .fc-section-title {
-    font-size: 9.5px;
+    font-size: 9px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .9px;
-    color: #6b7280;
-    margin-bottom: 10px;
+    letter-spacing: 1px;
+    color: #9d174d;
+    margin-bottom: 9px;
     padding-bottom: 5px;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid #fce7f3;
   }
 
   .fc-row {
     display: flex;
     gap: 8px;
-    margin-bottom: 8px;
-    line-height: 1.45;
+    margin-bottom: 7px;
+    line-height: 1.4;
   }
   .fc-row-label {
     font-weight: 600;
-    color: #4b5563;
-    min-width: 88px;
+    color: #6b7280;
+    min-width: 82px;
     flex-shrink: 0;
-    font-size: 11.5px;
+    font-size: 11px;
   }
   .fc-row-value {
     color: #111827;
-    font-size: 12.5px;
-    /* Evitar desbordamiento de texto largo */
+    font-size: 12px;
     word-break: break-word;
     overflow-wrap: break-word;
     min-width: 0;
@@ -765,40 +801,8 @@ function fc_print_pedido_page() {
 
   .fc-divider {
     border: none;
-    border-top: 1px dashed #e5e7eb;
-    margin: 12px 0;
-  }
-
-  /* Columna foto */
-  .fc-photo-col img {
-    width: 150px;
-    height: 150px;
-    object-fit: cover;
-    border-radius: 8px;
-    border: 1.5px solid #e5e7eb;
-    display: block;
-    margin: 0 auto;
-  }
-  .fc-no-photo {
-    width: 150px;
-    height: 150px;
-    border-radius: 8px;
-    border: 1.5px dashed #d1d5db;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #9ca3af;
-    font-size: 11px;
-    text-align: center;
-    background: #fff;
-    margin: 0 auto;
-  }
-  .fc-photo-label {
-    margin-top: 9px;
-    font-size: 10.5px;
-    color: #6b7280;
-    font-weight: 600;
-    word-break: break-word;
+    border-top: 1px dashed #f3e8f0;
+    margin: 11px 0;
   }
 
   /* Sección acuse de recibo */
@@ -900,31 +904,30 @@ function fc_print_pedido_page() {
         </div>
     </div>
 
-    <!-- Cuerpo: tabla 2 columnas (info | foto) — más estable en PDF que CSS grid -->
+    <!-- Cuerpo: foto izquierda | datos derecha -->
     <table class="fc-doc-body">
     <tr>
+
+        <!-- ── Foto (izquierda, prominente) ── -->
+        <td class="fc-photo-col">
+            <?php if ( $thumb ) : ?>
+                <img src="<?php echo esc_url( $thumb ); ?>" alt="Foto del arreglo" />
+            <?php else : ?>
+                <div class="fc-no-photo">Sin foto disponible</div>
+            <?php endif; ?>
+            <div class="fc-photo-name"><?php echo esc_html( $arreglo ); ?></div>
+            <div class="fc-photo-detail">
+                <?php
+                $det = [];
+                if ( $tamano ) $det[] = esc_html( $tamano );
+                if ( $color && strpos( $color, '--' ) !== 0 ) $det[] = esc_html( $color );
+                echo implode( ' · ', $det );
+                ?>
+            </div>
+        </td>
+
+        <!-- ── Datos (derecha) ── -->
         <td class="fc-info-col">
-
-            <!-- Arreglo -->
-            <div class="fc-section-title">Arreglo</div>
-            <div class="fc-row">
-                <span class="fc-row-label">Nombre</span>
-                <span class="fc-row-value"><?php echo esc_html( $arreglo ); ?></span>
-            </div>
-            <?php if ( $tamano ) : ?>
-            <div class="fc-row">
-                <span class="fc-row-label">Tamaño</span>
-                <span class="fc-row-value"><?php echo esc_html( $tamano ); ?></span>
-            </div>
-            <?php endif; ?>
-            <?php if ( $color && strpos( $color, '--' ) !== 0 ) : ?>
-            <div class="fc-row">
-                <span class="fc-row-label">Color</span>
-                <span class="fc-row-value"><?php echo esc_html( $color ); ?></span>
-            </div>
-            <?php endif; ?>
-
-            <hr class="fc-divider" />
 
             <!-- Entrega -->
             <div class="fc-section-title">Entrega</div>
@@ -985,22 +988,12 @@ function fc_print_pedido_page() {
             </div>
             <?php endif; ?>
             <?php if ( $nota_fl ) : ?>
-            <div class="fc-row" style="margin-top:5px;">
-                <span class="fc-row-label">Nota florería</span>
+            <div class="fc-row" style="margin-top:4px;">
+                <span class="fc-row-label">Florería</span>
                 <span class="fc-row-value italic"><?php echo esc_html( $nota_fl ); ?></span>
             </div>
             <?php endif; ?>
 
-        </td>
-
-        <!-- Foto del arreglo -->
-        <td class="fc-photo-col">
-            <?php if ( $thumb ) : ?>
-                <img src="<?php echo esc_url( $thumb ); ?>" alt="Foto del arreglo" />
-            <?php else : ?>
-                <div class="fc-no-photo">Sin foto disponible</div>
-            <?php endif; ?>
-            <div class="fc-photo-label"><?php echo esc_html( $arreglo ); ?></div>
         </td>
     </tr>
     </table><!-- .fc-doc-body -->
