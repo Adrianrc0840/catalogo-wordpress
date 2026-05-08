@@ -568,3 +568,496 @@ function fc_ajax_eliminar_permanente() {
     wp_delete_post( $pedido_id, true );
     wp_send_json_success( [ 'message' => 'Pedido eliminado permanentemente.' ] );
 }
+
+// ─────────────────────────────────────────────
+// Print / PDF page  (?fc_print_pedido=ID)
+// ─────────────────────────────────────────────
+add_action( 'template_redirect', 'fc_print_pedido_page' );
+function fc_print_pedido_page() {
+    $pedido_id = isset( $_GET['fc_print_pedido'] ) ? intval( $_GET['fc_print_pedido'] ) : 0;
+    if ( ! $pedido_id ) return;
+
+    // Access: must be logged in with panel or admin capability
+    if ( ! is_user_logged_in() ||
+         ( ! current_user_can( 'fc_ver_pedidos' ) && ! current_user_can( 'manage_options' ) ) ) {
+        wp_die( 'Acceso denegado.', 'Sin permiso', [ 'response' => 403 ] );
+    }
+
+    $post = get_post( $pedido_id );
+    if ( ! $post || $post->post_type !== 'pedido' ) {
+        wp_die( 'Pedido no encontrado.' );
+    }
+
+    // ── Read meta ──
+    $numero      = get_post_meta( $pedido_id, '_fc_pedido_numero',           true );
+    $status      = get_post_meta( $pedido_id, '_fc_pedido_status',           true );
+    $tipo        = get_post_meta( $pedido_id, '_fc_pedido_tipo',             true );
+    $fecha       = get_post_meta( $pedido_id, '_fc_pedido_fecha',            true );
+    $horario     = get_post_meta( $pedido_id, '_fc_pedido_horario',          true );
+    $direccion   = get_post_meta( $pedido_id, '_fc_pedido_direccion',        true );
+    $hora_rec    = get_post_meta( $pedido_id, '_fc_pedido_hora_recoleccion', true );
+    $cliente     = get_post_meta( $pedido_id, '_fc_pedido_cliente_nombre',   true );
+    $telefono    = get_post_meta( $pedido_id, '_fc_pedido_cliente_telefono', true );
+    $destinat    = get_post_meta( $pedido_id, '_fc_pedido_destinatario',     true );
+    $tarjeta     = get_post_meta( $pedido_id, '_fc_pedido_mensaje_tarjeta',  true );
+    $nota        = get_post_meta( $pedido_id, '_fc_pedido_nota',             true );
+    $nota_fl     = get_post_meta( $pedido_id, '_fc_pedido_nota_floreria',    true );
+    $arreglo     = get_post_meta( $pedido_id, '_fc_pedido_arreglo_nombre',   true );
+    $tamano      = get_post_meta( $pedido_id, '_fc_pedido_tamano',           true );
+    $color       = get_post_meta( $pedido_id, '_fc_pedido_color',            true );
+    $thumb       = fc_get_pedido_arreglo_thumb( $pedido_id );
+    $shop_name   = get_bloginfo( 'name' );
+    $status_lbl  = fc_pedido_status_label( $status );
+
+    // Delivery line
+    $tipo_label  = $tipo === 'recoleccion' ? 'Recolección en tienda' : 'Envío a domicilio';
+    $entrega_det = $tipo === 'recoleccion' ? $hora_rec : $horario;
+
+    // Status badge color
+    $badge_colors = [
+        'recibido'          => '#6366f1',
+        'en_preparacion'    => '#f59e0b',
+        'en_camino'         => '#3b82f6',
+        'listo_recoleccion' => '#8b5cf6',
+        'entregado'         => '#22c55e',
+    ];
+    $badge_color = $badge_colors[ $status ] ?? '#64748b';
+
+    // Format fecha
+    $fecha_fmt = '';
+    if ( $fecha ) {
+        $dt = DateTime::createFromFormat( 'Y-m-d', $fecha );
+        if ( $dt ) {
+            $meses = [ '', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre' ];
+            $fecha_fmt = $dt->format( 'j' ) . ' de ' . $meses[ (int) $dt->format( 'n' ) ] . ' de ' . $dt->format( 'Y' );
+        }
+    }
+
+    header( 'Content-Type: text/html; charset=UTF-8' );
+    ?><!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pedido <?php echo esc_html( $numero ); ?> – <?php echo esc_html( $shop_name ); ?></title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    color: #1a1a1a;
+    background: #fff;
+    padding: 24px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  /* ── Print button (hidden on print) ── */
+  .fc-print-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .fc-print-btn {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .fc-print-btn.primary { background: #2d6a4f; color: #fff; }
+  .fc-print-btn.secondary { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+
+  /* ── Document ── */
+  .fc-doc {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .fc-doc-header {
+    background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+    color: #fff;
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .fc-doc-header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -.3px;
+  }
+  .fc-doc-header .fc-doc-subtitle {
+    font-size: 11px;
+    opacity: .75;
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .fc-doc-header-right {
+    text-align: right;
+  }
+  .fc-doc-header-right .fc-num {
+    font-size: 18px;
+    font-weight: 700;
+    font-family: monospace;
+  }
+  .fc-doc-header-right .fc-fecha-reg {
+    font-size: 11px;
+    opacity: .7;
+    margin-top: 3px;
+  }
+
+  /* Status strip */
+  .fc-status-strip {
+    background: <?php echo esc_attr( $badge_color ); ?>;
+    color: #fff;
+    text-align: center;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 6px;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+
+  /* Body */
+  .fc-doc-body {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 0;
+  }
+
+  /* Info col */
+  .fc-info-col {
+    padding: 24px 28px;
+    border-right: 1px solid #e2e8f0;
+  }
+
+  .fc-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: #64748b;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .fc-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 9px;
+    line-height: 1.4;
+  }
+  .fc-row-label {
+    font-weight: 600;
+    color: #475569;
+    min-width: 90px;
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+  .fc-row-value {
+    color: #1e293b;
+    font-size: 13px;
+  }
+  .fc-row-value.italic { font-style: italic; color: #4b5563; }
+
+  .fc-divider {
+    border: none;
+    border-top: 1px dashed #e2e8f0;
+    margin: 14px 0;
+  }
+
+  /* Photo col */
+  .fc-photo-col {
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    background: #f8fafc;
+  }
+  .fc-photo-col img {
+    width: 160px;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+    display: block;
+  }
+  .fc-photo-col .fc-no-photo {
+    width: 160px;
+    height: 160px;
+    border-radius: 10px;
+    border: 2px dashed #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    font-size: 11px;
+    text-align: center;
+    background: #fff;
+  }
+  .fc-photo-label {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #64748b;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  /* Receipt section */
+  .fc-receipt {
+    border-top: 2px solid #1b4332;
+    padding: 20px 28px 24px;
+    background: #f8fafc;
+  }
+  .fc-receipt-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: #1b4332;
+    margin-bottom: 18px;
+  }
+  .fc-receipt-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px 32px;
+    margin-bottom: 18px;
+  }
+  .fc-receipt-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .fc-receipt-field label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #64748b;
+  }
+  .fc-receipt-line {
+    border: none;
+    border-bottom: 1.5px solid #94a3b8;
+    height: 28px;
+    background: transparent;
+    width: 100%;
+  }
+  .fc-receipt-sig {
+    margin-top: 4px;
+  }
+  .fc-receipt-sig label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #64748b;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .fc-receipt-sig-box {
+    border: 1.5px solid #94a3b8;
+    border-radius: 6px;
+    height: 80px;
+    width: 100%;
+    background: #fff;
+  }
+
+  /* Footer */
+  .fc-doc-footer {
+    padding: 12px 28px;
+    background: #1b4332;
+    color: rgba(255,255,255,.6);
+    font-size: 10px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── Print media ── */
+  @media print {
+    body { padding: 0; max-width: 100%; }
+    .fc-print-actions { display: none !important; }
+    .fc-doc { border-radius: 0; border: none; }
+    @page { margin: 10mm; size: A4 portrait; }
+  }
+</style>
+</head>
+<body>
+
+<div class="fc-print-actions">
+    <button class="fc-print-btn secondary" onclick="window.close()">✕ Cerrar</button>
+    <button class="fc-print-btn primary" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+</div>
+
+<div class="fc-doc">
+
+    <!-- Header -->
+    <div class="fc-doc-header">
+        <div>
+            <h1><?php echo esc_html( $shop_name ); ?></h1>
+            <div class="fc-doc-subtitle">Comprobante de pedido</div>
+        </div>
+        <div class="fc-doc-header-right">
+            <div class="fc-num"><?php echo esc_html( $numero ); ?></div>
+            <div class="fc-fecha-reg">Registrado el <?php echo esc_html( get_the_date( 'd/m/Y H:i', $post ) ); ?></div>
+        </div>
+    </div>
+
+    <!-- Status strip -->
+    <div class="fc-status-strip"><?php echo esc_html( $status_lbl ); ?></div>
+
+    <!-- Body: info + photo -->
+    <div class="fc-doc-body">
+
+        <div class="fc-info-col">
+
+            <!-- Arreglo -->
+            <div class="fc-section-title">Arreglo</div>
+            <div class="fc-row">
+                <span class="fc-row-label">Nombre</span>
+                <span class="fc-row-value"><?php echo esc_html( $arreglo ); ?></span>
+            </div>
+            <?php if ( $tamano ) : ?>
+            <div class="fc-row">
+                <span class="fc-row-label">Tamaño</span>
+                <span class="fc-row-value"><?php echo esc_html( $tamano ); ?></span>
+            </div>
+            <?php endif; ?>
+            <?php if ( $color && ! str_starts_with( $color, '--' ) ) : ?>
+            <div class="fc-row">
+                <span class="fc-row-label">Color</span>
+                <span class="fc-row-value"><?php echo esc_html( $color ); ?></span>
+            </div>
+            <?php endif; ?>
+
+            <hr class="fc-divider" />
+
+            <!-- Entrega -->
+            <div class="fc-section-title">Entrega</div>
+            <div class="fc-row">
+                <span class="fc-row-label">Tipo</span>
+                <span class="fc-row-value"><?php echo esc_html( $tipo_label ); ?></span>
+            </div>
+            <?php if ( $fecha_fmt ) : ?>
+            <div class="fc-row">
+                <span class="fc-row-label">Fecha</span>
+                <span class="fc-row-value"><?php echo esc_html( $fecha_fmt ); ?></span>
+            </div>
+            <?php endif; ?>
+            <?php if ( $entrega_det ) : ?>
+            <div class="fc-row">
+                <span class="fc-row-label"><?php echo $tipo === 'recoleccion' ? 'Hora' : 'Horario'; ?></span>
+                <span class="fc-row-value"><?php echo esc_html( $entrega_det ); ?></span>
+            </div>
+            <?php endif; ?>
+            <?php if ( $tipo === 'envio' && $direccion ) : ?>
+            <div class="fc-row">
+                <span class="fc-row-label">Dirección</span>
+                <span class="fc-row-value"><?php echo esc_html( $direccion ); ?></span>
+            </div>
+            <?php endif; ?>
+
+            <hr class="fc-divider" />
+
+            <!-- Cliente -->
+            <div class="fc-section-title">Cliente</div>
+            <div class="fc-row">
+                <span class="fc-row-label">Nombre</span>
+                <span class="fc-row-value"><?php echo esc_html( $cliente ); ?></span>
+            </div>
+            <?php if ( $telefono ) : ?>
+            <div class="fc-row">
+                <span class="fc-row-label">Teléfono</span>
+                <span class="fc-row-value"><?php echo esc_html( $telefono ); ?></span>
+            </div>
+            <?php endif; ?>
+            <?php if ( $destinat ) : ?>
+            <div class="fc-row">
+                <span class="fc-row-label">Destinatario</span>
+                <span class="fc-row-value"><?php echo esc_html( $destinat ); ?></span>
+            </div>
+            <?php endif; ?>
+            <?php if ( $tarjeta ) : ?>
+            <div class="fc-row">
+                <span class="fc-row-label">Tarjeta</span>
+                <span class="fc-row-value italic">"<?php echo esc_html( $tarjeta ); ?>"</span>
+            </div>
+            <?php endif; ?>
+            <?php if ( $nota ) : ?>
+
+            <hr class="fc-divider" />
+            <div class="fc-section-title">Nota especial</div>
+            <div class="fc-row">
+                <span class="fc-row-value"><?php echo esc_html( $nota ); ?></span>
+            </div>
+            <?php endif; ?>
+            <?php if ( $nota_fl ) : ?>
+            <div class="fc-row" style="margin-top:6px;">
+                <span class="fc-row-label">Florería</span>
+                <span class="fc-row-value italic"><?php echo esc_html( $nota_fl ); ?></span>
+            </div>
+            <?php endif; ?>
+
+        </div><!-- .fc-info-col -->
+
+        <!-- Photo -->
+        <div class="fc-photo-col">
+            <?php if ( $thumb ) : ?>
+                <img src="<?php echo esc_url( $thumb ); ?>" alt="Foto del arreglo" />
+            <?php else : ?>
+                <div class="fc-no-photo">Sin foto disponible</div>
+            <?php endif; ?>
+            <div class="fc-photo-label"><?php echo esc_html( $arreglo ); ?></div>
+        </div>
+
+    </div><!-- .fc-doc-body -->
+
+    <!-- Receipt section -->
+    <div class="fc-receipt">
+        <div class="fc-receipt-title">✔ Acuse de recibo</div>
+        <div class="fc-receipt-grid">
+            <div class="fc-receipt-field">
+                <label>Recibido por</label>
+                <div class="fc-receipt-line"></div>
+            </div>
+            <div class="fc-receipt-field">
+                <label>Hora de recepción</label>
+                <div class="fc-receipt-line"></div>
+            </div>
+        </div>
+        <div class="fc-receipt-sig">
+            <label>Firma de quien recibe</label>
+            <div class="fc-receipt-sig-box"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="fc-doc-footer">
+        <span><?php echo esc_html( $shop_name ); ?></span>
+        <span>Pedido <?php echo esc_html( $numero ); ?> · <?php echo esc_html( $fecha_fmt ); ?></span>
+    </div>
+
+</div><!-- .fc-doc -->
+
+<script>
+// Abrir diálogo de impresión al cargar (solo si no viene de botón cerrar)
+if (!sessionStorage.getItem('fc_print_closed')) {
+    window.addEventListener('load', function() {
+        setTimeout(function() { window.print(); }, 400);
+    });
+}
+</script>
+</body>
+</html>
+<?php
+    exit;
+}

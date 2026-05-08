@@ -173,6 +173,7 @@
             </div>
 
             <div class="fc-card-extra-actions">
+                <button class="fc-btn-sm fc-btn-imprimir" data-id="${p.id}" style="background:#2d6a4f;">&#128424; Imprimir</button>
                 <button class="fc-btn-sm fc-btn-editar-pedido" style="background:#4a5568;">&#9998; Editar</button>
                 ${isAdmin ? `<button class="fc-btn-sm fc-btn-eliminar-pedido" style="background:#ef4444;">&#10005; Eliminar</button>` : ''}
             </div>
@@ -289,6 +290,15 @@
                     btn.textContent = '✕ Eliminar';
                     btn.disabled    = false;
                 }
+            });
+        });
+
+        // Imprimir pedido
+        $$('.fc-btn-imprimir', grid).forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const pedidoId = btn.dataset.id;
+                window.open(`${siteurl}/?fc_print_pedido=${pedidoId}`, '_blank', 'noopener');
             });
         });
 

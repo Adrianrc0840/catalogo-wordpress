@@ -775,7 +775,7 @@ function fc_render_pedidos_admin_page() {
                     <th style="width:105px;">Fecha entrega</th>
                     <th style="width:105px;">Registrado</th>
                     <th style="width:210px;">Cambiar estado</th>
-                    <th style="width:44px;">Link</th>
+                    <th style="width:80px;">Ver / 🖨</th>
                     <th style="width:150px;">Acciones</th>
                 </tr>
             </thead>
@@ -826,8 +826,10 @@ function fc_render_pedidos_admin_page() {
                             <button type="submit" name="fc_update_status" class="button button-small" style="white-space:nowrap;">Guardar</button>
                         </form>
                     </td>
-                    <td>
+                    <td style="white-space:nowrap;">
                         <a href="<?php echo esc_url( $client_url ); ?>" target="_blank" class="button button-small">Ver</a>
+                        <a href="<?php echo esc_url( add_query_arg( 'fc_print_pedido', $pedido->ID, home_url( '/' ) ) ); ?>"
+                           target="_blank" class="button button-small" style="margin-left:4px;">🖨</a>
                     </td>
                     <td style="white-space:nowrap;">
                         <a href="<?php echo esc_url( $edit_url ); ?>" class="button button-small">Editar</a>
