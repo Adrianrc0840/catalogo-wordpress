@@ -162,12 +162,17 @@ function fc_get_pedido_arreglo_thumb( $pedido_id ) {
     $tamanos       = get_post_meta( $arreglo_id, '_fc_tamanos',      true );
     if ( ! is_array( $tamanos ) ) $tamanos = [];
 
+    // Limpiar sufijo de precio que el panel antiguo incluía en el nombre
+    // ej. "6 rosas ($380)" → "6 rosas"
+    $tamano_nombre_clean = trim( preg_replace( '/\s*\(\$[^)]+\)$/', '', $tamano_nombre ?? '' ) );
+
     $img_url       = '';
     $tamano_img    = '';   // imagen del tamaño exacto (sin color), como fallback
 
     // 1 y 2 — Buscar tamaño exacto; dentro de él, color exacto
     foreach ( $tamanos as $t ) {
-        if ( $tamano_nombre && ( $t['nombre'] ?? '' ) !== $tamano_nombre ) continue;
+        $t_nombre = trim( $t['nombre'] ?? '' );
+        if ( $tamano_nombre_clean && $t_nombre !== $tamano_nombre_clean ) continue;
 
         // Guardamos la imagen del tamaño como respaldo
         if ( ! $tamano_img && ! empty( $t['imagen_url'] ) ) {

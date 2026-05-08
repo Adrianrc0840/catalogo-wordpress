@@ -770,10 +770,11 @@
                     selectedArreglo = res.data;
                     populateTamanos(res.data.tamanos || []);
 
-                    // Pre-seleccionar tamaño por texto
+                    // Pre-seleccionar tamaño por nombre (dataset.nombre o texto completo para órdenes antiguas)
                     if (tamSelect && pedido.tamano) {
                         for (let i = 1; i < tamSelect.options.length; i++) {
-                            if (tamSelect.options[i].text === pedido.tamano) {
+                            const optNombre = tamSelect.options[i].dataset.nombre || tamSelect.options[i].text;
+                            if (optNombre === pedido.tamano || tamSelect.options[i].text === pedido.tamano) {
                                 tamSelect.value = tamSelect.options[i].value;
                                 const idx     = parseInt(tamSelect.options[i].value, 10);
                                 const colores = res.data.tamanos[idx]?.colores || [];
@@ -853,7 +854,8 @@
         const arregloId     = $('#fc-arreglo-id')?.value || '';
         const arregloNombre = $('#fc-arreglo-nombre')?.value || '';
         const tamanoEl      = $('#fc-tamano-select');
-        const tamanoNombre  = tamanoEl?.options[tamanoEl.selectedIndex]?.text || '';
+        const tamanoNombre  = tamanoEl?.options[tamanoEl.selectedIndex]?.dataset.nombre
+                           || tamanoEl?.options[tamanoEl.selectedIndex]?.text || '';
         const colorEl       = $('#fc-color-select');
         const colorNombre   = (colorEl?.value) ? colorEl.options[colorEl.selectedIndex]?.text || '' : '';
 
@@ -999,6 +1001,7 @@
         tamanos.forEach((t, i) => {
             const opt = document.createElement('option');
             opt.value = i;
+            opt.dataset.nombre = t.nombre;   // nombre limpio sin precio, para guardar en el pedido
             opt.textContent = t.nombre + (t.precio ? ` ($${Number(t.precio).toLocaleString('es-MX')})` : '');
             tamSelect.appendChild(opt);
         });
