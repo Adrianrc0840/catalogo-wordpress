@@ -613,16 +613,6 @@ function fc_print_pedido_page() {
     $tipo_label  = $tipo === 'recoleccion' ? 'Recolección en tienda' : 'Envío a domicilio';
     $entrega_det = $tipo === 'recoleccion' ? $hora_rec : $horario;
 
-    // Status badge color
-    $badge_colors = [
-        'recibido'          => '#6366f1',
-        'en_preparacion'    => '#f59e0b',
-        'en_camino'         => '#3b82f6',
-        'listo_recoleccion' => '#8b5cf6',
-        'entregado'         => '#22c55e',
-    ];
-    $badge_color = $badge_colors[ $status ] ?? '#64748b';
-
     // Format fecha
     $fecha_fmt = '';
     if ( $fecha ) {
@@ -676,7 +666,7 @@ function fc_print_pedido_page() {
     font-size: 13px;
     font-weight: 600;
   }
-  .fc-print-btn.primary  { background: #1e293b; color: #fff; }
+  .fc-print-btn.primary  { background: #9d174d; color: #fff; }
   .fc-print-btn.secondary { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
 
   /* ── Documento ── */
@@ -688,7 +678,7 @@ function fc_print_pedido_page() {
 
   /* Encabezado */
   .fc-doc-header {
-    background: #1e293b;
+    background: #9d174d;
     color: #fff;
     padding: 20px 28px;
     display: flex;
@@ -717,18 +707,6 @@ function fc_print_pedido_page() {
     font-size: 10px;
     opacity: .65;
     margin-top: 3px;
-  }
-
-  /* Franja de estado */
-  .fc-status-strip {
-    background: <?php echo esc_attr( $badge_color ); ?>;
-    color: #fff;
-    text-align: center;
-    font-weight: 700;
-    font-size: 11px;
-    padding: 5px;
-    letter-spacing: .8px;
-    text-transform: uppercase;
   }
 
   /* Cuerpo: tabla de 2 columnas (más compatible en print que CSS grid) */
@@ -825,7 +803,7 @@ function fc_print_pedido_page() {
 
   /* Sección acuse de recibo */
   .fc-receipt {
-    border-top: 2px solid #1e293b;
+    border-top: 2px solid #9d174d;
     padding: 18px 26px 22px;
     background: #f8fafc;
   }
@@ -834,7 +812,7 @@ function fc_print_pedido_page() {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .9px;
-    color: #1e293b;
+    color: #9d174d;
     margin-bottom: 16px;
   }
   /* Tabla para los campos del acuse (máxima compatibilidad en print) */
@@ -885,7 +863,7 @@ function fc_print_pedido_page() {
   /* Pie */
   .fc-doc-footer {
     padding: 10px 26px;
-    background: #1e293b;
+    background: #9d174d;
     color: rgba(255,255,255,.55);
     font-size: 9.5px;
     display: flex;
@@ -921,9 +899,6 @@ function fc_print_pedido_page() {
             <div class="fc-fecha-reg">Registrado el <?php echo esc_html( get_the_date( 'd/m/Y H:i', $post ) ); ?></div>
         </div>
     </div>
-
-    <!-- Franja de estado -->
-    <div class="fc-status-strip"><?php echo esc_html( $status_lbl ); ?></div>
 
     <!-- Cuerpo: tabla 2 columnas (info | foto) — más estable en PDF que CSS grid -->
     <table class="fc-doc-body">

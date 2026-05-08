@@ -145,28 +145,53 @@ function fc_pedido_status_label( $status ) {
 
 /**
  * Obtiene la URL de la imagen del arreglo asociado a un pedido.
- * Busca en _fc_tamanos usando el tamaño guardado en el pedido,
- * con fallbacks a foto_catalogo, primer tamaño, y featured image.
+ *
+ * Prioridad:
+ *   1. Color exacto dentro del tamaño exacto del pedido
+ *   2. Imagen del tamaño exacto del pedido (sin color)
+ *   3. Tamaño marcado como foto de catálogo
+ *   4. Primer tamaño con imagen
+ *   5. Featured image del post del arreglo
  */
 function fc_get_pedido_arreglo_thumb( $pedido_id ) {
-    $arreglo_id    = (int) get_post_meta( $pedido_id, '_fc_pedido_arreglo_id', true );
+    $arreglo_id    = (int) get_post_meta( $pedido_id, '_fc_pedido_arreglo_id',    true );
     if ( ! $arreglo_id ) return '';
 
     $tamano_nombre = get_post_meta( $pedido_id, '_fc_pedido_tamano', true );
-    $tamanos       = get_post_meta( $arreglo_id, '_fc_tamanos', true );
+    $color_nombre  = get_post_meta( $pedido_id, '_fc_pedido_color',  true );
+    $tamanos       = get_post_meta( $arreglo_id, '_fc_tamanos',      true );
     if ( ! is_array( $tamanos ) ) $tamanos = [];
 
-    $img_url = '';
+    $img_url       = '';
+    $tamano_img    = '';   // imagen del tamaño exacto (sin color), como fallback
 
-    // 1. Tamaño exacto del pedido
+    // 1 y 2 — Buscar tamaño exacto; dentro de él, color exacto
     foreach ( $tamanos as $t ) {
-        if ( $tamano_nombre && ( $t['nombre'] ?? '' ) === $tamano_nombre && ! empty( $t['imagen_url'] ) ) {
-            $img_url = $t['imagen_url'];
+        if ( $tamano_nombre && ( $t['nombre'] ?? '' ) !== $tamano_nombre ) continue;
+
+        // Guardamos la imagen del tamaño como respaldo
+        if ( ! $tamano_img && ! empty( $t['imagen_url'] ) ) {
+            $tamano_img = $t['imagen_url'];
+        }
+
+        // 1. Buscar el color exacto dentro de este tamaño
+        if ( $color_nombre && ! empty( $t['colores'] ) && is_array( $t['colores'] ) ) {
+            foreach ( $t['colores'] as $c ) {
+                if ( ( $c['nombre'] ?? '' ) === $color_nombre && ! empty( $c['imagen_url'] ) ) {
+                    $img_url = $c['imagen_url'];
+                    break 2;
+                }
+            }
+        }
+
+        // 2. Si no hay color (o no tiene imagen), usar la del tamaño
+        if ( ! $img_url && $tamano_img ) {
+            $img_url = $tamano_img;
             break;
         }
     }
 
-    // 2. Tamaño marcado como foto de catálogo
+    // 3. Tamaño marcado como foto de catálogo
     if ( ! $img_url ) {
         foreach ( $tamanos as $t ) {
             if ( ! empty( $t['foto_catalogo'] ) && $t['foto_catalogo'] === '1' && ! empty( $t['imagen_url'] ) ) {
@@ -176,12 +201,14 @@ function fc_get_pedido_arreglo_thumb( $pedido_id ) {
         }
     }
 
-    // 3. Primer tamaño con imagen
-    if ( ! $img_url && ! empty( $tamanos[0]['imagen_url'] ) ) {
-        $img_url = $tamanos[0]['imagen_url'];
+    // 4. Primer tamaño con imagen
+    if ( ! $img_url ) {
+        foreach ( $tamanos as $t ) {
+            if ( ! empty( $t['imagen_url'] ) ) { $img_url = $t['imagen_url']; break; }
+        }
     }
 
-    // 4. Featured image del post
+    // 5. Featured image del post
     if ( ! $img_url ) {
         $img_url = get_the_post_thumbnail_url( $arreglo_id, 'medium' ) ?: '';
     }
