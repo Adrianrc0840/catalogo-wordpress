@@ -88,7 +88,7 @@ function fc_ajax_panel_login() {
         wp_send_json_error( [ 'message' => 'Credenciales incorrectas.' ] );
     }
 
-    if ( ! user_can( $user, 'fc_ver_pedidos' ) ) {
+    if ( ! user_can( $user, 'fc_ver_pedidos' ) && ! user_can( $user, 'manage_options' ) ) {
         wp_send_json_error( [ 'message' => 'No tienes permiso para acceder al panel.' ] );
     }
 
