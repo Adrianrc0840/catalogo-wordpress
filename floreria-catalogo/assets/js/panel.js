@@ -1167,6 +1167,12 @@
 
     // ── Init ──
     function init() {
+        // Modal, arreglo search y copy link funcionan tanto en el panel
+        // como en la página de admin (donde no existe .fc-panel-body)
+        initNewOrderModal();
+        initArregloSearch();
+        initCopySuccessLink();
+
         const isPanel = document.body.classList.contains('fc-panel-body') ||
             document.querySelector('.fc-panel-body');
 
@@ -1178,9 +1184,6 @@
         initFilterTabs();
         initDateFilter();
         initLightbox();
-        initNewOrderModal();
-        initCopySuccessLink();
-        initArregloSearch();
 
         // Load orders if logged in (panel header present)
         if ($('#fc-panel-header')) {

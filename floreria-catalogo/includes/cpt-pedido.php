@@ -262,6 +262,7 @@ function fc_enqueue_pedidos_admin( $hook ) {
         'nonce'     => wp_create_nonce( 'fc_panel_nonce' ),
         'siteurl'   => home_url(),
         'schedules' => fc_get_schedules(),
+        'isAdmin'   => true,
     ] );
 }
 
@@ -849,8 +850,8 @@ function fc_render_pedidos_admin_page() {
         <?php endif; // end if ($view === 'trash') / else ?>
     </div>
 
-    <!-- Modal nuevo pedido (reutiliza el mismo HTML y JS del panel) -->
-    <div class="fc-modal-overlay" id="fc-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;">
+    <!-- Modal nuevo pedido (visibility controlada por clase .open vía panel.js) -->
+    <div class="fc-modal-overlay" id="fc-modal-overlay">
         <div class="fc-modal" role="dialog" style="background:#fff;border-radius:12px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
             <div class="fc-modal-header" style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid #eee;">
                 <h2 style="margin:0;font-size:18px;">Nuevo pedido</h2>
@@ -922,29 +923,14 @@ function fc_render_pedidos_admin_page() {
                     <div id="fc-pedido-link" style="font-size:13px;word-break:break-all;background:#fff;padding:8px;border-radius:4px;border:1px solid #ddd;margin-bottom:8px;"></div>
                     <button class="button" id="fc-copy-link-btn">Copiar link</button>
                 </div>
-                <button type="button" class="button button-primary" id="fc-submit-pedido" style="width:100%;padding:10px;">Registrar pedido</button>
+                <button type="submit" form="fc-new-pedido-form" class="button button-primary" id="fc-submit-pedido" style="width:100%;padding:10px;">Registrar pedido</button>
             </div>
         </div>
     </div>
 
     <script>
-    (function() {
-        var openBtn = document.getElementById('fc-btn-new-pedido');
-        var overlay = document.getElementById('fc-modal-overlay');
-        var closeBtn = document.getElementById('fc-modal-close');
-        var submitBtn = document.getElementById('fc-submit-pedido');
-        var successBox = document.getElementById('fc-pedido-success');
-        if (openBtn && overlay) {
-            openBtn.addEventListener('click', function() { overlay.style.display = 'flex'; });
-            closeBtn && closeBtn.addEventListener('click', function() { overlay.style.display = 'none'; });
-            overlay.addEventListener('click', function(e) { if (e.target === this) this.style.display = 'none'; });
-            submitBtn && submitBtn.addEventListener('click', function() {
-                var form = document.getElementById('fc-new-pedido-form');
-                if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-            });
-            if (successBox) successBox.style.display = 'none';
-        }
-    })();
+    // El modal de nuevo pedido lo maneja panel.js (initNewOrderModal),
+    // que ya corre en el admin tras mover la llamada fuera del guard isPanel.
 
     // ── Bulk actions JS ──
     (function() {
