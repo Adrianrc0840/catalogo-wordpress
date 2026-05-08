@@ -606,7 +606,7 @@ function fc_print_pedido_page() {
     $tamano      = get_post_meta( $pedido_id, '_fc_pedido_tamano',           true );
     $color       = get_post_meta( $pedido_id, '_fc_pedido_color',            true );
     $thumb       = fc_get_pedido_arreglo_thumb( $pedido_id );
-    $shop_name   = get_bloginfo( 'name' );
+    $shop_name   = 'Florería Monarca';
     $status_lbl  = fc_pedido_status_label( $status );
 
     // Delivery line
@@ -642,7 +642,14 @@ function fc_print_pedido_page() {
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Pedido <?php echo esc_html( $numero ); ?> – <?php echo esc_html( $shop_name ); ?></title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  /* ── Forzar colores e imágenes en impresión/PDF ── */
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 
   body {
     font-family: 'Segoe UI', Arial, sans-serif;
@@ -654,7 +661,7 @@ function fc_print_pedido_page() {
     margin: 0 auto;
   }
 
-  /* ── Print button (hidden on print) ── */
+  /* ── Botones (ocultos al imprimir) ── */
   .fc-print-actions {
     display: flex;
     justify-content: flex-end;
@@ -669,19 +676,19 @@ function fc_print_pedido_page() {
     font-size: 13px;
     font-weight: 600;
   }
-  .fc-print-btn.primary { background: #2d6a4f; color: #fff; }
+  .fc-print-btn.primary  { background: #1e293b; color: #fff; }
   .fc-print-btn.secondary { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
 
-  /* ── Document ── */
+  /* ── Documento ── */
   .fc-doc {
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
     overflow: hidden;
   }
 
-  /* Header */
+  /* Encabezado */
   .fc-doc-header {
-    background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%);
+    background: #1e293b;
     color: #fff;
     padding: 20px 28px;
     display: flex;
@@ -689,205 +696,208 @@ function fc_print_pedido_page() {
     justify-content: space-between;
   }
   .fc-doc-header h1 {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
     letter-spacing: -.3px;
   }
   .fc-doc-header .fc-doc-subtitle {
-    font-size: 11px;
-    opacity: .75;
-    margin-top: 2px;
+    font-size: 10px;
+    opacity: .7;
+    margin-top: 3px;
     text-transform: uppercase;
-    letter-spacing: .5px;
+    letter-spacing: .6px;
   }
-  .fc-doc-header-right {
-    text-align: right;
-  }
+  .fc-doc-header-right { text-align: right; }
   .fc-doc-header-right .fc-num {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 700;
-    font-family: monospace;
+    font-family: 'Courier New', monospace;
   }
   .fc-doc-header-right .fc-fecha-reg {
-    font-size: 11px;
-    opacity: .7;
+    font-size: 10px;
+    opacity: .65;
     margin-top: 3px;
   }
 
-  /* Status strip */
+  /* Franja de estado */
   .fc-status-strip {
     background: <?php echo esc_attr( $badge_color ); ?>;
     color: #fff;
     text-align: center;
     font-weight: 700;
-    font-size: 12px;
-    padding: 6px;
-    letter-spacing: .5px;
+    font-size: 11px;
+    padding: 5px;
+    letter-spacing: .8px;
     text-transform: uppercase;
   }
 
-  /* Body */
+  /* Cuerpo: tabla de 2 columnas (más compatible en print que CSS grid) */
   .fc-doc-body {
-    display: grid;
-    grid-template-columns: 1fr 200px;
-    gap: 0;
+    width: 100%;
+    border-collapse: collapse;
   }
-
-  /* Info col */
   .fc-info-col {
-    padding: 24px 28px;
-    border-right: 1px solid #e2e8f0;
+    padding: 22px 26px;
+    vertical-align: top;
+    border-right: 1px solid #e5e7eb;
+    width: calc(100% - 190px);
+  }
+  .fc-photo-col {
+    padding: 22px 18px;
+    vertical-align: top;
+    text-align: center;
+    width: 190px;
+    background: #f8fafc;
   }
 
   .fc-section-title {
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .8px;
-    color: #64748b;
-    margin-bottom: 12px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid #f1f5f9;
+    letter-spacing: .9px;
+    color: #6b7280;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #f3f4f6;
   }
 
   .fc-row {
     display: flex;
     gap: 8px;
-    margin-bottom: 9px;
-    line-height: 1.4;
+    margin-bottom: 8px;
+    line-height: 1.45;
   }
   .fc-row-label {
     font-weight: 600;
-    color: #475569;
-    min-width: 90px;
+    color: #4b5563;
+    min-width: 88px;
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: 11.5px;
   }
   .fc-row-value {
-    color: #1e293b;
-    font-size: 13px;
+    color: #111827;
+    font-size: 12.5px;
+    /* Evitar desbordamiento de texto largo */
+    word-break: break-word;
+    overflow-wrap: break-word;
+    min-width: 0;
+    flex: 1;
   }
-  .fc-row-value.italic { font-style: italic; color: #4b5563; }
+  .fc-row-value.italic { font-style: italic; color: #374151; }
 
   .fc-divider {
     border: none;
-    border-top: 1px dashed #e2e8f0;
-    margin: 14px 0;
+    border-top: 1px dashed #e5e7eb;
+    margin: 12px 0;
   }
 
-  /* Photo col */
-  .fc-photo-col {
-    padding: 24px 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    background: #f8fafc;
-  }
+  /* Columna foto */
   .fc-photo-col img {
-    width: 160px;
-    height: 160px;
+    width: 150px;
+    height: 150px;
     object-fit: cover;
-    border-radius: 10px;
-    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    border: 1.5px solid #e5e7eb;
     display: block;
+    margin: 0 auto;
   }
-  .fc-photo-col .fc-no-photo {
-    width: 160px;
-    height: 160px;
-    border-radius: 10px;
-    border: 2px dashed #cbd5e1;
+  .fc-no-photo {
+    width: 150px;
+    height: 150px;
+    border-radius: 8px;
+    border: 1.5px dashed #d1d5db;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #94a3b8;
+    color: #9ca3af;
     font-size: 11px;
     text-align: center;
     background: #fff;
+    margin: 0 auto;
   }
   .fc-photo-label {
-    margin-top: 10px;
-    font-size: 11px;
-    color: #64748b;
-    text-align: center;
+    margin-top: 9px;
+    font-size: 10.5px;
+    color: #6b7280;
     font-weight: 600;
+    word-break: break-word;
   }
 
-  /* Receipt section */
+  /* Sección acuse de recibo */
   .fc-receipt {
-    border-top: 2px solid #1b4332;
-    padding: 20px 28px 24px;
+    border-top: 2px solid #1e293b;
+    padding: 18px 26px 22px;
     background: #f8fafc;
   }
   .fc-receipt-title {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .8px;
-    color: #1b4332;
-    margin-bottom: 18px;
-  }
-  .fc-receipt-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 18px 32px;
-    margin-bottom: 18px;
-  }
-  .fc-receipt-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .fc-receipt-field label {
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
+    letter-spacing: .9px;
+    color: #1e293b;
+    margin-bottom: 16px;
+  }
+  /* Tabla para los campos del acuse (máxima compatibilidad en print) */
+  .fc-receipt-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+  }
+  .fc-receipt-table td {
+    width: 50%;
+    padding-right: 24px;
+    vertical-align: bottom;
+  }
+  .fc-receipt-table td:last-child { padding-right: 0; }
+  .fc-receipt-field-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
     letter-spacing: .5px;
-    color: #64748b;
+    color: #6b7280;
+    display: block;
+    margin-bottom: 5px;
   }
   .fc-receipt-line {
-    border: none;
-    border-bottom: 1.5px solid #94a3b8;
-    height: 28px;
-    background: transparent;
+    display: block;
+    border-bottom: 1.5px solid #9ca3af;
+    height: 26px;
     width: 100%;
   }
-  .fc-receipt-sig {
-    margin-top: 4px;
-  }
-  .fc-receipt-sig label {
-    font-size: 10px;
+  .fc-receipt-sig-label {
+    font-size: 9.5px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .5px;
-    color: #64748b;
+    color: #6b7280;
     display: block;
     margin-bottom: 6px;
   }
   .fc-receipt-sig-box {
-    border: 1.5px solid #94a3b8;
-    border-radius: 6px;
-    height: 80px;
+    border: 1.5px solid #9ca3af;
+    border-radius: 5px;
+    height: 78px;
     width: 100%;
     background: #fff;
+    display: block;
   }
 
-  /* Footer */
+  /* Pie */
   .fc-doc-footer {
-    padding: 12px 28px;
-    background: #1b4332;
-    color: rgba(255,255,255,.6);
-    font-size: 10px;
+    padding: 10px 26px;
+    background: #1e293b;
+    color: rgba(255,255,255,.55);
+    font-size: 9.5px;
     display: flex;
     justify-content: space-between;
   }
 
-  /* ── Print media ── */
+  /* ── Impresión / PDF ── */
   @media print {
     body { padding: 0; max-width: 100%; }
     .fc-print-actions { display: none !important; }
     .fc-doc { border-radius: 0; border: none; }
-    @page { margin: 10mm; size: A4 portrait; }
+    @page { margin: 8mm 10mm; size: A4 portrait; }
   }
 </style>
 </head>
@@ -900,7 +910,7 @@ function fc_print_pedido_page() {
 
 <div class="fc-doc">
 
-    <!-- Header -->
+    <!-- Encabezado -->
     <div class="fc-doc-header">
         <div>
             <h1><?php echo esc_html( $shop_name ); ?></h1>
@@ -912,13 +922,13 @@ function fc_print_pedido_page() {
         </div>
     </div>
 
-    <!-- Status strip -->
+    <!-- Franja de estado -->
     <div class="fc-status-strip"><?php echo esc_html( $status_lbl ); ?></div>
 
-    <!-- Body: info + photo -->
-    <div class="fc-doc-body">
-
-        <div class="fc-info-col">
+    <!-- Cuerpo: tabla 2 columnas (info | foto) — más estable en PDF que CSS grid -->
+    <table class="fc-doc-body">
+    <tr>
+        <td class="fc-info-col">
 
             <!-- Arreglo -->
             <div class="fc-section-title">Arreglo</div>
@@ -932,7 +942,7 @@ function fc_print_pedido_page() {
                 <span class="fc-row-value"><?php echo esc_html( $tamano ); ?></span>
             </div>
             <?php endif; ?>
-            <?php if ( $color && ! str_starts_with( $color, '--' ) ) : ?>
+            <?php if ( $color && strpos( $color, '--' ) !== 0 ) : ?>
             <div class="fc-row">
                 <span class="fc-row-label">Color</span>
                 <span class="fc-row-value"><?php echo esc_html( $color ); ?></span>
@@ -993,7 +1003,6 @@ function fc_print_pedido_page() {
             </div>
             <?php endif; ?>
             <?php if ( $nota ) : ?>
-
             <hr class="fc-divider" />
             <div class="fc-section-title">Nota especial</div>
             <div class="fc-row">
@@ -1001,46 +1010,46 @@ function fc_print_pedido_page() {
             </div>
             <?php endif; ?>
             <?php if ( $nota_fl ) : ?>
-            <div class="fc-row" style="margin-top:6px;">
-                <span class="fc-row-label">Florería</span>
+            <div class="fc-row" style="margin-top:5px;">
+                <span class="fc-row-label">Nota florería</span>
                 <span class="fc-row-value italic"><?php echo esc_html( $nota_fl ); ?></span>
             </div>
             <?php endif; ?>
 
-        </div><!-- .fc-info-col -->
+        </td>
 
-        <!-- Photo -->
-        <div class="fc-photo-col">
+        <!-- Foto del arreglo -->
+        <td class="fc-photo-col">
             <?php if ( $thumb ) : ?>
                 <img src="<?php echo esc_url( $thumb ); ?>" alt="Foto del arreglo" />
             <?php else : ?>
                 <div class="fc-no-photo">Sin foto disponible</div>
             <?php endif; ?>
             <div class="fc-photo-label"><?php echo esc_html( $arreglo ); ?></div>
-        </div>
+        </td>
+    </tr>
+    </table><!-- .fc-doc-body -->
 
-    </div><!-- .fc-doc-body -->
-
-    <!-- Receipt section -->
+    <!-- Acuse de recibo -->
     <div class="fc-receipt">
         <div class="fc-receipt-title">✔ Acuse de recibo</div>
-        <div class="fc-receipt-grid">
-            <div class="fc-receipt-field">
-                <label>Recibido por</label>
-                <div class="fc-receipt-line"></div>
-            </div>
-            <div class="fc-receipt-field">
-                <label>Hora de recepción</label>
-                <div class="fc-receipt-line"></div>
-            </div>
-        </div>
-        <div class="fc-receipt-sig">
-            <label>Firma de quien recibe</label>
-            <div class="fc-receipt-sig-box"></div>
-        </div>
+        <table class="fc-receipt-table">
+            <tr>
+                <td>
+                    <span class="fc-receipt-field-label">Recibido por</span>
+                    <span class="fc-receipt-line"></span>
+                </td>
+                <td>
+                    <span class="fc-receipt-field-label">Hora de recepción</span>
+                    <span class="fc-receipt-line"></span>
+                </td>
+            </tr>
+        </table>
+        <span class="fc-receipt-sig-label">Firma de quien recibe</span>
+        <span class="fc-receipt-sig-box"></span>
     </div>
 
-    <!-- Footer -->
+    <!-- Pie de página -->
     <div class="fc-doc-footer">
         <span><?php echo esc_html( $shop_name ); ?></span>
         <span>Pedido <?php echo esc_html( $numero ); ?> · <?php echo esc_html( $fecha_fmt ); ?></span>
