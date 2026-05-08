@@ -22,6 +22,8 @@ require_once FC_PATH . 'includes/settings.php';
 require_once FC_PATH . 'includes/admin-list.php';
 require_once FC_PATH . 'includes/csv-tools.php';
 require_once FC_PATH . 'includes/politicas.php';
+require_once FC_PATH . 'includes/cpt-pedido.php';
+require_once FC_PATH . 'includes/panel-florista.php';
 
 add_action( 'wp_enqueue_scripts', 'fc_enqueue_frontend' );
 function fc_enqueue_frontend() {

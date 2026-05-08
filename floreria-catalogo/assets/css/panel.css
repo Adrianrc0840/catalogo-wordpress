@@ -1,0 +1,902 @@
+/* ── Panel Florista — Brand variables ── */
+:root {
+    --fc-primary:  #c8185a;
+    --fc-dark:     #8b1a47;
+    --fc-light-bg: #fdf5f7;
+    --fc-border:   #f0c0d0;
+
+    /* Status colors */
+    --fc-s-recibido:          #3b82f6;
+    --fc-s-en_preparacion:    #f59e0b;
+    --fc-s-en_camino:         #8b5cf6;
+    --fc-s-listo_recoleccion: #06b6d4;
+    --fc-s-entregado:         #10b981;
+}
+
+/* ── Reset for panel scope ── */
+.fc-panel-body * {
+    box-sizing: border-box;
+}
+
+.fc-panel-body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f4f5f7;
+    min-height: 100vh;
+    color: #1a202c;
+}
+
+/* ── Login card ── */
+.fc-login-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #fdf5f7 0%, #fce4ec 100%);
+    padding: 20px;
+}
+
+.fc-login-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(200, 24, 90, 0.15);
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 420px;
+}
+
+.fc-login-logo {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.fc-login-logo h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--fc-primary);
+    margin: 0 0 4px;
+    line-height: 1.2;
+}
+
+.fc-login-logo p {
+    font-size: 14px;
+    color: #718096;
+    margin: 0;
+}
+
+.fc-login-card h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0 0 24px;
+    text-align: center;
+}
+
+.fc-form-group {
+    margin-bottom: 18px;
+}
+
+.fc-form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 6px;
+}
+
+.fc-form-group input,
+.fc-form-group select,
+.fc-form-group textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #2d3748;
+    background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+
+.fc-form-group input:focus,
+.fc-form-group select:focus,
+.fc-form-group textarea:focus {
+    border-color: var(--fc-primary);
+    box-shadow: 0 0 0 3px rgba(200, 24, 90, 0.1);
+}
+
+.fc-btn-primary {
+    width: 100%;
+    background: var(--fc-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    margin-top: 8px;
+}
+
+.fc-btn-primary:hover {
+    background: var(--fc-dark);
+}
+
+.fc-btn-primary:active {
+    transform: scale(0.98);
+}
+
+.fc-login-error {
+    color: #e53e3e;
+    font-size: 13px;
+    text-align: center;
+    margin-top: 12px;
+    min-height: 18px;
+}
+
+/* ── Panel header ── */
+.fc-panel-header {
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.fc-panel-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.fc-panel-header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--fc-primary);
+    margin: 0;
+}
+
+.fc-panel-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fc-user-name {
+    font-size: 14px;
+    color: #4a5568;
+    font-weight: 500;
+}
+
+.fc-btn-outline {
+    background: transparent;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    color: #4a5568;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    font-weight: 500;
+}
+
+.fc-btn-outline:hover {
+    border-color: var(--fc-primary);
+    color: var(--fc-primary);
+}
+
+.fc-btn-new-pedido {
+    background: var(--fc-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.fc-btn-new-pedido:hover {
+    background: var(--fc-dark);
+}
+
+/* ── Panel content ── */
+.fc-panel-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+/* ── Filter tabs ── */
+.fc-filter-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.fc-filter-tab {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a5568;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.fc-filter-tab:hover {
+    border-color: var(--fc-primary);
+    color: var(--fc-primary);
+}
+
+.fc-filter-tab.active {
+    background: var(--fc-primary);
+    border-color: var(--fc-primary);
+    color: #fff;
+}
+
+/* ── Orders grid ── */
+.fc-orders-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 18px;
+    align-items: start;
+}
+
+.fc-no-pedidos {
+    text-align: center;
+    color: #a0aec0;
+    font-size: 15px;
+    padding: 40px;
+    grid-column: 1 / -1;
+}
+
+/* ── Order card ── */
+.fc-order-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    border-left: 4px solid #e2e8f0;
+    padding: 20px;
+    transition: box-shadow 0.2s;
+}
+
+.fc-order-card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.10);
+}
+
+/* Status border colors */
+.fc-order-card[data-status="recibido"]          { border-left-color: var(--fc-s-recibido); }
+.fc-order-card[data-status="en_preparacion"]    { border-left-color: var(--fc-s-en_preparacion); }
+.fc-order-card[data-status="en_camino"]         { border-left-color: var(--fc-s-en_camino); }
+.fc-order-card[data-status="listo_recoleccion"] { border-left-color: var(--fc-s-listo_recoleccion); }
+.fc-order-card[data-status="entregado"]         { border-left-color: var(--fc-s-entregado); }
+
+.fc-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.fc-order-num {
+    font-size: 16px;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+/* ── Status badge ── */
+.fc-status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.fc-status-badge.recibido          { background: var(--fc-s-recibido); }
+.fc-status-badge.en_preparacion    { background: var(--fc-s-en_preparacion); }
+.fc-status-badge.en_camino         { background: var(--fc-s-en_camino); }
+.fc-status-badge.listo_recoleccion { background: var(--fc-s-listo_recoleccion); }
+.fc-status-badge.entregado         { background: var(--fc-s-entregado); }
+
+/* ── Card body ── */
+.fc-card-info {
+    margin-bottom: 14px;
+}
+
+.fc-card-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #4a5568;
+    align-items: flex-start;
+}
+
+.fc-card-row .fc-label {
+    font-weight: 600;
+    color: #718096;
+    min-width: 90px;
+    flex-shrink: 0;
+}
+
+.fc-card-row .fc-value {
+    color: #2d3748;
+    word-break: break-word;
+}
+
+.fc-card-divider {
+    border: none;
+    border-top: 1px solid #f0f0f0;
+    margin: 12px 0;
+}
+
+/* ── Card actions ── */
+.fc-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.fc-status-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.fc-status-row select {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 7px;
+    font-size: 13px;
+    color: #2d3748;
+    background: #fff;
+    outline: none;
+    cursor: pointer;
+}
+
+.fc-btn-update {
+    background: #2d3748;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.fc-btn-update:hover {
+    background: #1a202c;
+}
+
+.fc-last-change {
+    font-size: 11px;
+    color: #a0aec0;
+    margin-top: -4px;
+}
+
+.fc-nota-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.fc-nota-row label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #718096;
+}
+
+.fc-nota-row textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 7px;
+    font-size: 13px;
+    color: #2d3748;
+    resize: vertical;
+    min-height: 64px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.fc-nota-row textarea:focus {
+    border-color: var(--fc-primary);
+}
+
+.fc-nota-row-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.fc-btn-sm {
+    background: var(--fc-primary);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.fc-btn-sm:hover {
+    background: var(--fc-dark);
+}
+
+.fc-btn-link {
+    background: transparent;
+    color: var(--fc-primary);
+    border: 1.5px solid var(--fc-primary);
+    border-radius: 7px;
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.fc-btn-link:hover {
+    background: var(--fc-primary);
+    color: #fff;
+}
+
+/* ── Toast notification ── */
+.fc-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #2d3748;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+}
+
+.fc-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.fc-toast.success { background: #10b981; }
+.fc-toast.error   { background: #e53e3e; }
+
+/* ── Modal overlay ── */
+.fc-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+.fc-modal-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.fc-modal {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 16px 60px rgba(0,0,0,0.2);
+    width: 100%;
+    max-width: 580px;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: translateY(-20px);
+    transition: transform 0.2s;
+}
+
+.fc-modal-overlay.open .fc-modal {
+    transform: translateY(0);
+}
+
+.fc-modal-header {
+    padding: 24px 24px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.fc-modal-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #2d3748;
+    margin: 0;
+}
+
+.fc-modal-close {
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    color: #a0aec0;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    transition: color 0.2s;
+}
+
+.fc-modal-close:hover {
+    color: #2d3748;
+}
+
+.fc-modal-body {
+    padding: 0 24px 24px;
+}
+
+.fc-modal-footer {
+    padding: 0 24px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ── Tipo toggle ── */
+.fc-tipo-toggle {
+    display: flex;
+    gap: 0;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.fc-tipo-option {
+    flex: 1;
+    text-align: center;
+    padding: 9px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a5568;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #fff;
+    border: none;
+    outline: none;
+}
+
+.fc-tipo-option.active {
+    background: var(--fc-primary);
+    color: #fff;
+}
+
+/* ── Autocomplete dropdown ── */
+.fc-autocomplete-wrap {
+    position: relative;
+}
+
+.fc-autocomplete-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    z-index: 200;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+}
+
+.fc-autocomplete-dropdown.open {
+    display: block;
+}
+
+.fc-autocomplete-item {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #2d3748;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.fc-autocomplete-item:hover {
+    background: var(--fc-light-bg);
+}
+
+/* ── Success link box ── */
+.fc-success-box {
+    background: #f0fff4;
+    border: 1.5px solid #10b981;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    display: none;
+}
+
+.fc-success-box.show {
+    display: block;
+}
+
+.fc-success-box h3 {
+    color: #10b981;
+    margin: 0 0 8px;
+    font-size: 15px;
+}
+
+.fc-success-box p {
+    font-size: 13px;
+    color: #4a5568;
+    margin: 0 0 10px;
+}
+
+.fc-success-link {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #2d3748;
+    word-break: break-all;
+    margin-bottom: 10px;
+}
+
+/* ── Loading spinner ── */
+.fc-loading {
+    text-align: center;
+    color: #a0aec0;
+    padding: 40px;
+    font-size: 15px;
+}
+
+/* ── Card extra actions (edit / delete) ── */
+.fc-card-extra-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 10px;
+    margin-top: 4px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+/* ── Mobile filter select ── */
+.fc-filter-select-mobile {
+    display: none;
+}
+
+/* ── Collapsible card body ── */
+.fc-card-collapse-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #a0aec0;
+    padding: 4px 6px;
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    line-height: 1;
+    flex-shrink: 0;
+    transform: rotate(0deg);
+    transition: color 0.2s, transform 0.25s;
+}
+
+.fc-card-collapse-btn:hover {
+    color: #4a5568;
+}
+
+/* ▾ apunta abajo (expandido) = sin rotación extra
+   Al colapsar, rota -90° → apunta a la derecha */
+.fc-order-card.collapsed .fc-card-collapse-btn {
+    transform: rotate(-90deg);
+}
+
+.fc-card-collapsible {
+    overflow: hidden;
+    transition: max-height 0.32s ease, opacity 0.22s ease;
+    max-height: 2000px;
+    opacity: 1;
+}
+
+.fc-order-card.collapsed .fc-card-collapsible {
+    max-height: 0 !important;
+    opacity: 0;
+}
+
+/* ── Date filter ── */
+.fc-date-filter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.fc-date-filter label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #4a5568;
+    white-space: nowrap;
+}
+
+.fc-date-filter input[type="date"] {
+    padding: 7px 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #2d3748;
+    background: #fff;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.fc-date-filter input[type="date"]:focus {
+    border-color: var(--fc-primary);
+    box-shadow: 0 0 0 3px rgba(200,24,90,0.1);
+}
+
+.fc-date-filter .fc-btn-outline {
+    font-size: 12px;
+    padding: 7px 12px;
+}
+
+/* ── Card thumbnail ── */
+.fc-card-thumb-wrap {
+    float: right;
+    margin: 0 0 8px 12px;
+    cursor: zoom-in;
+    flex-shrink: 0;
+}
+
+.fc-card-thumb {
+    width: 76px;
+    height: 76px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid #e2e8f0;
+    display: block;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.fc-card-thumb:hover {
+    border-color: var(--fc-primary);
+    transform: scale(1.06);
+}
+
+/* ── Lightbox ── */
+.fc-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s;
+    cursor: zoom-out;
+}
+
+.fc-lightbox.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.fc-lightbox-img {
+    max-width: 90vw;
+    max-height: 85vh;
+    border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    object-fit: contain;
+    cursor: default;
+    transition: transform 0.22s;
+}
+
+.fc-lightbox.open .fc-lightbox-img {
+    transform: scale(1);
+}
+
+.fc-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    font-size: 26px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    line-height: 1;
+}
+
+.fc-lightbox-close:hover {
+    background: rgba(255,255,255,0.28);
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+    .fc-panel-header {
+        padding: 0 14px;
+        flex-wrap: wrap;
+        height: auto;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        gap: 8px;
+    }
+
+    .fc-panel-content {
+        padding: 14px;
+    }
+
+    .fc-orders-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .fc-filter-tabs {
+        display: none;
+    }
+
+    .fc-filter-select-mobile {
+        display: block;
+        width: 100%;
+        padding: 10px 14px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #2d3748;
+        background: #fff;
+        margin-bottom: 16px;
+        cursor: pointer;
+        outline: none;
+        -webkit-appearance: auto;
+        appearance: auto;
+    }
+
+    .fc-filter-select-mobile:focus {
+        border-color: var(--fc-primary);
+    }
+
+    .fc-login-card {
+        padding: 32px 20px;
+    }
+
+    .fc-modal {
+        max-height: 95vh;
+    }
+
+    .fc-status-row {
+        flex-wrap: wrap;
+    }
+}
