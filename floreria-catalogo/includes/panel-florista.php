@@ -35,12 +35,16 @@ function fc_enqueue_panel() {
 
     wp_enqueue_style( 'fc-panel', FC_URL . 'assets/css/panel.css', [], FC_VERSION );
     wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js', [], FC_VERSION, true );
+    $tz    = new DateTimeZone( 'America/Tijuana' );
+    $today = ( new DateTime( 'now', $tz ) )->format( 'Y-m-d' );
+
     wp_localize_script( 'fc-panel', 'fcPanel', [
         'ajaxurl'   => admin_url( 'admin-ajax.php' ),
         'nonce'     => wp_create_nonce( 'fc_panel_nonce' ),
         'siteurl'   => home_url(),
         'schedules' => fc_get_schedules(),
         'isAdmin'   => current_user_can( 'manage_options' ),
+        'today'     => $today,
     ] );
 }
 
@@ -116,12 +120,16 @@ function fc_ajax_get_pedidos() {
     $fecha  = isset( $_POST['fecha'] )  ? sanitize_text_field( wp_unslash( $_POST['fecha'] ) ) : '';
     $valid  = array_keys( fc_pedido_status_labels() );
 
+    $tz    = new DateTimeZone( 'America/Tijuana' );
+    $today = ( new DateTime( 'now', $tz ) )->format( 'Y-m-d' );
+
     $args = [
         'post_type'      => 'pedido',
         'post_status'    => 'publish',
-        'posts_per_page' => 100,
-        'orderby'        => 'date',
-        'order'          => 'DESC',
+        'posts_per_page' => 200,
+        'meta_key'       => '_fc_pedido_fecha',
+        'orderby'        => 'meta_value',
+        'order'          => 'ASC',
     ];
 
     $meta_conditions = [];
@@ -134,50 +142,117 @@ function fc_ajax_get_pedidos() {
     }
 
     if ( $fecha ) {
+        // Fecha específica seleccionada → solo ese día (incluyendo días pasados)
         $meta_conditions[] = [
-            'key'   => '_fc_pedido_fecha',
-            'value' => $fecha,
+            'key'     => '_fc_pedido_fecha',
+            'value'   => $fecha,
+            'compare' => '=',
+        ];
+    } else {
+        // Sin fecha → mostrar desde hoy en adelante
+        $meta_conditions[] = [
+            'key'     => '_fc_pedido_fecha',
+            'value'   => $today,
+            'compare' => '>=',
         ];
     }
 
-    if ( ! empty( $meta_conditions ) ) {
-        $args['meta_query'] = array_merge( [ 'relation' => 'AND' ], $meta_conditions );
-    }
+    $args['meta_query'] = array_merge( [ 'relation' => 'AND' ], $meta_conditions );
 
     $pedidos_query = get_posts( $args );
-    $pedidos       = [];
+    $pedidos       = array_map( 'fc_build_pedido_data', $pedidos_query );
 
-    foreach ( $pedidos_query as $p ) {
-        $historial = maybe_unserialize( get_post_meta( $p->ID, '_fc_pedido_historial', true ) );
-        $historial = is_array( $historial ) ? $historial : [];
-        $last      = ! empty( $historial ) ? end( $historial ) : null;
+    wp_send_json_success( [ 'pedidos' => $pedidos ] );
+}
 
-        $pedidos[] = [
-            'id'                => $p->ID,
-            'numero'            => get_post_meta( $p->ID, '_fc_pedido_numero',           true ),
-            'token'             => get_post_meta( $p->ID, '_fc_pedido_token',            true ),
-            'status'            => get_post_meta( $p->ID, '_fc_pedido_status',           true ),
-            'tipo'              => get_post_meta( $p->ID, '_fc_pedido_tipo',             true ),
-            'fecha'             => get_post_meta( $p->ID, '_fc_pedido_fecha',            true ),
-            'horario'           => get_post_meta( $p->ID, '_fc_pedido_horario',          true ),
-            'direccion'         => get_post_meta( $p->ID, '_fc_pedido_direccion',        true ),
-            'hora_recoleccion'  => get_post_meta( $p->ID, '_fc_pedido_hora_recoleccion', true ),
-            'cliente_nombre'    => get_post_meta( $p->ID, '_fc_pedido_cliente_nombre',   true ),
-            'cliente_telefono'  => get_post_meta( $p->ID, '_fc_pedido_cliente_telefono', true ),
-            'destinatario'      => get_post_meta( $p->ID, '_fc_pedido_destinatario',     true ),
-            'mensaje_tarjeta'   => get_post_meta( $p->ID, '_fc_pedido_mensaje_tarjeta',  true ),
-            'nota'              => get_post_meta( $p->ID, '_fc_pedido_nota',             true ),
-            'arreglo_id'        => (int) get_post_meta( $p->ID, '_fc_pedido_arreglo_id',    true ),
-            'arreglo_nombre'    => get_post_meta( $p->ID, '_fc_pedido_arreglo_nombre',   true ),
-            'arreglo_thumb'     => fc_get_pedido_arreglo_thumb( $p->ID ),
-            'tamano'            => get_post_meta( $p->ID, '_fc_pedido_tamano',           true ),
-            'color'             => get_post_meta( $p->ID, '_fc_pedido_color',            true ),
-            'nota_floreria'     => get_post_meta( $p->ID, '_fc_pedido_nota_floreria',    true ),
-            'historial'         => $historial,
-            'last_change'       => $last,
-            'fecha_registro'    => get_the_date( 'd/m/Y H:i', $p ),
+// ─────────────────────────────────────────────
+// Helper: build pedido data array from WP_Post
+// ─────────────────────────────────────────────
+function fc_build_pedido_data( $p ) {
+    $historial = maybe_unserialize( get_post_meta( $p->ID, '_fc_pedido_historial', true ) );
+    $historial = is_array( $historial ) ? $historial : [];
+    $last      = ! empty( $historial ) ? end( $historial ) : null;
+
+    return [
+        'id'                => $p->ID,
+        'numero'            => get_post_meta( $p->ID, '_fc_pedido_numero',           true ),
+        'token'             => get_post_meta( $p->ID, '_fc_pedido_token',            true ),
+        'status'            => get_post_meta( $p->ID, '_fc_pedido_status',           true ),
+        'tipo'              => get_post_meta( $p->ID, '_fc_pedido_tipo',             true ),
+        'fecha'             => get_post_meta( $p->ID, '_fc_pedido_fecha',            true ),
+        'horario'           => get_post_meta( $p->ID, '_fc_pedido_horario',          true ),
+        'direccion'         => get_post_meta( $p->ID, '_fc_pedido_direccion',        true ),
+        'hora_recoleccion'  => get_post_meta( $p->ID, '_fc_pedido_hora_recoleccion', true ),
+        'cliente_nombre'    => get_post_meta( $p->ID, '_fc_pedido_cliente_nombre',   true ),
+        'cliente_telefono'  => get_post_meta( $p->ID, '_fc_pedido_cliente_telefono', true ),
+        'destinatario'      => get_post_meta( $p->ID, '_fc_pedido_destinatario',     true ),
+        'mensaje_tarjeta'   => get_post_meta( $p->ID, '_fc_pedido_mensaje_tarjeta',  true ),
+        'nota'              => get_post_meta( $p->ID, '_fc_pedido_nota',             true ),
+        'arreglo_id'        => (int) get_post_meta( $p->ID, '_fc_pedido_arreglo_id',    true ),
+        'arreglo_nombre'    => get_post_meta( $p->ID, '_fc_pedido_arreglo_nombre',   true ),
+        'arreglo_thumb'     => fc_get_pedido_arreglo_thumb( $p->ID ),
+        'tamano'            => get_post_meta( $p->ID, '_fc_pedido_tamano',           true ),
+        'color'             => get_post_meta( $p->ID, '_fc_pedido_color',            true ),
+        'nota_floreria'     => get_post_meta( $p->ID, '_fc_pedido_nota_floreria',    true ),
+        'historial'         => $historial,
+        'last_change'       => $last,
+        'fecha_registro'    => get_the_date( 'd/m/Y H:i', $p ),
+    ];
+}
+
+// ─────────────────────────────────────────────
+// AJAX: Buscar pedidos (búsqueda global)
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_fc_panel_search_pedidos', 'fc_ajax_search_pedidos' );
+function fc_ajax_search_pedidos() {
+    fc_panel_verify_nonce();
+    fc_panel_require_cap();
+
+    $term = isset( $_POST['term'] ) ? sanitize_text_field( wp_unslash( $_POST['term'] ) ) : '';
+
+    if ( strlen( $term ) < 2 ) {
+        wp_send_json_success( [ 'pedidos' => [] ] );
+    }
+
+    $search_fields = [
+        '_fc_pedido_numero',
+        '_fc_pedido_cliente_nombre',
+        '_fc_pedido_cliente_telefono',
+        '_fc_pedido_destinatario',
+        '_fc_pedido_mensaje_tarjeta',
+        '_fc_pedido_nota',
+        '_fc_pedido_arreglo_nombre',
+        '_fc_pedido_direccion',
+        '_fc_pedido_color',
+        '_fc_pedido_tamano',
+    ];
+
+    $meta_query = [ 'relation' => 'OR' ];
+    foreach ( $search_fields as $field ) {
+        $meta_query[] = [
+            'key'     => $field,
+            'value'   => $term,
+            'compare' => 'LIKE',
         ];
     }
+
+    $results = get_posts( [
+        'post_type'      => 'pedido',
+        'post_status'    => 'publish',
+        'posts_per_page' => 100,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'meta_query'     => $meta_query,
+    ] );
+
+    // Ordenar por fecha de entrega ASC en PHP (seguro con OR meta_query)
+    usort( $results, function ( $a, $b ) {
+        $fa = get_post_meta( $a->ID, '_fc_pedido_fecha', true );
+        $fb = get_post_meta( $b->ID, '_fc_pedido_fecha', true );
+        return strcmp( $fa, $fb );
+    } );
+
+    $pedidos = array_map( 'fc_build_pedido_data', $results );
 
     wp_send_json_success( [ 'pedidos' => $pedidos ] );
 }
@@ -190,7 +265,9 @@ function fc_ajax_crear_pedido() {
     fc_panel_verify_nonce();
     fc_panel_require_cap();
 
-    $numero = fc_generar_numero_pedido();
+    $fecha_entrega = sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) );
+    $numero        = fc_generar_numero_pedido( $fecha_entrega );
+
     $token  = fc_generar_token();
 
     $current_user = wp_get_current_user();
@@ -386,8 +463,8 @@ function fc_ajax_eliminar_pedido() {
         wp_send_json_error( [ 'message' => 'Pedido no encontrado.' ] );
     }
 
-    wp_delete_post( $pedido_id, true );
-    wp_send_json_success( [ 'message' => 'Pedido eliminado.' ] );
+    wp_trash_post( $pedido_id );
+    wp_send_json_success( [ 'message' => 'Pedido movido a la papelera.' ] );
 }
 
 // ─────────────────────────────────────────────
@@ -429,4 +506,65 @@ function fc_ajax_buscar_arreglos() {
     wp_reset_postdata();
 
     wp_send_json_success( [ 'arreglos' => $arreglos ] );
+}
+
+// ─────────────────────────────────────────────
+// AJAX: Obtener pedidos en papelera (solo admin)
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_fc_panel_get_papelera', 'fc_ajax_get_papelera' );
+function fc_ajax_get_papelera() {
+    fc_panel_verify_nonce();
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( [ 'message' => 'Sin permiso.' ], 403 );
+    }
+
+    $posts = get_posts( [
+        'post_type'      => 'pedido',
+        'post_status'    => 'trash',
+        'posts_per_page' => 200,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+    ] );
+
+    $pedidos = array_map( 'fc_build_pedido_data', $posts );
+    wp_send_json_success( [ 'pedidos' => $pedidos ] );
+}
+
+// ─────────────────────────────────────────────
+// AJAX: Restaurar pedido desde papelera (solo admin)
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_fc_panel_restaurar_pedido', 'fc_ajax_restaurar_pedido' );
+function fc_ajax_restaurar_pedido() {
+    fc_panel_verify_nonce();
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( [ 'message' => 'Sin permiso.' ], 403 );
+    }
+
+    $pedido_id = (int) ( $_POST['pedido_id'] ?? 0 );
+    if ( ! $pedido_id ) {
+        wp_send_json_error( [ 'message' => 'ID inválido.' ] );
+    }
+
+    wp_untrash_post( $pedido_id );
+    wp_update_post( [ 'ID' => $pedido_id, 'post_status' => 'publish' ] );
+    wp_send_json_success( [ 'message' => 'Pedido restaurado.' ] );
+}
+
+// ─────────────────────────────────────────────
+// AJAX: Eliminar pedido permanentemente (solo admin)
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_fc_panel_eliminar_permanente', 'fc_ajax_eliminar_permanente' );
+function fc_ajax_eliminar_permanente() {
+    fc_panel_verify_nonce();
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( [ 'message' => 'Sin permiso.' ], 403 );
+    }
+
+    $pedido_id = (int) ( $_POST['pedido_id'] ?? 0 );
+    if ( ! $pedido_id ) {
+        wp_send_json_error( [ 'message' => 'ID inválido.' ] );
+    }
+
+    wp_delete_post( $pedido_id, true );
+    wp_send_json_success( [ 'message' => 'Pedido eliminado permanentemente.' ] );
 }

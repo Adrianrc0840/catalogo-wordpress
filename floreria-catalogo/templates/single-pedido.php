@@ -491,7 +491,7 @@ get_header();
 <div class="fc-pedido-wrap">
 
     <div class="fc-pedido-shop-header">
-        <h1><?php echo esc_html( $shop_name ); ?></h1>
+        <h1>Rastreo de pedido</h1>
         <p>Estado de tu pedido</p>
     </div>
 

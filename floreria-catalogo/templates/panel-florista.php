@@ -1,9 +1,9 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-$is_logged_in  = is_user_logged_in();
-$has_cap       = $is_logged_in && ( current_user_can( 'fc_ver_pedidos' ) || current_user_can( 'manage_options' ) );
-$current_user  = $is_logged_in ? wp_get_current_user() : null;
+$is_logged_in    = is_user_logged_in();
+$has_cap         = $is_logged_in && ( current_user_can( 'fc_ver_pedidos' ) || current_user_can( 'manage_options' ) );
+$current_user    = $is_logged_in ? wp_get_current_user() : null;
 $shop_name     = get_bloginfo( 'name' );
 $status_labels = fc_pedido_status_labels();
 
@@ -66,6 +66,20 @@ get_header();
 
 <!-- Main content -->
 <main class="fc-panel-content">
+
+    <!-- Search bar -->
+    <div class="fc-search-bar">
+        <div class="fc-search-wrap">
+            <span class="fc-search-icon">&#128269;</span>
+            <input
+                type="text"
+                id="fc-search-input"
+                placeholder="Buscar por número, nombre, teléfono, tarjeta..."
+                autocomplete="off"
+            />
+            <button class="fc-search-clear" id="fc-search-clear" aria-label="Limpiar búsqueda" style="display:none;">&times;</button>
+        </div>
+    </div>
 
     <!-- Filter tabs -->
     <div class="fc-filter-tabs">

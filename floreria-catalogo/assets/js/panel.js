@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    const { ajaxurl, nonce, siteurl, schedules = {}, isAdmin = false } = window.fcPanel || {};
+    const { ajaxurl, nonce, siteurl, schedules = {}, isAdmin = false, today = '' } = window.fcPanel || {};
 
     // ── Status labels ──
     const STATUS_LABELS = {
@@ -14,11 +14,12 @@
     };
 
     // ── State ──
-    let currentFilter   = 'all';
-    let allArreglos     = [];
-    let selectedArreglo = null;
-    let currentEditId   = null;   // null = crear, número = editar
-    let pedidoDataMap   = {};     // id → datos completos del pedido
+    let currentFilter    = 'all';
+    let allArreglos      = [];
+    let selectedArreglo  = null;
+    let currentEditId    = null;   // null = crear, número = editar
+    let pedidoDataMap    = {};     // id → datos completos del pedido
+    let isPapeleraView   = false;
 
     // ── DOM helpers ──
     const $ = (sel, ctx = document) => ctx.querySelector(sel);
@@ -277,7 +278,7 @@
                     if (data.success) {
                         card.remove();
                         delete pedidoDataMap[cardId];
-                        showToast('Pedido eliminado', 'success');
+                        showToast('Pedido movido a la papelera', 'success');
                     } else {
                         showToast(data.data?.message || 'Error al eliminar', 'error');
                         btn.textContent = '✕ Eliminar';
@@ -385,12 +386,39 @@
         return $('#fc-fecha-filter')?.value || '';
     }
 
+    // ── Helpers: entrar / salir del modo papelera ──
+    function enterTrashMode() {
+        isPapeleraView = true;
+        const df = $('.fc-date-filter');
+        const sb = $('.fc-search-bar');
+        if (df) df.style.display = 'none';
+        if (sb) sb.style.display = 'none';
+    }
+
+    function exitTrashMode() {
+        isPapeleraView = false;
+        const df = $('.fc-date-filter');
+        const sb = $('.fc-search-bar');
+        if (df) df.style.display = '';
+        if (sb) sb.style.display = '';
+    }
+
     // ── Filter tabs ──
     function initFilterTabs() {
-        const tabs = $$('.fc-filter-tab');
         const tabContainer = $('.fc-filter-tabs');
 
-        // Build mobile <select> from the existing tabs
+        // Agregar pestaña papelera (solo admins) antes de construir el select
+        if (isAdmin && tabContainer) {
+            const trashBtn = document.createElement('button');
+            trashBtn.className = 'fc-filter-tab fc-filter-tab-trash';
+            trashBtn.dataset.status = '__trash__';
+            trashBtn.textContent = '🗑 Papelera';
+            tabContainer.appendChild(trashBtn);
+        }
+
+        const tabs = $$('.fc-filter-tab');
+
+        // Build mobile <select> from all tabs (incluye papelera si se agregó)
         if (tabContainer) {
             const mSel = document.createElement('select');
             mSel.className = 'fc-filter-select-mobile';
@@ -407,8 +435,14 @@
                 tabs.forEach(t => t.classList.remove('active'));
                 const match = tabs.find(t => t.dataset.status === mSel.value);
                 if (match) match.classList.add('active');
-                currentFilter = mSel.value;
-                loadPedidos(currentFilter, getCurrentFecha());
+                if (mSel.value === '__trash__') {
+                    enterTrashMode();
+                    loadPapelera();
+                } else {
+                    exitTrashMode();
+                    currentFilter = mSel.value;
+                    loadPedidos(currentFilter, getCurrentFecha());
+                }
             });
         }
 
@@ -416,12 +450,88 @@
             tab.addEventListener('click', () => {
                 tabs.forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
-                currentFilter = tab.dataset.status;
-                // Sync mobile select
                 const mSel = $('.fc-filter-select-mobile');
-                if (mSel) mSel.value = currentFilter;
-                loadPedidos(currentFilter, getCurrentFecha());
+                if (mSel) mSel.value = tab.dataset.status;
+
+                if (tab.dataset.status === '__trash__') {
+                    enterTrashMode();
+                    loadPapelera();
+                } else {
+                    exitTrashMode();
+                    currentFilter = tab.dataset.status;
+                    loadPedidos(currentFilter, getCurrentFecha());
+                }
             });
+        });
+    }
+
+    // ── Search ──
+    function initSearch() {
+        const input    = $('#fc-search-input');
+        const clearBtn = $('#fc-search-clear');
+        if (!input) return;
+
+        let timer = null;
+
+        function restoreNormalView() {
+            exitTrashMode();
+            // Si la pestaña activa era papelera, volver a "Todos"
+            const activeTab = $('.fc-filter-tab.active');
+            if (activeTab?.dataset?.status === '__trash__') {
+                $$('.fc-filter-tab').forEach(t => t.classList.remove('active'));
+                const allTab = $('.fc-filter-tab[data-status="all"]');
+                if (allTab) allTab.classList.add('active');
+                currentFilter = 'all';
+                const mSel = $('.fc-filter-select-mobile');
+                if (mSel) mSel.value = 'all';
+            }
+            loadPedidos(currentFilter, getCurrentFecha());
+        }
+
+        input.addEventListener('input', () => {
+            clearTimeout(timer);
+            const term = input.value.trim();
+
+            // Show / hide clear button
+            if (clearBtn) clearBtn.style.display = term ? '' : 'none';
+
+            if (!term) {
+                restoreNormalView();
+                return;
+            }
+            if (term.length < 2) return;
+
+            timer = setTimeout(async () => {
+                const grid = $('#fc-orders-grid');
+                if (grid) grid.innerHTML = '<div class="fc-loading">Buscando...</div>';
+
+                try {
+                    const data = await ajax('fc_panel_search_pedidos', { term });
+                    if (!data.success) {
+                        grid.innerHTML = '<div class="fc-no-pedidos">Error al buscar.</div>';
+                        return;
+                    }
+                    const pedidos = data.data.pedidos;
+                    pedidoDataMap = {};
+                    pedidos.forEach(p => { pedidoDataMap[p.id] = p; });
+                    if (!pedidos.length) {
+                        grid.innerHTML = `<div class="fc-no-pedidos">Sin resultados para "<strong>${escHtml(term)}</strong>".</div>`;
+                    } else {
+                        grid.innerHTML = pedidos.map(renderCard).join('');
+                        attachCardEvents(grid);
+                    }
+                } catch {
+                    const grid2 = $('#fc-orders-grid');
+                    if (grid2) grid2.innerHTML = '<div class="fc-no-pedidos">Error de conexión.</div>';
+                }
+            }, 380);
+        });
+
+        clearBtn && clearBtn.addEventListener('click', () => {
+            input.value = '';
+            clearBtn.style.display = 'none';
+            restoreNormalView();
+            input.focus();
         });
     }
 
@@ -916,6 +1026,135 @@
         });
     }
 
+    // ── Papelera ──
+    async function loadPapelera() {
+        const grid = $('#fc-orders-grid');
+        if (!grid) return;
+        grid.innerHTML = '<div class="fc-loading">Cargando papelera...</div>';
+
+        try {
+            const data = await ajax('fc_panel_get_papelera');
+            if (!data.success) {
+                grid.innerHTML = '<div class="fc-no-pedidos">Error al cargar la papelera.</div>';
+                return;
+            }
+            const pedidos = data.data.pedidos;
+            pedidoDataMap = {};
+            pedidos.forEach(p => { pedidoDataMap[p.id] = p; });
+            if (!pedidos.length) {
+                grid.innerHTML = '<div class="fc-no-pedidos">🗑 La papelera está vacía.</div>';
+            } else {
+                grid.innerHTML = pedidos.map(renderTrashCard).join('');
+                attachTrashCardEvents(grid);
+            }
+        } catch {
+            grid.innerHTML = '<div class="fc-no-pedidos">Error de conexión.</div>';
+        }
+    }
+
+    function renderTrashCard(p) {
+        const isMobile = window.innerWidth <= 640;
+        const tipoLabel = p.tipo === 'envio' ? 'Envío' : 'Recolección';
+
+        return `
+<div class="fc-order-card fc-order-card-trash${isMobile ? ' collapsed' : ''}" data-id="${p.id}">
+    <div class="fc-card-header">
+        <span class="fc-order-num">${escHtml(p.numero)}</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;color:#a0aec0;font-style:italic;">En papelera</span>
+            <button class="fc-card-collapse-btn" aria-label="Colapsar">&#9662;</button>
+        </div>
+    </div>
+    <div class="fc-card-collapsible">
+        <div class="fc-card-info">
+            <div class="fc-card-row"><span class="fc-label">Cliente</span><span class="fc-value">${escHtml(p.cliente_nombre)}${p.cliente_telefono ? ' · ' + escHtml(p.cliente_telefono) : ''}</span></div>
+            <div class="fc-card-row"><span class="fc-label">Arreglo</span><span class="fc-value">${escHtml(p.arreglo_nombre)}${p.tamano ? ' — ' + escHtml(p.tamano) : ''}</span></div>
+            <div class="fc-card-row"><span class="fc-label">Fecha</span><span class="fc-value">${escHtml(p.fecha)} · ${escHtml(tipoLabel)}</span></div>
+            ${p.destinatario ? `<div class="fc-card-row"><span class="fc-label">Para</span><span class="fc-value">${escHtml(p.destinatario)}</span></div>` : ''}
+        </div>
+        <hr class="fc-card-divider" />
+        <div class="fc-card-extra-actions">
+            <button class="fc-btn-sm fc-btn-restaurar-pedido" style="background:#059669;">&#8635; Restaurar</button>
+            <button class="fc-btn-sm fc-btn-eliminar-permanente" style="background:#dc2626;">&#10005; Eliminar permanentemente</button>
+        </div>
+    </div>
+</div>`;
+    }
+
+    function attachTrashCardEvents(grid) {
+        // Collapse
+        $$('.fc-card-collapse-btn', grid).forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                btn.closest('.fc-order-card').classList.toggle('collapsed');
+            });
+        });
+
+        // Restaurar
+        $$('.fc-btn-restaurar-pedido', grid).forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const card   = btn.closest('.fc-order-card');
+                const cardId = parseInt(card.dataset.id, 10);
+                if (!confirm('¿Restaurar este pedido?')) return;
+                btn.textContent = '...';
+                btn.disabled    = true;
+                try {
+                    const data = await ajax('fc_panel_restaurar_pedido', { pedido_id: cardId });
+                    if (data.success) {
+                        card.remove();
+                        delete pedidoDataMap[cardId];
+                        showToast('Pedido restaurado', 'success');
+                        if (!$('#fc-orders-grid .fc-order-card')) {
+                            $('#fc-orders-grid').innerHTML = '<div class="fc-no-pedidos">🗑 La papelera está vacía.</div>';
+                        }
+                    } else {
+                        showToast(data.data?.message || 'Error', 'error');
+                        btn.textContent = '↺ Restaurar';
+                        btn.disabled    = false;
+                    }
+                } catch {
+                    showToast('Error de conexión', 'error');
+                    btn.textContent = '↺ Restaurar';
+                    btn.disabled    = false;
+                }
+            });
+        });
+
+        // Eliminar permanentemente
+        $$('.fc-btn-eliminar-permanente', grid).forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const card   = btn.closest('.fc-order-card');
+                const cardId = parseInt(card.dataset.id, 10);
+                const num    = pedidoDataMap[cardId]?.numero || cardId;
+                if (!confirm(`¿Eliminar permanentemente el pedido ${num}?\nEsta acción NO se puede deshacer.`)) return;
+                btn.textContent = '...';
+                btn.disabled    = true;
+                try {
+                    const data = await ajax('fc_panel_eliminar_permanente', { pedido_id: cardId });
+                    if (data.success) {
+                        card.remove();
+                        delete pedidoDataMap[cardId];
+                        showToast('Pedido eliminado permanentemente', 'success');
+                        if (!$('#fc-orders-grid .fc-order-card')) {
+                            $('#fc-orders-grid').innerHTML = '<div class="fc-no-pedidos">🗑 La papelera está vacía.</div>';
+                        }
+                    } else {
+                        showToast(data.data?.message || 'Error', 'error');
+                        btn.textContent = '✕ Eliminar permanentemente';
+                        btn.disabled    = false;
+                    }
+                } catch {
+                    showToast('Error de conexión', 'error');
+                    btn.textContent = '✕ Eliminar permanentemente';
+                    btn.disabled    = false;
+                }
+            });
+        });
+    }
+
     // ── Init ──
     function init() {
         const isPanel = document.body.classList.contains('fc-panel-body') ||
@@ -925,6 +1164,7 @@
 
         initLoginForm();
         initLogout();
+        initSearch();
         initFilterTabs();
         initDateFilter();
         initLightbox();
@@ -934,7 +1174,10 @@
 
         // Load orders if logged in (panel header present)
         if ($('#fc-panel-header')) {
-            loadPedidos('all');
+            // Pre-set date filter to today (Tijuana) and load only today's orders
+            const fechaInput = $('#fc-fecha-filter');
+            if (fechaInput && today) fechaInput.value = today;
+            loadPedidos('all', today);
         }
     }
 

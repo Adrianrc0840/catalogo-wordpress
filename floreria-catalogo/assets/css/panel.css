@@ -673,6 +673,31 @@
     font-size: 15px;
 }
 
+/* ── Trash tab ── */
+.fc-filter-tab-trash {
+    border-color: #fca5a5 !important;
+    color: #b91c1c !important;
+}
+
+.fc-filter-tab-trash:hover,
+.fc-filter-tab-trash.active {
+    background: #b91c1c !important;
+    border-color: #b91c1c !important;
+    color: #fff !important;
+}
+
+/* ── Trash order card ── */
+.fc-order-card-trash {
+    border-left-color: #d1d5db !important;
+    opacity: 0.82;
+    background: #fafafa;
+}
+
+.fc-order-card-trash .fc-order-num {
+    color: #6b7280;
+    text-decoration: line-through;
+}
+
 /* ── Card extra actions (edit / delete) ── */
 .fc-card-extra-actions {
     display: flex;
@@ -723,6 +748,67 @@
 .fc-order-card.collapsed .fc-card-collapsible {
     max-height: 0 !important;
     opacity: 0;
+}
+
+/* ── Search bar ── */
+.fc-search-bar {
+    margin-bottom: 20px;
+}
+
+.fc-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    max-width: 560px;
+}
+
+.fc-search-icon {
+    position: absolute;
+    left: 12px;
+    font-size: 15px;
+    color: #a0aec0;
+    pointer-events: none;
+    line-height: 1;
+}
+
+#fc-search-input {
+    width: 100%;
+    padding: 10px 40px 10px 38px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #2d3748;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#fc-search-input:focus {
+    border-color: var(--fc-primary);
+    box-shadow: 0 0 0 3px rgba(200,24,90,0.1);
+}
+
+#fc-search-input::placeholder {
+    color: #a0aec0;
+}
+
+.fc-search-clear {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #a0aec0;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 50%;
+    transition: color 0.2s, background 0.2s;
+}
+
+.fc-search-clear:hover {
+    color: #4a5568;
+    background: #f0f0f0;
 }
 
 /* ── Date filter ── */
