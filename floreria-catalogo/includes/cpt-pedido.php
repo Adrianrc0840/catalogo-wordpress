@@ -375,6 +375,27 @@ function fc_handle_pedido_admin_actions() {
     if ( isset( $_POST['fc_admin_save_edit'], $_POST['pedido_id'] ) && check_admin_referer( 'fc_admin_save_edit' ) ) {
         $pedido_id = (int) $_POST['pedido_id'];
         if ( $pedido_id && get_post_type( $pedido_id ) === 'pedido' ) {
+
+            // Parse items
+            $items_json_raw = wp_unslash( $_POST['items_json'] ?? '' );
+            $items_raw      = $items_json_raw ? json_decode( $items_json_raw, true ) : null;
+            $items_clean    = [];
+            if ( is_array( $items_raw ) ) {
+                foreach ( $items_raw as $item ) {
+                    $items_clean[] = [
+                        'arreglo_id'            => (int)    ( $item['arreglo_id']            ?? 0  ),
+                        'arreglo_nombre'        => sanitize_text_field(    $item['arreglo_nombre']        ?? '' ),
+                        'imagen_url'            => esc_url_raw(            $item['imagen_url']            ?? '' ),
+                        'tamano'                => sanitize_text_field(    $item['tamano']                ?? '' ),
+                        'color'                 => sanitize_text_field(    $item['color']                 ?? '' ),
+                        'destinatario'          => sanitize_text_field(    $item['destinatario']          ?? '' ),
+                        'destinatario_telefono' => sanitize_text_field(    $item['destinatario_telefono'] ?? '' ),
+                        'mensaje_tarjeta'       => sanitize_textarea_field( $item['mensaje_tarjeta']      ?? '' ),
+                    ];
+                }
+            }
+            $first = $items_clean[0] ?? [];
+
             $fields = [
                 '_fc_pedido_tipo'                  => sanitize_key( $_POST['tipo'] ?? 'envio' ),
                 '_fc_pedido_fecha'                 => sanitize_text_field( $_POST['fecha'] ?? '' ),
@@ -384,16 +405,20 @@ function fc_handle_pedido_admin_actions() {
                 '_fc_pedido_canal'                 => sanitize_key( $_POST['canal'] ?? '' ),
                 '_fc_pedido_canal_nombre'          => sanitize_text_field( $_POST['canal_nombre'] ?? '' ),
                 '_fc_pedido_canal_contacto'        => sanitize_text_field( $_POST['canal_contacto'] ?? '' ),
-                '_fc_pedido_destinatario'          => sanitize_text_field( $_POST['destinatario'] ?? '' ),
-                '_fc_pedido_destinatario_telefono' => sanitize_text_field( $_POST['destinatario_telefono'] ?? '' ),
-                '_fc_pedido_mensaje_tarjeta'       => sanitize_textarea_field( $_POST['mensaje_tarjeta'] ?? '' ),
                 '_fc_pedido_nota'                  => sanitize_textarea_field( $_POST['nota'] ?? '' ),
-                '_fc_pedido_arreglo_nombre'        => sanitize_text_field( $_POST['arreglo_nombre'] ?? '' ),
-                '_fc_pedido_tamano'                => sanitize_text_field( $_POST['tamano'] ?? '' ),
-                '_fc_pedido_color'                 => sanitize_text_field( $_POST['color'] ?? '' ),
+                // Legacy first-item fields
+                '_fc_pedido_arreglo_nombre'        => $first['arreglo_nombre']        ?? sanitize_text_field( $_POST['arreglo_nombre']  ?? '' ),
+                '_fc_pedido_tamano'                => $first['tamano']                ?? sanitize_text_field( $_POST['tamano']          ?? '' ),
+                '_fc_pedido_color'                 => $first['color']                 ?? sanitize_text_field( $_POST['color']           ?? '' ),
+                '_fc_pedido_destinatario'          => $first['destinatario']          ?? sanitize_text_field( $_POST['destinatario']    ?? '' ),
+                '_fc_pedido_destinatario_telefono' => $first['destinatario_telefono'] ?? sanitize_text_field( $_POST['destinatario_telefono'] ?? '' ),
+                '_fc_pedido_mensaje_tarjeta'       => $first['mensaje_tarjeta']       ?? sanitize_textarea_field( $_POST['mensaje_tarjeta'] ?? '' ),
             ];
             foreach ( $fields as $key => $val ) {
                 update_post_meta( $pedido_id, $key, $val );
+            }
+            if ( ! empty( $items_clean ) ) {
+                update_post_meta( $pedido_id, '_fc_pedido_items', wp_json_encode( $items_clean ) );
             }
         }
         wp_safe_redirect( add_query_arg( 'updated', '1', $base ) );
@@ -660,96 +685,6 @@ function fc_render_pedidos_admin_page() {
 
         <?php else : // ── VISTA NORMAL ── ?>
 
-        <?php if ( $edit_pedido ) :
-            $e = $edit_id;
-            $canal_opts = [ '' => '-- ¿Por dónde contactó? --', 'whatsapp' => 'WhatsApp', 'instagram' => 'Instagram', 'facebook' => 'Facebook', 'otro' => 'Otro' ];
-            $ef = [
-                'tipo'                  => get_post_meta( $e, '_fc_pedido_tipo',                  true ),
-                'fecha'                 => get_post_meta( $e, '_fc_pedido_fecha',                 true ),
-                'horario'               => get_post_meta( $e, '_fc_pedido_horario',               true ),
-                'direccion'             => get_post_meta( $e, '_fc_pedido_direccion',             true ),
-                'hora_recoleccion'      => get_post_meta( $e, '_fc_pedido_hora_recoleccion',      true ),
-                'canal'                 => get_post_meta( $e, '_fc_pedido_canal',                 true ),
-                'canal_nombre'          => get_post_meta( $e, '_fc_pedido_canal_nombre',          true ),
-                'canal_contacto'        => get_post_meta( $e, '_fc_pedido_canal_contacto',        true ),
-                'destinatario'          => get_post_meta( $e, '_fc_pedido_destinatario',          true ),
-                'destinatario_telefono' => get_post_meta( $e, '_fc_pedido_destinatario_telefono', true ),
-                'mensaje_tarjeta'       => get_post_meta( $e, '_fc_pedido_mensaje_tarjeta',       true ),
-                'nota'                  => get_post_meta( $e, '_fc_pedido_nota',                  true ),
-                'arreglo_nombre'        => get_post_meta( $e, '_fc_pedido_arreglo_nombre',        true ),
-                'tamano'                => get_post_meta( $e, '_fc_pedido_tamano',                true ),
-                'color'                 => get_post_meta( $e, '_fc_pedido_color',                 true ),
-                'numero'                => get_post_meta( $e, '_fc_pedido_numero',                true ),
-            ];
-            $cancel_url = remove_query_arg( 'edit_id' );
-        ?>
-        <div style="background:#fff;border:1px solid #c3c4c7;border-radius:6px;padding:24px;margin-bottom:24px;max-width:860px;">
-            <h2 style="margin-top:0;">Editando pedido: <strong><?php echo esc_html( $ef['numero'] ); ?></strong></h2>
-            <form method="post">
-                <?php wp_nonce_field( 'fc_admin_save_edit' ); ?>
-                <input type="hidden" name="pedido_id" value="<?php echo esc_attr( $e ); ?>" />
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Arreglo</label>
-                    <input type="text" name="arreglo_nombre" value="<?php echo esc_attr( $ef['arreglo_nombre'] ); ?>" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Tamaño</label>
-                    <input type="text" name="tamano" value="<?php echo esc_attr( $ef['tamano'] ); ?>" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Color</label>
-                    <input type="text" name="color" value="<?php echo esc_attr( $ef['color'] ); ?>" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Tipo de entrega</label>
-                    <select name="tipo" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;">
-                        <option value="envio" <?php selected( $ef['tipo'], 'envio' ); ?>>Envío a domicilio</option>
-                        <option value="recoleccion" <?php selected( $ef['tipo'], 'recoleccion' ); ?>>Recolección en tienda</option>
-                    </select></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Fecha de entrega</label>
-                    <input type="date" name="fecha" value="<?php echo esc_attr( $ef['fecha'] ); ?>" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Horario de entrega</label>
-                    <input type="text" name="horario" value="<?php echo esc_attr( $ef['horario'] ); ?>" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Hora de recolección</label>
-                    <input type="time" name="hora_recoleccion" value="<?php echo esc_attr( $ef['hora_recoleccion'] ); ?>" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Dirección</label>
-                    <input type="text" name="direccion" value="<?php echo esc_attr( $ef['direccion'] ); ?>" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Canal de contacto <span style="color:#b91c1c;">*</span></label>
-                    <select name="canal" required style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;">
-                        <?php foreach ( $canal_opts as $val => $lbl ) : ?>
-                        <option value="<?php echo esc_attr( $val ); ?>" <?php selected( $ef['canal'], $val ); ?>><?php echo esc_html( $lbl ); ?></option>
-                        <?php endforeach; ?>
-                    </select></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Nombre del contacto</label>
-                    <input type="text" name="canal_nombre" value="<?php echo esc_attr( $ef['canal_nombre'] ); ?>" placeholder="Solo para WhatsApp" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Usuario / Número de contacto</label>
-                    <input type="text" name="canal_contacto" value="<?php echo esc_attr( $ef['canal_contacto'] ); ?>" placeholder="@usuario, número, etc." style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Nombre del destinatario</label>
-                    <input type="text" name="destinatario" value="<?php echo esc_attr( $ef['destinatario'] ); ?>" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Teléfono del destinatario</label>
-                    <input type="tel" name="destinatario_telefono" value="<?php echo esc_attr( $ef['destinatario_telefono'] ); ?>" inputmode="numeric" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
-
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Mensaje de tarjeta</label>
-                    <textarea name="mensaje_tarjeta" rows="2" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;"><?php echo esc_textarea( $ef['mensaje_tarjeta'] ); ?></textarea></div>
-
-                    <div style="grid-column:1/-1;"><label style="font-weight:600;display:block;margin-bottom:4px;">Nota especial del cliente</label>
-                    <textarea name="nota" rows="2" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;"><?php echo esc_textarea( $ef['nota'] ); ?></textarea></div>
-
-                </div>
-                <div style="margin-top:20px;display:flex;gap:10px;">
-                    <button type="submit" name="fc_admin_save_edit" class="button button-primary">Guardar cambios</button>
-                    <a href="<?php echo esc_url( $cancel_url ); ?>" class="button">Cancelar</a>
-                </div>
-            </form>
-        </div>
-        <?php endif; ?>
 
         <?php
         $base_url  = admin_url( 'edit.php?post_type=arreglo&page=fc-pedidos' );
@@ -834,10 +769,7 @@ function fc_render_pedidos_admin_page() {
                     <th style="width:150px;">Número</th>
                     <th style="width:130px;">Estado</th>
                     <th>Canal</th>
-                    <th>Destinatario</th>
-                    <th>Arreglo</th>
-                    <th style="width:95px;">Tamaño</th>
-                    <th style="width:75px;">Color</th>
+                    <th style="min-width:180px;">Arreglo(s)</th>
                     <th style="width:85px;">Tipo</th>
                     <th style="width:105px;">Fecha entrega</th>
                     <th style="width:105px;">Registrado</th>
@@ -848,24 +780,42 @@ function fc_render_pedidos_admin_page() {
             </thead>
             <tbody>
                 <?php foreach ( $pedidos as $pedido ) :
-                    $num      = get_post_meta( $pedido->ID, '_fc_pedido_numero',                  true );
-                    $status   = get_post_meta( $pedido->ID, '_fc_pedido_status',                  true );
-                    $p_canal  = get_post_meta( $pedido->ID, '_fc_pedido_canal',                   true );
-                    $p_cnom   = get_post_meta( $pedido->ID, '_fc_pedido_canal_nombre',             true );
-                    $p_ccon   = get_post_meta( $pedido->ID, '_fc_pedido_canal_contacto',           true );
-                    $p_dest   = get_post_meta( $pedido->ID, '_fc_pedido_destinatario',             true );
-                    $p_dtel   = get_post_meta( $pedido->ID, '_fc_pedido_destinatario_telefono',    true );
-                    $arreglo  = get_post_meta( $pedido->ID, '_fc_pedido_arreglo_nombre',           true );
+                    $num      = get_post_meta( $pedido->ID, '_fc_pedido_numero',        true );
+                    $status   = get_post_meta( $pedido->ID, '_fc_pedido_status',        true );
+                    $p_canal  = get_post_meta( $pedido->ID, '_fc_pedido_canal',         true );
+                    $p_cnom   = get_post_meta( $pedido->ID, '_fc_pedido_canal_nombre',  true );
+                    $p_ccon   = get_post_meta( $pedido->ID, '_fc_pedido_canal_contacto',true );
+                    $tipo     = get_post_meta( $pedido->ID, '_fc_pedido_tipo',          true );
+                    $fecha    = get_post_meta( $pedido->ID, '_fc_pedido_fecha',         true );
                     $p_canal_labels = [ 'whatsapp' => 'WA', 'instagram' => 'IG', 'facebook' => 'FB', 'otro' => 'Otro' ];
                     $p_canal_str = $p_canal ? ( $p_canal_labels[ $p_canal ] ?? ucfirst( $p_canal ) ) : '—';
                     $p_canal_det = implode( ' · ', array_filter( [ $p_cnom, $p_ccon ] ) );
-                    $tamano   = get_post_meta( $pedido->ID, '_fc_pedido_tamano',           true );
-                    $color    = get_post_meta( $pedido->ID, '_fc_pedido_color',            true );
-                    $tipo     = get_post_meta( $pedido->ID, '_fc_pedido_tipo',             true );
-                    $fecha    = get_post_meta( $pedido->ID, '_fc_pedido_fecha',            true );
                     $color_badge = $status_colors[ $status ] ?? '#999';
                     $client_url  = home_url( '/pedido/' . $num );
-                    $edit_url    = add_query_arg( 'edit_id', $pedido->ID, $base_url_admin );
+
+                    // Multi-item data
+                    $p_items_raw  = get_post_meta( $pedido->ID, '_fc_pedido_items', true );
+                    $p_items      = [];
+                    if ( $p_items_raw ) {
+                        $p_dec = json_decode( $p_items_raw, true );
+                        if ( is_array( $p_dec ) ) $p_items = $p_dec;
+                    }
+                    if ( empty( $p_items ) ) {
+                        $p_items[] = [
+                            'arreglo_nombre'        => get_post_meta( $pedido->ID, '_fc_pedido_arreglo_nombre',          true ),
+                            'tamano'                => get_post_meta( $pedido->ID, '_fc_pedido_tamano',                  true ),
+                            'color'                 => get_post_meta( $pedido->ID, '_fc_pedido_color',                   true ),
+                            'destinatario'          => get_post_meta( $pedido->ID, '_fc_pedido_destinatario',            true ),
+                            'destinatario_telefono' => get_post_meta( $pedido->ID, '_fc_pedido_destinatario_telefono',   true ),
+                        ];
+                    }
+                    $first_p     = $p_items[0];
+                    $extra_count = count( $p_items ) - 1;
+                    $arreglo     = $first_p['arreglo_nombre'] ?? '';
+                    $tamano      = $first_p['tamano']         ?? '';
+                    $color       = $first_p['color']          ?? '';
+                    $p_dest      = $first_p['destinatario']   ?? '';
+                    $p_dtel      = $first_p['destinatario_telefono'] ?? '';
                 ?>
                 <tr>
                     <td><input type="checkbox" name="pedido_ids[]" value="<?php echo esc_attr( $pedido->ID ); ?>"
@@ -877,13 +827,56 @@ function fc_render_pedidos_admin_page() {
                         </span>
                     </td>
                     <td style="white-space:nowrap;"><strong><?php echo esc_html( $p_canal_str ); ?></strong><?php echo $p_canal_det ? ' · ' . esc_html( $p_canal_det ) : ''; ?></td>
-                    <td><?php echo esc_html( $p_dest ); ?><?php echo $p_dtel ? '<br><span style="color:#888;font-size:11px;">' . esc_html( $p_dtel ) . '</span>' : ''; ?></td>
-                    <td><?php echo esc_html( $arreglo ); ?></td>
-                    <td><?php echo esc_html( $tamano ); ?></td>
-                    <td><?php echo esc_html( $color ); ?></td>
+                    <td style="min-width:180px;">
+                        <?php
+                        $extra_items = array_slice( $p_items, 1 );
+                        $extra_n     = count( $extra_items );
+                        $uid         = 'fc-extra-' . esc_attr( $pedido->ID );
+
+                        // Helper to render one item row
+                        $render_pi = function( $pi ) {
+                            $pi_sub  = array_filter( [
+                                $pi['tamano'] ?? '',
+                                ( ( $pi['color'] ?? '' ) && strpos( $pi['color'] ?? '', '--' ) === false ) ? $pi['color'] : '',
+                            ] );
+                            $pi_dest = $pi['destinatario'] ?? '';
+                            echo '<div style="line-height:1.5;">';
+                            echo '<strong style="font-size:13px;">' . esc_html( $pi['arreglo_nombre'] ?? '—' ) . '</strong>';
+                            if ( $pi_sub ) {
+                                echo '<br><span style="color:#718096;font-size:11px;">' . esc_html( implode( ' · ', $pi_sub ) ) . '</span>';
+                            }
+                            if ( $pi_dest ) {
+                                echo '<br><span style="color:#4a5568;font-size:11px;">Para: ' . esc_html( $pi_dest ) . '</span>';
+                            }
+                            echo '</div>';
+                        };
+
+                        // Always show first item
+                        $render_pi( $p_items[0] );
+
+                        if ( $extra_n > 0 ) : ?>
+                        <button type="button"
+                                onclick="(function(btn){var el=document.getElementById('<?php echo $uid; ?>');var open=btn.getAttribute('data-open')==='1';el.style.display=open?'none':'block';btn.textContent=open?'+<?php echo $extra_n; ?> más':'▲ ocultar';btn.setAttribute('data-open',open?'':'1');})(this)"
+                                data-open=""
+                                style="margin-top:5px;background:none;border:none;padding:0;color:#3b82f6;font-size:11px;cursor:pointer;text-decoration:underline;">
+                            +<?php echo $extra_n; ?> más
+                        </button>
+                        <div id="<?php echo $uid; ?>" style="display:none;margin-top:4px;border-top:1px dashed #e2e8f0;padding-top:4px;">
+                            <?php foreach ( $extra_items as $i => $pi ) :
+                                if ( $i > 0 ) echo '<div style="border-top:1px dashed #e2e8f0;margin-top:6px;padding-top:6px;"></div>';
+                                $render_pi( $pi );
+                            endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                    </td>
                     <td style="white-space:nowrap;"><?php echo esc_html( $tipo === 'envio' ? 'Envío' : 'Recolección' ); ?></td>
                     <td style="white-space:nowrap;"><?php echo esc_html( $fecha ); ?></td>
-                    <td style="white-space:nowrap;"><?php echo esc_html( get_the_date( 'd/m/Y H:i', $pedido ) ); ?></td>
+                    <td style="white-space:nowrap;"><?php
+                        $tz_tj  = new DateTimeZone( 'America/Tijuana' );
+                        $reg_dt = new DateTime( get_post_field( 'post_date_gmt', $pedido->ID ), new DateTimeZone( 'UTC' ) );
+                        $reg_dt->setTimezone( $tz_tj );
+                        echo esc_html( $reg_dt->format( 'd/m/Y H:i' ) );
+                    ?></td>
                     <td>
                         <form method="post" style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap;">
                             <?php wp_nonce_field( 'fc_admin_update_status' ); ?>
@@ -905,7 +898,11 @@ function fc_render_pedidos_admin_page() {
                            target="_blank" class="button button-small" style="margin-left:4px;">🖨</a>
                     </td>
                     <td style="white-space:nowrap;">
-                        <a href="<?php echo esc_url( $edit_url ); ?>" class="button button-small">Editar</a>
+                        <?php
+                        $p_edit_data = fc_build_pedido_data( $pedido );
+                        ?>
+                        <button type="button" class="button button-small fc-admin-edit-btn"
+                                data-pedido="<?php echo esc_attr( wp_json_encode( $p_edit_data ) ); ?>">Editar</button>
                         <form method="post" style="display:inline-block;margin-left:4px;"
                               onsubmit="return confirm('¿Mover el pedido <?php echo esc_js( $num ); ?> a la papelera?')">
                             <?php wp_nonce_field( 'fc_admin_delete' ); ?>
@@ -931,45 +928,10 @@ function fc_render_pedidos_admin_page() {
             </div>
             <div class="fc-modal-body" style="padding:24px;">
                 <form id="fc-new-pedido-form">
-                    <div class="fc-form-group"><label>Arreglo</label>
-                        <div class="fc-autocomplete-wrap">
-                            <input type="text" id="fc-arreglo-search" placeholder="Buscar por nombre..." autocomplete="off" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;" />
-                            <input type="hidden" id="fc-arreglo-id" /><input type="hidden" id="fc-arreglo-nombre" />
-                            <div class="fc-autocomplete-dropdown" id="fc-arreglo-dropdown"></div>
-                        </div>
-                    </div>
-                    <div class="fc-form-group"><label>Tamaño</label>
-                        <select id="fc-tamano-select" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"><option value="">-- Selecciona tamaño --</option></select>
-                    </div>
-                    <div class="fc-form-group"><label>Color</label>
-                        <select id="fc-color-select" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"><option value="">-- Selecciona color --</option></select>
-                    </div>
-                    <div class="fc-form-group"><label>Tipo de entrega</label>
-                        <div class="fc-tipo-toggle">
-                            <button type="button" class="fc-tipo-option active" data-tipo="envio">Envío a domicilio</button>
-                            <button type="button" class="fc-tipo-option" data-tipo="recoleccion">Recolección en tienda</button>
-                        </div>
-                    </div>
-                    <div class="fc-form-group"><label>Fecha de entrega</label>
-                        <input type="date" id="fc-modal-fecha" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
-                    </div>
-                    <div id="fc-modal-envio-section">
-                        <div class="fc-form-group"><label>Horario de entrega</label>
-                            <select id="fc-modal-horario" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">
-                                <option value="">-- Selecciona fecha primero --</option>
-                            </select>
-                        </div>
-                        <div class="fc-form-group"><label>Dirección</label>
-                            <input type="text" id="fc-modal-direccion" placeholder="Calle, número, colonia..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
-                        </div>
-                    </div>
-                    <div id="fc-modal-recoleccion-section" style="display:none;">
-                        <div class="fc-form-group"><label>Hora de recolección</label>
-                            <input type="time" id="fc-modal-hora-recoleccion" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
-                        </div>
-                    </div>
-                    <div class="fc-form-group"><label>Canal de contacto <span style="color:#b91c1c;">*</span></label>
-                        <select id="fc-modal-canal" name="canal" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">
+
+                    <!-- Canal de contacto -->
+                    <div class="fc-form-group"><label for="fc-modal-canal">Canal de contacto <span style="color:#b91c1c;">*</span></label>
+                        <select id="fc-modal-canal" name="canal" required>
                             <option value="">-- ¿Por dónde contactó? --</option>
                             <option value="whatsapp">WhatsApp</option>
                             <option value="instagram">Instagram</option>
@@ -978,25 +940,56 @@ function fc_render_pedidos_admin_page() {
                         </select>
                     </div>
                     <div class="fc-form-group" id="fc-canal-nombre-group" style="display:none;"><label for="fc-modal-canal-nombre">Nombre del contacto</label>
-                        <input type="text" id="fc-modal-canal-nombre" name="canal_nombre" placeholder="Nombre completo" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
+                        <input type="text" id="fc-modal-canal-nombre" name="canal_nombre" placeholder="Nombre completo" />
                     </div>
                     <div class="fc-form-group" id="fc-canal-contacto-group" style="display:none;"><label for="fc-modal-canal-contacto" id="fc-canal-contacto-label">Contacto</label>
-                        <input type="text" id="fc-modal-canal-contacto" name="canal_contacto" placeholder="" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
+                        <input type="text" id="fc-modal-canal-contacto" name="canal_contacto" />
                     </div>
-                    <div class="fc-form-group"><label>Nombre del destinatario</label>
-                        <input type="text" id="fc-modal-destinatario" placeholder="¿A quién va dirigido?" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
+
+                    <!-- Tipo -->
+                    <div class="fc-form-group"><label>Tipo de entrega</label>
+                        <div class="fc-tipo-toggle">
+                            <button type="button" class="fc-tipo-option active" data-tipo="envio">Envío a domicilio</button>
+                            <button type="button" class="fc-tipo-option" data-tipo="recoleccion">Recolección en tienda</button>
+                        </div>
                     </div>
-                    <div class="fc-form-group"><label>Teléfono del destinatario</label>
-                        <input type="tel" id="fc-modal-destinatario-telefono" placeholder="10 dígitos"
-                               inputmode="numeric" pattern="[0-9]*" maxlength="15"
-                               style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
+
+                    <!-- Fecha -->
+                    <div class="fc-form-group"><label for="fc-modal-fecha">Fecha de entrega</label>
+                        <input type="date" id="fc-modal-fecha" name="fecha" required />
                     </div>
-                    <div class="fc-form-group"><label>Mensaje de tarjeta</label>
-                        <textarea id="fc-modal-mensaje-tarjeta" rows="2" placeholder="Mensaje para la tarjeta..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;resize:vertical;"></textarea>
+
+                    <!-- Envío -->
+                    <div id="fc-modal-envio-section">
+                        <div class="fc-form-group"><label for="fc-modal-horario">Horario de entrega</label>
+                            <select id="fc-modal-horario" name="horario">
+                                <option value="">-- Selecciona fecha primero --</option>
+                            </select>
+                        </div>
+                        <div class="fc-form-group"><label for="fc-modal-direccion">Dirección de entrega</label>
+                            <input type="text" id="fc-modal-direccion" name="direccion" placeholder="Calle, número, colonia..." />
+                        </div>
                     </div>
-                    <div class="fc-form-group"><label>Nota especial</label>
-                        <textarea id="fc-modal-nota" rows="2" placeholder="Indicaciones especiales..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;resize:vertical;"></textarea>
+
+                    <!-- Recolección -->
+                    <div id="fc-modal-recoleccion-section" style="display:none;">
+                        <div class="fc-form-group"><label for="fc-modal-hora-recoleccion">Hora de recolección</label>
+                            <input type="time" id="fc-modal-hora-recoleccion" name="hora_recoleccion" />
+                        </div>
                     </div>
+
+                    <!-- Nota especial -->
+                    <div class="fc-form-group"><label for="fc-modal-nota">Nota especial</label>
+                        <textarea id="fc-modal-nota" name="nota" rows="2" placeholder="Indicaciones especiales del cliente..."></textarea>
+                    </div>
+
+                    <!-- Arreglos (multi-ítem) -->
+                    <div class="fc-items-section">
+                        <div class="fc-items-section-title">Arreglos</div>
+                        <div id="fc-items-container"></div>
+                        <button type="button" class="fc-btn-add-item" id="fc-add-item-btn">&#43; Agregar arreglo</button>
+                    </div>
+
                 </form>
             </div>
             <div class="fc-modal-footer" style="padding:16px 24px;border-top:1px solid #eee;">
@@ -1013,8 +1006,17 @@ function fc_render_pedidos_admin_page() {
     </div>
 
     <script>
-    // El modal de nuevo pedido lo maneja panel.js (initNewOrderModal),
-    // que ya corre en el admin tras mover la llamada fuera del guard isPanel.
+    // ── Admin Edit buttons → open panel.js modal ──
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.fc-admin-edit-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var pedido = JSON.parse(btn.dataset.pedido || '{}');
+                if (window._fcOpenEditModal) {
+                    window._fcOpenEditModal(pedido);
+                }
+            });
+        });
+    });
 
     // ── Bulk actions JS ──
     (function() {

@@ -6,7 +6,7 @@
     --fc-border:   #f0c0d0;
 
     /* Status colors */
-    --fc-s-recibido:          #3b82f6;
+    --fc-s-aceptado:          #3b82f6;
     --fc-s-en_preparacion:    #f59e0b;
     --fc-s-en_camino:         #8b5cf6;
     --fc-s-listo_recoleccion: #06b6d4;
@@ -275,7 +275,7 @@
 }
 
 /* Status border colors */
-.fc-order-card[data-status="recibido"]          { border-left-color: var(--fc-s-recibido); }
+.fc-order-card[data-status="aceptado"]          { border-left-color: var(--fc-s-aceptado); }
 .fc-order-card[data-status="en_preparacion"]    { border-left-color: var(--fc-s-en_preparacion); }
 .fc-order-card[data-status="en_camino"]         { border-left-color: var(--fc-s-en_camino); }
 .fc-order-card[data-status="listo_recoleccion"] { border-left-color: var(--fc-s-listo_recoleccion); }
@@ -306,7 +306,7 @@
     letter-spacing: 0.03em;
 }
 
-.fc-status-badge.recibido          { background: var(--fc-s-recibido); }
+.fc-status-badge.aceptado          { background: var(--fc-s-aceptado); }
 .fc-status-badge.en_preparacion    { background: var(--fc-s-en_preparacion); }
 .fc-status-badge.en_camino         { background: var(--fc-s-en_camino); }
 .fc-status-badge.listo_recoleccion { background: var(--fc-s-listo_recoleccion); }
@@ -928,6 +928,183 @@
 
 .fc-lightbox-close:hover {
     background: rgba(255,255,255,0.28);
+}
+
+/* ── Item block (multi-arreglo in modal) ── */
+.fc-items-section {
+    border-top: 1.5px solid #f0c0d0;
+    padding-top: 18px;
+    margin-top: 6px;
+}
+
+.fc-items-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--fc-primary);
+    margin-bottom: 14px;
+}
+
+.fc-item-block {
+    border: 1.5px solid #f0c0d0;
+    border-radius: 10px;
+    padding: 14px 14px 4px;
+    margin-bottom: 14px;
+    background: #fdf5f7;
+    position: relative;
+}
+
+.fc-item-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.fc-item-block-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--fc-dark);
+}
+
+.fc-item-remove-btn {
+    background: none;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.fc-item-remove-btn:hover {
+    background: #b91c1c;
+    color: #fff;
+}
+
+.fc-btn-add-item {
+    width: 100%;
+    padding: 10px;
+    border: 1.5px dashed #f0c0d0;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--fc-primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    margin-top: 4px;
+}
+
+.fc-btn-add-item:hover {
+    background: #fdf5f7;
+    border-color: var(--fc-primary);
+}
+
+/* ── Card items list (order card) ── */
+.fc-card-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.fc-card-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 8px 10px;
+    background: #fdf5f7;
+    border-radius: 8px;
+    border: 1px solid #f0c0d0;
+}
+
+.fc-card-item-thumb-wrap {
+    flex-shrink: 0;
+    cursor: zoom-in;
+}
+
+.fc-card-item-thumb {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 7px;
+    border: 1.5px solid #f9a8d4;
+    display: block;
+    transition: border-color 0.2s, transform 0.18s;
+}
+
+.fc-card-item-thumb:hover {
+    border-color: var(--fc-primary);
+    transform: scale(1.06);
+}
+
+.fc-card-item-thumb-empty {
+    width: 56px;
+    height: 56px;
+    border-radius: 7px;
+    border: 1.5px dashed #f9a8d4;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.fc-card-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.fc-card-item-nombre {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2d3748;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fc-card-item-sub {
+    font-size: 11px;
+    color: #718096;
+}
+
+.fc-card-item-dest {
+    font-size: 11px;
+    color: #4a5568;
+    font-weight: 600;
+}
+
+.fc-card-item-tarjeta {
+    font-size: 11px;
+    color: #4a5568;
+    font-style: italic;
+}
+
+/* ── Item count badge ── */
+.fc-card-item-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--fc-primary);
+    background: #fce4ec;
+    border-radius: 10px;
+    padding: 1px 7px;
+    display: inline-block;
+    margin-top: 2px;
 }
 
 /* ── Responsive ── */

@@ -174,6 +174,51 @@ function fc_build_pedido_data( $p ) {
     $historial = is_array( $historial ) ? $historial : [];
     $last      = ! empty( $historial ) ? end( $historial ) : null;
 
+    // ── Items (multi-arreglo) ──
+    $items_raw = get_post_meta( $p->ID, '_fc_pedido_items', true );
+    $items     = [];
+    if ( $items_raw ) {
+        $decoded = json_decode( $items_raw, true );
+        if ( is_array( $decoded ) ) {
+            foreach ( $decoded as $item ) {
+                // Resolve imagen_url: use stored value, else derive from arreglo meta
+                $img = $item['imagen_url'] ?? '';
+                if ( ! $img && ! empty( $item['arreglo_id'] ) ) {
+                    $img = fc_get_arreglo_thumb_by_tamano_color(
+                        (int) $item['arreglo_id'],
+                        $item['tamano'] ?? '',
+                        $item['color']  ?? ''
+                    );
+                }
+                $items[] = [
+                    'arreglo_id'           => (int) ( $item['arreglo_id'] ?? 0 ),
+                    'arreglo_nombre'       => sanitize_text_field( $item['arreglo_nombre'] ?? '' ),
+                    'imagen_url'           => esc_url_raw( $img ),
+                    'tamano'               => sanitize_text_field( $item['tamano'] ?? '' ),
+                    'color'                => sanitize_text_field( $item['color']  ?? '' ),
+                    'destinatario'         => sanitize_text_field( $item['destinatario'] ?? '' ),
+                    'destinatario_telefono'=> sanitize_text_field( $item['destinatario_telefono'] ?? '' ),
+                    'mensaje_tarjeta'      => sanitize_textarea_field( $item['mensaje_tarjeta'] ?? '' ),
+                ];
+            }
+        }
+    }
+
+    // Fallback: legacy single-item meta → wrap in array for backward compat
+    if ( empty( $items ) ) {
+        $arreglo_id = (int) get_post_meta( $p->ID, '_fc_pedido_arreglo_id', true );
+        $items[] = [
+            'arreglo_id'            => $arreglo_id,
+            'arreglo_nombre'        => get_post_meta( $p->ID, '_fc_pedido_arreglo_nombre',          true ),
+            'imagen_url'            => fc_get_pedido_arreglo_thumb( $p->ID ),
+            'tamano'                => get_post_meta( $p->ID, '_fc_pedido_tamano',                  true ),
+            'color'                 => get_post_meta( $p->ID, '_fc_pedido_color',                   true ),
+            'destinatario'          => get_post_meta( $p->ID, '_fc_pedido_destinatario',            true ),
+            'destinatario_telefono' => get_post_meta( $p->ID, '_fc_pedido_destinatario_telefono',   true ),
+            'mensaje_tarjeta'       => get_post_meta( $p->ID, '_fc_pedido_mensaje_tarjeta',         true ),
+        ];
+    }
+
     return [
         'id'                => $p->ID,
         'numero'            => get_post_meta( $p->ID, '_fc_pedido_numero',           true ),
@@ -184,25 +229,67 @@ function fc_build_pedido_data( $p ) {
         'horario'           => get_post_meta( $p->ID, '_fc_pedido_horario',          true ),
         'direccion'         => get_post_meta( $p->ID, '_fc_pedido_direccion',        true ),
         'hora_recoleccion'  => get_post_meta( $p->ID, '_fc_pedido_hora_recoleccion', true ),
-        'cliente_nombre'    => get_post_meta( $p->ID, '_fc_pedido_cliente_nombre',   true ),
-        'cliente_telefono'  => get_post_meta( $p->ID, '_fc_pedido_cliente_telefono', true ),
-        'destinatario'      => get_post_meta( $p->ID, '_fc_pedido_destinatario',     true ),
-        'mensaje_tarjeta'   => get_post_meta( $p->ID, '_fc_pedido_mensaje_tarjeta',  true ),
         'nota'              => get_post_meta( $p->ID, '_fc_pedido_nota',             true ),
+        'nota_floreria'     => get_post_meta( $p->ID, '_fc_pedido_nota_floreria',    true ),
+        'canal'             => get_post_meta( $p->ID, '_fc_pedido_canal',            true ),
+        'canal_nombre'      => get_post_meta( $p->ID, '_fc_pedido_canal_nombre',     true ),
+        'canal_contacto'    => get_post_meta( $p->ID, '_fc_pedido_canal_contacto',   true ),
+        'items'             => $items,
+        // Legacy top-level fields kept for backward compat (print, single-pedido template)
         'arreglo_id'        => (int) get_post_meta( $p->ID, '_fc_pedido_arreglo_id',    true ),
         'arreglo_nombre'    => get_post_meta( $p->ID, '_fc_pedido_arreglo_nombre',   true ),
         'arreglo_thumb'     => fc_get_pedido_arreglo_thumb( $p->ID ),
         'tamano'            => get_post_meta( $p->ID, '_fc_pedido_tamano',           true ),
         'color'             => get_post_meta( $p->ID, '_fc_pedido_color',            true ),
-        'nota_floreria'          => get_post_meta( $p->ID, '_fc_pedido_nota_floreria',         true ),
-        'canal'                  => get_post_meta( $p->ID, '_fc_pedido_canal',                 true ),
-        'canal_nombre'           => get_post_meta( $p->ID, '_fc_pedido_canal_nombre',          true ),
-        'canal_contacto'         => get_post_meta( $p->ID, '_fc_pedido_canal_contacto',        true ),
-        'destinatario_telefono'  => get_post_meta( $p->ID, '_fc_pedido_destinatario_telefono', true ),
+        'destinatario'      => get_post_meta( $p->ID, '_fc_pedido_destinatario',     true ),
+        'destinatario_telefono' => get_post_meta( $p->ID, '_fc_pedido_destinatario_telefono', true ),
+        'mensaje_tarjeta'   => get_post_meta( $p->ID, '_fc_pedido_mensaje_tarjeta',  true ),
+        'cliente_nombre'    => get_post_meta( $p->ID, '_fc_pedido_cliente_nombre',   true ),
+        'cliente_telefono'  => get_post_meta( $p->ID, '_fc_pedido_cliente_telefono', true ),
         'historial'         => $historial,
         'last_change'       => $last,
-        'fecha_registro'    => get_the_date( 'd/m/Y H:i', $p ),
+        'fecha_registro'    => (function( $p ) {
+            $tz_tj  = new DateTimeZone( 'America/Tijuana' );
+            $reg_dt = new DateTime( get_post_field( 'post_date_gmt', $p->ID ), new DateTimeZone( 'UTC' ) );
+            $reg_dt->setTimezone( $tz_tj );
+            return $reg_dt->format( 'd/m/Y H:i' );
+        })( $p ),
     ];
+}
+
+// ─────────────────────────────────────────────
+// Helper: get arreglo thumbnail by tamaño + color names
+// ─────────────────────────────────────────────
+function fc_get_arreglo_thumb_by_tamano_color( $arreglo_id, $tamano_nombre, $color_nombre ) {
+    if ( ! $arreglo_id ) return '';
+    $tamanos = get_post_meta( $arreglo_id, '_fc_tamanos', true );
+    if ( ! is_array( $tamanos ) ) return '';
+
+    $tamano_clean = trim( preg_replace( '/\s*\(\$[^)]+\)$/', '', $tamano_nombre ) );
+    $img = '';
+
+    foreach ( $tamanos as $t ) {
+        if ( $tamano_clean && trim( $t['nombre'] ?? '' ) !== $tamano_clean ) continue;
+        // Color match
+        if ( $color_nombre && ! empty( $t['colores'] ) ) {
+            foreach ( $t['colores'] as $c ) {
+                if ( ( $c['nombre'] ?? '' ) === $color_nombre && ! empty( $c['imagen_url'] ) ) {
+                    return $c['imagen_url'];
+                }
+            }
+        }
+        // Tamaño image
+        if ( ! empty( $t['imagen_url'] ) ) { $img = $t['imagen_url']; break; }
+    }
+    // Featured image fallback
+    if ( ! $img ) {
+        $feat = get_post_thumbnail_id( $arreglo_id );
+        if ( $feat ) {
+            $src = wp_get_attachment_image_src( $feat, 'medium' );
+            $img = $src ? $src[0] : '';
+        }
+    }
+    return $img;
 }
 
 // ─────────────────────────────────────────────
@@ -287,6 +374,26 @@ function fc_ajax_crear_pedido() {
         wp_send_json_error( [ 'message' => 'Error al crear el pedido.' ] );
     }
 
+    // Parse and sanitize items
+    $items_json_raw = wp_unslash( $_POST['items_json'] ?? '' );
+    $items_raw      = json_decode( $items_json_raw, true );
+    $items_clean    = [];
+    if ( is_array( $items_raw ) ) {
+        foreach ( $items_raw as $item ) {
+            $items_clean[] = [
+                'arreglo_id'            => (int)    ( $item['arreglo_id']            ?? 0  ),
+                'arreglo_nombre'        => sanitize_text_field(   $item['arreglo_nombre']        ?? '' ),
+                'imagen_url'            => esc_url_raw(           $item['imagen_url']            ?? '' ),
+                'tamano'                => sanitize_text_field(   $item['tamano']                ?? '' ),
+                'color'                 => sanitize_text_field(   $item['color']                 ?? '' ),
+                'destinatario'          => sanitize_text_field(   $item['destinatario']          ?? '' ),
+                'destinatario_telefono' => sanitize_text_field(   $item['destinatario_telefono'] ?? '' ),
+                'mensaje_tarjeta'       => sanitize_textarea_field( $item['mensaje_tarjeta']     ?? '' ),
+            ];
+        }
+    }
+    $first = $items_clean[0] ?? [];
+
     $fields = [
         '_fc_pedido_numero'           => $numero,
         '_fc_pedido_token'            => $token,
@@ -296,22 +403,28 @@ function fc_ajax_crear_pedido() {
         '_fc_pedido_horario'          => sanitize_text_field( $_POST['horario'] ?? '' ),
         '_fc_pedido_direccion'        => sanitize_text_field( $_POST['direccion'] ?? '' ),
         '_fc_pedido_hora_recoleccion' => sanitize_text_field( $_POST['hora_recoleccion'] ?? '' ),
-        '_fc_pedido_canal'                   => sanitize_key( $_POST['canal'] ?? '' ),
-        '_fc_pedido_canal_nombre'            => sanitize_text_field( $_POST['canal_nombre'] ?? '' ),
-        '_fc_pedido_canal_contacto'          => sanitize_text_field( $_POST['canal_contacto'] ?? '' ),
-        '_fc_pedido_destinatario'            => sanitize_text_field( $_POST['destinatario'] ?? '' ),
-        '_fc_pedido_destinatario_telefono'   => sanitize_text_field( $_POST['destinatario_telefono'] ?? '' ),
-        '_fc_pedido_mensaje_tarjeta'         => sanitize_textarea_field( $_POST['mensaje_tarjeta'] ?? '' ),
-        '_fc_pedido_nota'                    => sanitize_textarea_field( $_POST['nota'] ?? '' ),
-        '_fc_pedido_arreglo_id'              => (int) ( $_POST['arreglo_id'] ?? 0 ),
-        '_fc_pedido_arreglo_nombre'          => sanitize_text_field( $_POST['arreglo_nombre'] ?? '' ),
-        '_fc_pedido_tamano'                  => sanitize_text_field( $_POST['tamano'] ?? '' ),
-        '_fc_pedido_color'                   => sanitize_text_field( $_POST['color'] ?? '' ),
-        '_fc_pedido_registrado_por'          => get_current_user_id(),
+        '_fc_pedido_canal'            => sanitize_key( $_POST['canal'] ?? '' ),
+        '_fc_pedido_canal_nombre'     => sanitize_text_field( $_POST['canal_nombre']    ?? '' ),
+        '_fc_pedido_canal_contacto'   => sanitize_text_field( $_POST['canal_contacto']  ?? '' ),
+        '_fc_pedido_nota'             => sanitize_textarea_field( $_POST['nota'] ?? '' ),
+        '_fc_pedido_registrado_por'   => get_current_user_id(),
+        // Legacy single-item (first item) for backward compat
+        '_fc_pedido_arreglo_id'              => $first['arreglo_id']            ?? 0,
+        '_fc_pedido_arreglo_nombre'          => $first['arreglo_nombre']        ?? '',
+        '_fc_pedido_tamano'                  => $first['tamano']                ?? '',
+        '_fc_pedido_color'                   => $first['color']                 ?? '',
+        '_fc_pedido_destinatario'            => $first['destinatario']          ?? '',
+        '_fc_pedido_destinatario_telefono'   => $first['destinatario_telefono'] ?? '',
+        '_fc_pedido_mensaje_tarjeta'         => $first['mensaje_tarjeta']       ?? '',
     ];
 
     foreach ( $fields as $key => $value ) {
         update_post_meta( $post_id, $key, $value );
+    }
+
+    // Multi-item JSON
+    if ( ! empty( $items_clean ) ) {
+        update_post_meta( $post_id, '_fc_pedido_items', wp_json_encode( $items_clean ) );
     }
 
     $historial = [ [
@@ -430,27 +543,53 @@ function fc_ajax_actualizar_pedido_datos() {
         wp_send_json_error( [ 'message' => 'Pedido no encontrado.' ] );
     }
 
+    // Parse and sanitize items
+    $items_json_raw = wp_unslash( $_POST['items_json'] ?? '' );
+    $items_raw      = json_decode( $items_json_raw, true );
+    $items_clean    = [];
+    if ( is_array( $items_raw ) ) {
+        foreach ( $items_raw as $item ) {
+            $items_clean[] = [
+                'arreglo_id'            => (int)    ( $item['arreglo_id']            ?? 0  ),
+                'arreglo_nombre'        => sanitize_text_field(    $item['arreglo_nombre']        ?? '' ),
+                'imagen_url'            => esc_url_raw(            $item['imagen_url']            ?? '' ),
+                'tamano'                => sanitize_text_field(    $item['tamano']                ?? '' ),
+                'color'                 => sanitize_text_field(    $item['color']                 ?? '' ),
+                'destinatario'          => sanitize_text_field(    $item['destinatario']          ?? '' ),
+                'destinatario_telefono' => sanitize_text_field(    $item['destinatario_telefono'] ?? '' ),
+                'mensaje_tarjeta'       => sanitize_textarea_field( $item['mensaje_tarjeta']      ?? '' ),
+            ];
+        }
+    }
+    $first = $items_clean[0] ?? [];
+
     $fields = [
         '_fc_pedido_tipo'             => sanitize_key( $_POST['tipo'] ?? 'envio' ),
         '_fc_pedido_fecha'            => sanitize_text_field( $_POST['fecha'] ?? '' ),
         '_fc_pedido_horario'          => sanitize_text_field( $_POST['horario'] ?? '' ),
         '_fc_pedido_direccion'        => sanitize_text_field( $_POST['direccion'] ?? '' ),
         '_fc_pedido_hora_recoleccion' => sanitize_text_field( $_POST['hora_recoleccion'] ?? '' ),
-        '_fc_pedido_canal'                   => sanitize_key( $_POST['canal'] ?? '' ),
-        '_fc_pedido_canal_nombre'            => sanitize_text_field( $_POST['canal_nombre'] ?? '' ),
-        '_fc_pedido_canal_contacto'          => sanitize_text_field( $_POST['canal_contacto'] ?? '' ),
-        '_fc_pedido_destinatario'            => sanitize_text_field( $_POST['destinatario'] ?? '' ),
-        '_fc_pedido_destinatario_telefono'   => sanitize_text_field( $_POST['destinatario_telefono'] ?? '' ),
-        '_fc_pedido_mensaje_tarjeta'         => sanitize_textarea_field( $_POST['mensaje_tarjeta'] ?? '' ),
-        '_fc_pedido_nota'                    => sanitize_textarea_field( $_POST['nota'] ?? '' ),
-        '_fc_pedido_arreglo_id'              => (int) ( $_POST['arreglo_id'] ?? 0 ),
-        '_fc_pedido_arreglo_nombre'          => sanitize_text_field( $_POST['arreglo_nombre'] ?? '' ),
-        '_fc_pedido_tamano'                  => sanitize_text_field( $_POST['tamano'] ?? '' ),
-        '_fc_pedido_color'                   => sanitize_text_field( $_POST['color'] ?? '' ),
+        '_fc_pedido_canal'            => sanitize_key( $_POST['canal'] ?? '' ),
+        '_fc_pedido_canal_nombre'     => sanitize_text_field( $_POST['canal_nombre']    ?? '' ),
+        '_fc_pedido_canal_contacto'   => sanitize_text_field( $_POST['canal_contacto']  ?? '' ),
+        '_fc_pedido_nota'             => sanitize_textarea_field( $_POST['nota'] ?? '' ),
+        // Legacy single-item for backward compat
+        '_fc_pedido_arreglo_id'              => $first['arreglo_id']            ?? 0,
+        '_fc_pedido_arreglo_nombre'          => $first['arreglo_nombre']        ?? '',
+        '_fc_pedido_tamano'                  => $first['tamano']                ?? '',
+        '_fc_pedido_color'                   => $first['color']                 ?? '',
+        '_fc_pedido_destinatario'            => $first['destinatario']          ?? '',
+        '_fc_pedido_destinatario_telefono'   => $first['destinatario_telefono'] ?? '',
+        '_fc_pedido_mensaje_tarjeta'         => $first['mensaje_tarjeta']       ?? '',
     ];
 
     foreach ( $fields as $key => $value ) {
         update_post_meta( $pedido_id, $key, $value );
+    }
+
+    // Multi-item JSON
+    if ( ! empty( $items_clean ) ) {
+        update_post_meta( $pedido_id, '_fc_pedido_items', wp_json_encode( $items_clean ) );
     }
 
     wp_send_json_success( [ 'message' => 'Pedido actualizado correctamente.' ] );
@@ -611,17 +750,31 @@ function fc_print_pedido_page() {
     $canal_labels    = [ 'whatsapp' => 'WhatsApp', 'instagram' => 'Instagram', 'facebook' => 'Facebook', 'otro' => 'Otro' ];
     $canal_label     = $canal ? ( $canal_labels[ $canal ] ?? ucfirst( $canal ) ) : '';
     $canal_detalle   = implode( ' · ', array_filter( [ $canal_nombre, $canal_contacto ] ) );
-    $destinat        = get_post_meta( $pedido_id, '_fc_pedido_destinatario',          true );
-    $destinat_tel    = get_post_meta( $pedido_id, '_fc_pedido_destinatario_telefono', true );
-    $tarjeta     = get_post_meta( $pedido_id, '_fc_pedido_mensaje_tarjeta',  true );
     $nota        = get_post_meta( $pedido_id, '_fc_pedido_nota',             true );
     $nota_fl     = get_post_meta( $pedido_id, '_fc_pedido_nota_floreria',    true );
-    $arreglo     = get_post_meta( $pedido_id, '_fc_pedido_arreglo_nombre',   true );
-    $tamano      = get_post_meta( $pedido_id, '_fc_pedido_tamano',           true );
-    $color       = get_post_meta( $pedido_id, '_fc_pedido_color',            true );
-    $thumb       = fc_get_pedido_arreglo_thumb( $pedido_id );
     $shop_name   = 'Florería Monarca';
     $status_lbl  = fc_pedido_status_label( $status );
+
+    // Multi-item
+    $items_raw = get_post_meta( $pedido_id, '_fc_pedido_items', true );
+    $items     = [];
+    if ( $items_raw ) {
+        $decoded = json_decode( $items_raw, true );
+        if ( is_array( $decoded ) ) $items = $decoded;
+    }
+    if ( empty( $items ) ) {
+        // Legacy fallback
+        $items[] = [
+            'arreglo_id'            => (int) get_post_meta( $pedido_id, '_fc_pedido_arreglo_id',   true ),
+            'arreglo_nombre'        => get_post_meta( $pedido_id, '_fc_pedido_arreglo_nombre',      true ),
+            'imagen_url'            => fc_get_pedido_arreglo_thumb( $pedido_id ),
+            'tamano'                => get_post_meta( $pedido_id, '_fc_pedido_tamano',              true ),
+            'color'                 => get_post_meta( $pedido_id, '_fc_pedido_color',               true ),
+            'destinatario'          => get_post_meta( $pedido_id, '_fc_pedido_destinatario',        true ),
+            'destinatario_telefono' => get_post_meta( $pedido_id, '_fc_pedido_destinatario_telefono', true ),
+            'mensaje_tarjeta'       => get_post_meta( $pedido_id, '_fc_pedido_mensaje_tarjeta',     true ),
+        ];
+    }
 
     // Delivery line
     $tipo_label  = $tipo === 'recoleccion' ? 'Recolección en tienda' : 'Envío a domicilio';
@@ -723,59 +876,87 @@ function fc_print_pedido_page() {
     margin-top: 3px;
   }
 
-  /* ── Cuerpo: foto izquierda (prominente) | datos derecha ── */
+  /* ── Cuerpo ── */
   .fc-doc-body {
-    width: 100%;
-    border-collapse: collapse;
+    padding: 22px 26px;
   }
 
-  /* Columna foto — izquierda, ancha, con fondo rosado suave */
-  .fc-photo-col {
-    width: 250px;
-    background: #fdf2f8;
-    vertical-align: middle;
-    text-align: center;
-    padding: 28px 22px;
-    border-right: 1px solid #f3e8f0;
+  /* ── Items list ── */
+  .fc-items-print-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 16px;
   }
-  .fc-photo-col img {
-    width: 200px;
-    height: 200px;
+  .fc-item-print-row {
+    display: flex;
+    gap: 16px;
+    border: 1px solid #f3e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fdf2f8;
+  }
+  .fc-item-print-thumb {
+    flex-shrink: 0;
+    width: 110px;
+    background: #fdf2f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+  }
+  .fc-item-print-thumb img {
+    width: 90px;
+    height: 90px;
     object-fit: cover;
-    border-radius: 12px;
+    border-radius: 8px;
     border: 2px solid #f9a8d4;
     display: block;
-    margin: 0 auto;
   }
-  .fc-no-photo {
-    width: 200px;
-    height: 200px;
-    border-radius: 12px;
+  .fc-item-print-no-img {
+    width: 90px;
+    height: 90px;
+    border-radius: 8px;
     border: 2px dashed #f9a8d4;
-    display: table-cell;
-    vertical-align: middle;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: #c084a8;
-    font-size: 11px;
+    font-size: 10px;
     text-align: center;
     background: #fff;
   }
-  .fc-photo-name {
-    margin-top: 12px;
+  .fc-item-print-info {
+    padding: 12px 14px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    justify-content: center;
+  }
+  .fc-item-print-name {
     font-size: 13px;
     font-weight: 700;
     color: #9d174d;
-    word-break: break-word;
   }
-  .fc-photo-detail {
-    margin-top: 4px;
+  .fc-item-print-sub {
     font-size: 11px;
-    color: #9ca3af;
-    word-break: break-word;
+    color: #6b7280;
+  }
+  .fc-item-print-dest {
+    font-size: 11px;
+    color: #374151;
+    font-weight: 600;
+  }
+  .fc-item-print-tarjeta {
+    font-size: 11px;
+    color: #374151;
+    font-style: italic;
   }
 
-  /* Columna info — derecha */
+  /* Columna info — datos de entrega */
   .fc-info-col {
-    padding: 22px 24px;
+    padding: 0;
     vertical-align: top;
   }
 
@@ -914,99 +1095,108 @@ function fc_print_pedido_page() {
         </div>
         <div class="fc-doc-header-right">
             <div class="fc-num"><?php echo esc_html( $numero ); ?></div>
-            <div class="fc-fecha-reg">Registrado el <?php echo esc_html( get_the_date( 'd/m/Y H:i', $post ) ); ?></div>
+            <div class="fc-fecha-reg">Registrado el <?php
+                $tz_tj_p  = new DateTimeZone( 'America/Tijuana' );
+                $reg_dt_p = new DateTime( get_post_field( 'post_date_gmt', $post->ID ), new DateTimeZone( 'UTC' ) );
+                $reg_dt_p->setTimezone( $tz_tj_p );
+                echo esc_html( $reg_dt_p->format( 'd/m/Y H:i' ) );
+            ?></div>
         </div>
     </div>
 
-    <!-- Cuerpo: foto izquierda | datos derecha -->
-    <table class="fc-doc-body">
-    <tr>
+    <!-- Cuerpo -->
+    <div class="fc-doc-body">
 
-        <!-- ── Foto (izquierda, prominente) ── -->
-        <td class="fc-photo-col">
-            <?php if ( $thumb ) : ?>
-                <img src="<?php echo esc_url( $thumb ); ?>" alt="Foto del arreglo" />
-            <?php else : ?>
-                <div class="fc-no-photo">Sin foto disponible</div>
-            <?php endif; ?>
-            <div class="fc-photo-name"><?php echo esc_html( $arreglo ); ?></div>
-            <div class="fc-photo-detail">
-                <?php
-                $det = [];
-                if ( $tamano ) $det[] = esc_html( $tamano );
-                if ( $color && strpos( $color, '--' ) !== 0 ) $det[] = esc_html( $color );
-                echo implode( ' · ', $det );
-                ?>
-            </div>
-        </td>
+        <!-- Entrega -->
+        <div class="fc-section-title">Entrega</div>
+        <div class="fc-row">
+            <span class="fc-row-label">Tipo</span>
+            <span class="fc-row-value"><?php echo esc_html( $tipo_label ); ?></span>
+        </div>
+        <?php if ( $fecha_fmt ) : ?>
+        <div class="fc-row">
+            <span class="fc-row-label">Fecha</span>
+            <span class="fc-row-value"><?php echo esc_html( $fecha_fmt ); ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if ( $entrega_det ) : ?>
+        <div class="fc-row">
+            <span class="fc-row-label"><?php echo $tipo === 'recoleccion' ? 'Hora' : 'Horario'; ?></span>
+            <span class="fc-row-value"><?php echo esc_html( $entrega_det ); ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if ( $tipo === 'envio' && $direccion ) : ?>
+        <div class="fc-row">
+            <span class="fc-row-label">Dirección</span>
+            <span class="fc-row-value"><?php echo esc_html( $direccion ); ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if ( $canal_label ) : ?>
+        <div class="fc-row">
+            <span class="fc-row-label">Canal</span>
+            <span class="fc-row-value"><?php echo esc_html( $canal_label ); ?><?php echo $canal_detalle ? ' · ' . esc_html( $canal_detalle ) : ''; ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if ( $nota ) : ?>
+        <div class="fc-row">
+            <span class="fc-row-label">Nota</span>
+            <span class="fc-row-value"><?php echo esc_html( $nota ); ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if ( $nota_fl ) : ?>
+        <div class="fc-row">
+            <span class="fc-row-label">Florería</span>
+            <span class="fc-row-value italic"><?php echo esc_html( $nota_fl ); ?></span>
+        </div>
+        <?php endif; ?>
 
-        <!-- ── Datos (derecha) ── -->
-        <td class="fc-info-col">
+        <hr class="fc-divider" />
 
-            <!-- Entrega -->
-            <div class="fc-section-title">Entrega</div>
-            <div class="fc-row">
-                <span class="fc-row-label">Tipo</span>
-                <span class="fc-row-value"><?php echo esc_html( $tipo_label ); ?></span>
+        <!-- Arreglos -->
+        <div class="fc-section-title">Arreglo<?php echo count( $items ) > 1 ? 's' : ''; ?></div>
+        <div class="fc-items-print-list">
+        <?php foreach ( $items as $item ) :
+            $item_img   = $item['imagen_url'] ?? '';
+            if ( ! $item_img && ! empty( $item['arreglo_id'] ) ) {
+                $item_img = fc_get_arreglo_thumb_by_tamano_color(
+                    (int) $item['arreglo_id'],
+                    $item['tamano'] ?? '',
+                    $item['color']  ?? ''
+                );
+            }
+            $item_sub   = array_filter( [
+                $item['tamano'] ?? '',
+                ( ! empty( $item['color'] ) && strpos( $item['color'], '--' ) !== 0 ) ? $item['color'] : '',
+            ] );
+            $item_dest  = $item['destinatario'] ?? '';
+            $item_tel   = $item['destinatario_telefono'] ?? '';
+            $item_tarj  = $item['mensaje_tarjeta'] ?? '';
+        ?>
+        <div class="fc-item-print-row">
+            <div class="fc-item-print-thumb">
+                <?php if ( $item_img ) : ?>
+                    <img src="<?php echo esc_url( $item_img ); ?>" alt="" />
+                <?php else : ?>
+                    <div class="fc-item-print-no-img">Sin foto</div>
+                <?php endif; ?>
             </div>
-            <?php if ( $fecha_fmt ) : ?>
-            <div class="fc-row">
-                <span class="fc-row-label">Fecha</span>
-                <span class="fc-row-value"><?php echo esc_html( $fecha_fmt ); ?></span>
+            <div class="fc-item-print-info">
+                <div class="fc-item-print-name"><?php echo esc_html( $item['arreglo_nombre'] ?? '' ); ?></div>
+                <?php if ( $item_sub ) : ?>
+                <div class="fc-item-print-sub"><?php echo esc_html( implode( ' · ', $item_sub ) ); ?></div>
+                <?php endif; ?>
+                <?php if ( $item_dest ) : ?>
+                <div class="fc-item-print-dest">Para: <?php echo esc_html( $item_dest ); ?><?php echo $item_tel ? ' · ' . esc_html( $item_tel ) : ''; ?></div>
+                <?php endif; ?>
+                <?php if ( $item_tarj ) : ?>
+                <div class="fc-item-print-tarjeta">"<?php echo esc_html( $item_tarj ); ?>"</div>
+                <?php endif; ?>
             </div>
-            <?php endif; ?>
-            <?php if ( $entrega_det ) : ?>
-            <div class="fc-row">
-                <span class="fc-row-label"><?php echo $tipo === 'recoleccion' ? 'Hora' : 'Horario'; ?></span>
-                <span class="fc-row-value"><?php echo esc_html( $entrega_det ); ?></span>
-            </div>
-            <?php endif; ?>
-            <?php if ( $tipo === 'envio' && $direccion ) : ?>
-            <div class="fc-row">
-                <span class="fc-row-label">Dirección</span>
-                <span class="fc-row-value"><?php echo esc_html( $direccion ); ?></span>
-            </div>
-            <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+        </div>
 
-            <hr class="fc-divider" />
-
-            <!-- Cliente -->
-            <div class="fc-section-title">Cliente</div>
-            <?php if ( $canal_label ) : ?>
-            <div class="fc-row">
-                <span class="fc-row-label">Canal</span>
-                <span class="fc-row-value"><?php echo esc_html( $canal_label ); ?><?php echo $canal_detalle ? ' · ' . esc_html( $canal_detalle ) : ''; ?></span>
-            </div>
-            <?php endif; ?>
-            <?php if ( $destinat ) : ?>
-            <div class="fc-row">
-                <span class="fc-row-label">Destinatario</span>
-                <span class="fc-row-value"><?php echo esc_html( $destinat ); ?><?php echo $destinat_tel ? ' · ' . esc_html( $destinat_tel ) : ''; ?></span>
-            </div>
-            <?php endif; ?>
-            <?php if ( $tarjeta ) : ?>
-            <div class="fc-row">
-                <span class="fc-row-label">Tarjeta</span>
-                <span class="fc-row-value italic">"<?php echo esc_html( $tarjeta ); ?>"</span>
-            </div>
-            <?php endif; ?>
-            <?php if ( $nota ) : ?>
-            <hr class="fc-divider" />
-            <div class="fc-section-title">Nota especial</div>
-            <div class="fc-row">
-                <span class="fc-row-value"><?php echo esc_html( $nota ); ?></span>
-            </div>
-            <?php endif; ?>
-            <?php if ( $nota_fl ) : ?>
-            <div class="fc-row" style="margin-top:4px;">
-                <span class="fc-row-label">Florería</span>
-                <span class="fc-row-value italic"><?php echo esc_html( $nota_fl ); ?></span>
-            </div>
-            <?php endif; ?>
-
-        </td>
-    </tr>
-    </table><!-- .fc-doc-body -->
+    </div><!-- .fc-doc-body -->
 
     <!-- Acuse de recibo -->
     <div class="fc-receipt">

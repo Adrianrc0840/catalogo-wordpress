@@ -15,11 +15,10 @@
 
     // ── State ──
     let currentFilter    = 'all';
-    let allArreglos      = [];
-    let selectedArreglo  = null;
     let currentEditId    = null;   // null = crear, número = editar
     let pedidoDataMap    = {};     // id → datos completos del pedido
     let isPapeleraView   = false;
+    let modalItemCounter = 0;      // unique index per item block
 
     // ── DOM helpers ──
     const $ = (sel, ctx = document) => ctx.querySelector(sel);
@@ -111,14 +110,8 @@
             ? `Último cambio: ${fmtDatetime(last.timestamp)} por ${escHtml(last.user_name)}`
             : '';
 
-        const tipoLabel = p.tipo === 'envio' ? 'Envío a domicilio' : 'Recolección en tienda';
+        const tipoLabel    = p.tipo === 'envio' ? 'Envío a domicilio' : 'Recolección en tienda';
         const horarioLabel = p.tipo === 'envio' ? p.horario : p.hora_recoleccion;
-
-        const thumbHtml = p.arreglo_thumb
-            ? `<div class="fc-card-thumb-wrap" data-lightbox="${escAttr(p.arreglo_thumb)}" title="Ver foto">
-                <img class="fc-card-thumb" src="${escAttr(p.arreglo_thumb)}" alt="Foto del arreglo" loading="lazy" />
-               </div>`
-            : '';
 
         const CANAL_LABELS = { whatsapp: 'WhatsApp', instagram: 'Instagram', facebook: 'Facebook', otro: 'Otro' };
         const canalLabel = p.canal ? CANAL_LABELS[p.canal] || p.canal : '';
@@ -126,16 +119,43 @@
         const canalHtml  = canalLabel
             ? `<div class="fc-card-row"><span class="fc-label">Canal</span><span class="fc-value">${escHtml(canalLabel)}${canalInfo ? ' · ' + canalInfo : ''}</span></div>`
             : '';
-        const destTelHtml = p.destinatario_telefono
-            ? ` · ${escHtml(p.destinatario_telefono)}`
-            : '';
+
+        // ── Items (multi-arreglo) ──
+        const items = p.items || [];
+        const itemsHtml = items.map((item, i) => {
+            const thumb = item.imagen_url
+                ? `<div class="fc-card-item-thumb-wrap" data-lightbox="${escAttr(item.imagen_url)}" title="Ver foto">
+                     <img class="fc-card-item-thumb" src="${escAttr(item.imagen_url)}" alt="" loading="lazy" />
+                   </div>`
+                : `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
+            const sub = [item.tamano, (item.color && !item.color.startsWith('--')) ? item.color : ''].filter(Boolean).join(' · ');
+            const destLine = item.destinatario
+                ? `<span class="fc-card-item-dest">Para: ${escHtml(item.destinatario)}${item.destinatario_telefono ? ' · ' + escHtml(item.destinatario_telefono) : ''}</span>`
+                : '';
+            const tarjetaLine = item.mensaje_tarjeta
+                ? `<span class="fc-card-item-tarjeta">"${escHtml(item.mensaje_tarjeta)}"</span>`
+                : '';
+            return `
+            <div class="fc-card-item">
+                ${thumb}
+                <div class="fc-card-item-info">
+                    <strong class="fc-card-item-nombre">${escHtml(item.arreglo_nombre)}</strong>
+                    ${sub ? `<span class="fc-card-item-sub">${escHtml(sub)}</span>` : ''}
+                    ${destLine}
+                    ${tarjetaLine}
+                </div>
+            </div>`;
+        }).join('');
 
         const isMobile = window.innerWidth <= 640;
 
         return `
 <div class="fc-order-card${isMobile ? ' collapsed' : ''}" data-status="${escAttr(p.status)}" data-id="${p.id}">
     <div class="fc-card-header">
-        <span class="fc-order-num">${escHtml(p.numero)}</span>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <span class="fc-order-num">${escHtml(p.numero)}</span>
+            ${items.length > 1 ? `<span class="fc-card-item-count">${items.length} arreglos</span>` : ''}
+        </div>
         <div style="display:flex;align-items:center;gap:8px;">
             ${renderBadge(p.status)}
             <button class="fc-card-collapse-btn" aria-label="Colapsar">&#9662;</button>
@@ -144,21 +164,19 @@
 
     <div class="fc-card-collapsible">
         <div class="fc-card-info">
-            ${thumbHtml}
-            <div class="fc-card-row">
-                <span class="fc-label">Arreglo</span>
-                <span class="fc-value">${escHtml(p.arreglo_nombre)} — ${escHtml(p.tamano)}${(p.color && !p.color.startsWith('--')) ? ' / ' + escHtml(p.color) : ''}</span>
-            </div>
+
+            <!-- Datos de entrega y cliente -->
             ${canalHtml}
-            ${p.destinatario ? `<div class="fc-card-row"><span class="fc-label">Destinatario</span><span class="fc-value">${escHtml(p.destinatario)}${destTelHtml}</span></div>` : ''}
             <div class="fc-card-row">
                 <span class="fc-label">Entrega</span>
                 <span class="fc-value">${escHtml(tipoLabel)} · ${escHtml(p.fecha)}${horarioLabel ? ' · ' + escHtml(horarioLabel) : ''}</span>
             </div>
             ${p.tipo === 'envio' && p.direccion ? `<div class="fc-card-row"><span class="fc-label">Dirección</span><span class="fc-value">${escHtml(p.direccion)}</span></div>` : ''}
-            ${p.destinatario ? `<div class="fc-card-row"><span class="fc-label">Destinatario</span><span class="fc-value">${escHtml(p.destinatario)}</span></div>` : ''}
-            ${p.mensaje_tarjeta ? `<div class="fc-card-row"><span class="fc-label">Tarjeta</span><span class="fc-value">"${escHtml(p.mensaje_tarjeta)}"</span></div>` : ''}
             ${p.nota ? `<div class="fc-card-row"><span class="fc-label">Nota</span><span class="fc-value">${escHtml(p.nota)}</span></div>` : ''}
+
+            <!-- Arreglos -->
+            ${items.length ? `<div class="fc-card-items-list">${itemsHtml}</div>` : ''}
+
         </div>
 
         <hr class="fc-card-divider" />
@@ -321,8 +339,8 @@
             });
         });
 
-        // Thumbnail lightbox
-        $$('.fc-card-thumb-wrap', grid).forEach(wrap => {
+        // Thumbnail lightbox (items)
+        $$('.fc-card-item-thumb-wrap', grid).forEach(wrap => {
             wrap.addEventListener('click', () => openLightbox(wrap.dataset.lightbox));
         });
 
@@ -659,6 +677,233 @@
         (canal === 'whatsapp' ? nombreInp : input)?.focus();
     }
 
+    // ── Item block: build HTML ──
+    function buildItemBlockHTML(idx, prefill = {}) {
+        const num = idx + 1;
+        return `
+        <div class="fc-item-block" data-item-idx="${idx}">
+            <div class="fc-item-block-header">
+                <span class="fc-item-block-label">Arreglo ${num}</span>
+                <button type="button" class="fc-item-remove-btn" title="Quitar arreglo">&#10005;</button>
+            </div>
+            <div class="fc-form-group">
+                <label>Arreglo</label>
+                <div class="fc-autocomplete-wrap">
+                    <input type="text" class="fc-item-arreglo-search" placeholder="Buscar por nombre..." autocomplete="off" value="${escHtml(prefill.arreglo_nombre || '')}" />
+                    <input type="hidden" class="fc-item-arreglo-id"     value="${escHtml(String(prefill.arreglo_id || ''))}" />
+                    <input type="hidden" class="fc-item-arreglo-nombre" value="${escHtml(prefill.arreglo_nombre || '')}" />
+                    <input type="hidden" class="fc-item-imagen-url"     value="${escHtml(prefill.imagen_url || '')}" />
+                    <div class="fc-autocomplete-dropdown fc-item-arreglo-dropdown"></div>
+                </div>
+            </div>
+            <div class="fc-form-group">
+                <label>Tamaño</label>
+                <select class="fc-item-tamano">
+                    <option value="">-- Selecciona tamaño --</option>
+                </select>
+            </div>
+            <div class="fc-form-group fc-item-color-group" style="display:none;">
+                <label>Color</label>
+                <select class="fc-item-color">
+                    <option value="">-- Selecciona color --</option>
+                </select>
+            </div>
+            <div class="fc-form-group">
+                <label>Nombre del destinatario</label>
+                <input type="text" class="fc-item-destinatario" placeholder="¿A quién va dirigido?" value="${escHtml(prefill.destinatario || '')}" />
+            </div>
+            <div class="fc-form-group">
+                <label>Teléfono del destinatario</label>
+                <input type="tel" class="fc-item-dest-tel" placeholder="10 dígitos" inputmode="numeric" maxlength="15" value="${escHtml(prefill.destinatario_telefono || '')}" />
+            </div>
+            <div class="fc-form-group">
+                <label>Mensaje de tarjeta</label>
+                <textarea class="fc-item-tarjeta" rows="2" placeholder="Mensaje para incluir en la tarjeta...">${escHtml(prefill.mensaje_tarjeta || '')}</textarea>
+            </div>
+        </div>`;
+    }
+
+    // ── Item block: wire events ──
+    async function wireItemBlock(block, prefill = {}) {
+        const searchInput = block.querySelector('.fc-item-arreglo-search');
+        const dropdown    = block.querySelector('.fc-item-arreglo-dropdown');
+        const idInput     = block.querySelector('.fc-item-arreglo-id');
+        const nameInput   = block.querySelector('.fc-item-arreglo-nombre');
+        const imgInput    = block.querySelector('.fc-item-imagen-url');
+        const tamSelect   = block.querySelector('.fc-item-tamano');
+        const colSelect   = block.querySelector('.fc-item-color');
+        const colGroup    = block.querySelector('.fc-item-color-group');
+        const removeBtn   = block.querySelector('.fc-item-remove-btn');
+
+        // Remove button
+        removeBtn.addEventListener('click', () => {
+            block.remove();
+            renumberItemBlocks();
+        });
+
+        // Autocomplete search
+        let dbt = null;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(dbt);
+            const term = searchInput.value.trim();
+            if (term.length < 2) { dropdown.classList.remove('open'); return; }
+            dbt = setTimeout(async () => {
+                try {
+                    const data = await ajax('fc_panel_buscar_arreglos', { term });
+                    if (data.success && data.data.arreglos.length) {
+                        dropdown.innerHTML = data.data.arreglos.map(a =>
+                            `<div class="fc-autocomplete-item" data-id="${a.id}" data-title="${escAttr(a.title)}">${escHtml(a.title)}</div>`
+                        ).join('');
+                        // Store tamanos data on items
+                        dropdown._arreglosData = data.data.arreglos;
+                        dropdown.classList.add('open');
+                    } else {
+                        dropdown.innerHTML = '<div class="fc-autocomplete-item">Sin resultados</div>';
+                        dropdown.classList.add('open');
+                    }
+                } catch { dropdown.classList.remove('open'); }
+            }, 350);
+        });
+
+        dropdown.addEventListener('click', (e) => {
+            const item = e.target.closest('.fc-autocomplete-item');
+            if (!item || !item.dataset.id) return;
+            const id      = parseInt(item.dataset.id, 10);
+            const arreglo = (dropdown._arreglosData || []).find(a => a.id === id);
+            searchInput.value = arreglo?.title || '';
+            if (idInput)   idInput.value   = id;
+            if (nameInput) nameInput.value = arreglo?.title || '';
+            dropdown.classList.remove('open');
+            itemPopulateTamanos(tamSelect, colSelect, colGroup, imgInput, arreglo?.tamanos || []);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!block.contains(e.target)) dropdown.classList.remove('open');
+        });
+
+        // Tamaño → colores
+        tamSelect.addEventListener('change', () => {
+            const tamanos = tamSelect._tamanos || [];
+            const idx     = parseInt(tamSelect.value, 10);
+            if (!isNaN(idx) && tamanos[idx]) {
+                itemPopulateColores(colSelect, colGroup, tamanos[idx].colores || []);
+                // Update imagen_url from tamaño
+                const tamImg = tamanos[idx].imagen_url || '';
+                if (imgInput) imgInput.value = tamImg;
+            } else {
+                colSelect.innerHTML = '<option value="">-- Selecciona color --</option>';
+                if (colGroup) colGroup.style.display = 'none';
+            }
+        });
+
+        colSelect.addEventListener('change', () => {
+            const tamanos = tamSelect._tamanos || [];
+            const tIdx    = parseInt(tamSelect.value, 10);
+            const cIdx    = parseInt(colSelect.value, 10);
+            if (!isNaN(tIdx) && !isNaN(cIdx) && tamanos[tIdx]?.colores?.[cIdx]) {
+                const colImg = tamanos[tIdx].colores[cIdx].imagen_url || '';
+                if (imgInput && colImg) imgInput.value = colImg;
+            }
+        });
+
+        // Pre-fill tamaño/color if editing
+        if (prefill.arreglo_id) {
+            try {
+                const res = await ajax('fc_panel_get_arreglo', { arreglo_id: prefill.arreglo_id });
+                if (res.success) {
+                    itemPopulateTamanos(tamSelect, colSelect, colGroup, imgInput, res.data.tamanos || []);
+                    // Pre-select tamaño by name
+                    if (prefill.tamano) {
+                        for (let i = 1; i < tamSelect.options.length; i++) {
+                            const opt = tamSelect.options[i];
+                            if ((opt.dataset.nombre || opt.text) === prefill.tamano) {
+                                tamSelect.value = opt.value;
+                                const idx = parseInt(opt.value, 10);
+                                itemPopulateColores(colSelect, colGroup, res.data.tamanos[idx]?.colores || []);
+                                // Pre-select color by name
+                                if (prefill.color) {
+                                    for (let j = 1; j < colSelect.options.length; j++) {
+                                        if (colSelect.options[j].text === prefill.color) {
+                                            colSelect.value = colSelect.options[j].value;
+                                            // Update image
+                                            const cIdx = parseInt(colSelect.value, 10);
+                                            const colImg = res.data.tamanos[idx]?.colores?.[cIdx]?.imagen_url || '';
+                                            if (imgInput && colImg) imgInput.value = colImg;
+                                            break;
+                                        }
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch { /* falla silenciosa */ }
+        }
+    }
+
+    function itemPopulateTamanos(tamSelect, colSelect, colGroup, imgInput, tamanos) {
+        tamSelect.innerHTML = '<option value="">-- Selecciona tamaño --</option>';
+        tamSelect._tamanos  = tamanos;
+        colSelect.innerHTML = '<option value="">-- Selecciona color --</option>';
+        if (colGroup) colGroup.style.display = 'none';
+
+        tamanos.forEach((t, i) => {
+            const opt = document.createElement('option');
+            opt.value        = i;
+            opt.dataset.nombre = t.nombre;
+            opt.textContent  = t.nombre + (t.precio ? ` ($${Number(t.precio).toLocaleString('es-MX')})` : '');
+            tamSelect.appendChild(opt);
+        });
+    }
+
+    function itemPopulateColores(colSelect, colGroup, colores) {
+        colSelect.innerHTML = '<option value="">-- Selecciona color --</option>';
+        if (!colores || colores.length === 0) {
+            if (colGroup) colGroup.style.display = 'none';
+            return;
+        }
+        if (colGroup) colGroup.style.display = '';
+        colores.forEach((c, i) => {
+            const opt = document.createElement('option');
+            opt.value       = i;
+            opt.textContent = c.nombre;
+            colSelect.appendChild(opt);
+        });
+    }
+
+    function renumberItemBlocks() {
+        $$('.fc-item-block').forEach((block, i) => {
+            block.dataset.itemIdx = i;
+            const label = block.querySelector('.fc-item-block-label');
+            if (label) label.textContent = `Arreglo ${i + 1}`;
+        });
+    }
+
+    // ── Collect items from modal ──
+    function collectItems() {
+        return $$('.fc-item-block').map(block => {
+            const tamSelect = block.querySelector('.fc-item-tamano');
+            const colSelect = block.querySelector('.fc-item-color');
+            const tamNombre = tamSelect?.selectedIndex > 0
+                ? (tamSelect.options[tamSelect.selectedIndex].dataset.nombre || tamSelect.options[tamSelect.selectedIndex].text)
+                : '';
+            const colNombre = colSelect?.selectedIndex > 0
+                ? colSelect.options[colSelect.selectedIndex].text
+                : '';
+            return {
+                arreglo_id:            block.querySelector('.fc-item-arreglo-id')?.value     || '',
+                arreglo_nombre:        block.querySelector('.fc-item-arreglo-nombre')?.value || '',
+                imagen_url:            block.querySelector('.fc-item-imagen-url')?.value     || '',
+                tamano:                tamNombre,
+                color:                 colNombre,
+                destinatario:          block.querySelector('.fc-item-destinatario')?.value   || '',
+                destinatario_telefono: block.querySelector('.fc-item-dest-tel')?.value       || '',
+                mensaje_tarjeta:       block.querySelector('.fc-item-tarjeta')?.value        || '',
+            };
+        });
+    }
+
     // ── New order modal ──
     function initNewOrderModal() {
         const overlay = $('#fc-modal-overlay');
@@ -686,13 +931,13 @@
                 $$('.fc-tipo-option').forEach(o => o.classList.remove('active'));
                 opt.classList.add('active');
                 const tipo = opt.dataset.tipo;
-                const envioSection      = $('#fc-modal-envio-section');
+                const envioSection       = $('#fc-modal-envio-section');
                 const recoleccionSection = $('#fc-modal-recoleccion-section');
                 if (tipo === 'envio') {
-                    if (envioSection)      envioSection.style.display      = '';
+                    if (envioSection)       envioSection.style.display      = '';
                     if (recoleccionSection) recoleccionSection.style.display = 'none';
                 } else {
-                    if (envioSection)      envioSection.style.display      = 'none';
+                    if (envioSection)       envioSection.style.display      = 'none';
                     if (recoleccionSection) recoleccionSection.style.display = '';
                 }
             });
@@ -706,18 +951,16 @@
             });
         }
 
-        // Solo números en teléfono
-        const telInput = $('#fc-modal-cliente-telefono');
-        if (telInput) {
-            telInput.addEventListener('input', () => {
-                telInput.value = telInput.value.replace(/\D/g, '');
-            });
-        }
-
-        // Canal de contacto — mostrar/ocultar campo secundario
+        // Canal de contacto
         const canalSelect = $('#fc-modal-canal');
         if (canalSelect) {
             canalSelect.addEventListener('change', () => updateCanalField(canalSelect.value));
+        }
+
+        // Add item button
+        const addItemBtn = $('#fc-add-item-btn');
+        if (addItemBtn) {
+            addItemBtn.addEventListener('click', () => addItemBlock());
         }
 
         // Submit
@@ -728,6 +971,17 @@
                 await submitNewPedido();
             });
         }
+    }
+
+    async function addItemBlock(prefill = {}) {
+        const container = $('#fc-items-container');
+        if (!container) return;
+        const idx = $$('.fc-item-block').length;
+        const temp = document.createElement('div');
+        temp.innerHTML = buildItemBlockHTML(idx, prefill);
+        const block = temp.firstElementChild;
+        container.appendChild(block);
+        await wireItemBlock(block, prefill);
     }
 
     function updateHorarioSelect(fechaVal) {
@@ -781,14 +1035,6 @@
         const successBox = $('#fc-pedido-success');
         if (successBox) { successBox.classList.remove('show'); successBox.style.display = 'none'; }
 
-        // Arreglo fields
-        const searchInput = $('#fc-arreglo-search');
-        const idInput     = $('#fc-arreglo-id');
-        const nameInput   = $('#fc-arreglo-nombre');
-        if (searchInput) searchInput.value = pedido.arreglo_nombre || '';
-        if (idInput)     idInput.value     = pedido.arreglo_id    || '';
-        if (nameInput)   nameInput.value   = pedido.arreglo_nombre || '';
-
         // Tipo
         $$('.fc-tipo-option').forEach(o => o.classList.remove('active'));
         const tipoBtn = $(`.fc-tipo-option[data-tipo="${pedido.tipo || 'envio'}"]`);
@@ -825,60 +1071,20 @@
         }
 
         // Campos simples
-        const simpleFields = {
-            '#fc-modal-direccion':             pedido.direccion,
-            '#fc-modal-hora-recoleccion':      pedido.hora_recoleccion,
-            '#fc-modal-destinatario':          pedido.destinatario,
-            '#fc-modal-destinatario-telefono': pedido.destinatario_telefono,
-            '#fc-modal-mensaje-tarjeta':       pedido.mensaje_tarjeta,
-            '#fc-modal-nota':                  pedido.nota,
-        };
-        for (const [sel, val] of Object.entries(simpleFields)) {
-            const el = $(sel);
-            if (el) el.value = val || '';
-        }
+        const dirEl    = $('#fc-modal-direccion');      if (dirEl)    dirEl.value    = pedido.direccion      || '';
+        const horaEl   = $('#fc-modal-hora-recoleccion'); if (horaEl) horaEl.value   = pedido.hora_recoleccion || '';
+        const notaEl   = $('#fc-modal-nota');           if (notaEl)   notaEl.value   = pedido.nota            || '';
 
-        // Tamaño y color — obtener datos del arreglo
-        const tamSelect = $('#fc-tamano-select');
-        const colGroup  = $('#fc-color-group');
-        if (tamSelect) tamSelect.innerHTML = '<option value="">-- Selecciona tamaño --</option>';
-        if (colGroup)  colGroup.style.display = 'none';
-
-        if (pedido.arreglo_id) {
-            try {
-                const res = await ajax('fc_panel_get_arreglo', { arreglo_id: pedido.arreglo_id });
-                if (res.success) {
-                    selectedArreglo = res.data;
-                    populateTamanos(res.data.tamanos || []);
-
-                    // Pre-seleccionar tamaño por nombre (dataset.nombre o texto completo para órdenes antiguas)
-                    if (tamSelect && pedido.tamano) {
-                        for (let i = 1; i < tamSelect.options.length; i++) {
-                            const optNombre = tamSelect.options[i].dataset.nombre || tamSelect.options[i].text;
-                            if (optNombre === pedido.tamano || tamSelect.options[i].text === pedido.tamano) {
-                                tamSelect.value = tamSelect.options[i].value;
-                                const idx     = parseInt(tamSelect.options[i].value, 10);
-                                const colores = res.data.tamanos[idx]?.colores || [];
-                                populateColores(colores);
-
-                                // Pre-seleccionar color por texto
-                                if (pedido.color) {
-                                    const colSelect = $('#fc-color-select');
-                                    if (colSelect) {
-                                        for (let j = 1; j < colSelect.options.length; j++) {
-                                            if (colSelect.options[j].text === pedido.color) {
-                                                colSelect.value = colSelect.options[j].value;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-            } catch { /* falla silenciosa */ }
+        // Items — clear container and populate from pedido.items
+        const container = $('#fc-items-container');
+        if (container) container.innerHTML = '';
+        const items = (pedido.items && pedido.items.length) ? pedido.items : [];
+        if (items.length) {
+            for (const item of items) {
+                await addItemBlock(item);
+            }
+        } else {
+            await addItemBlock();
         }
     }
 
@@ -891,31 +1097,21 @@
         if (title) title.textContent = 'Nuevo pedido';
 
         const successBox = $('#fc-pedido-success');
-        if (successBox) successBox.classList.remove('show');
+        if (successBox) { successBox.classList.remove('show'); successBox.style.display = 'none'; }
 
         const submitBtn = $('#fc-submit-pedido');
-        if (submitBtn) {
-            submitBtn.style.display = '';
-            submitBtn.textContent = 'Registrar pedido';
-        }
+        if (submitBtn) { submitBtn.style.display = ''; submitBtn.textContent = 'Registrar pedido'; }
 
-        selectedArreglo = null;
-        const searchInput = $('#fc-arreglo-search');
-        if (searchInput) searchInput.value = '';
+        // Clear items container and start with one blank block
+        const container = $('#fc-items-container');
+        if (container) container.innerHTML = '';
+        addItemBlock();
 
         const horarioSelect = $('#fc-modal-horario');
         if (horarioSelect) horarioSelect.innerHTML = '<option value="">-- Selecciona fecha primero --</option>';
 
         const canalSel = $('#fc-modal-canal');
         if (canalSel) { canalSel.value = ''; updateCanalField(''); }
-
-        const tamSelect = $('#fc-tamano-select');
-        if (tamSelect) tamSelect.innerHTML = '<option value="">-- Selecciona tamaño --</option>';
-
-        const colSelect = $('#fc-color-select');
-        if (colSelect) colSelect.innerHTML = '<option value="">-- Selecciona color --</option>';
-        const colGroup = $('#fc-color-group');
-        if (colGroup) colGroup.style.display = 'none';
 
         // Reset tipo
         $$('.fc-tipo-option').forEach(o => o.classList.remove('active'));
@@ -939,36 +1135,29 @@
             return;
         }
 
+        // Validar al menos un arreglo con nombre
+        const items = collectItems();
+        if (!items.length || !items[0].arreglo_nombre) {
+            showToast('Agrega al menos un arreglo al pedido', 'error');
+            return;
+        }
+
         btn.textContent = currentEditId ? 'Guardando...' : 'Registrando...';
         btn.disabled    = true;
 
         const tipo = ($('.fc-tipo-option.active') || {}).dataset?.tipo || 'envio';
 
-        const arregloId     = $('#fc-arreglo-id')?.value || '';
-        const arregloNombre = $('#fc-arreglo-nombre')?.value || '';
-        const tamanoEl      = $('#fc-tamano-select');
-        const tamanoNombre  = tamanoEl?.options[tamanoEl.selectedIndex]?.dataset.nombre
-                           || tamanoEl?.options[tamanoEl.selectedIndex]?.text || '';
-        const colorEl       = $('#fc-color-select');
-        const colorNombre   = (colorEl?.value) ? colorEl.options[colorEl.selectedIndex]?.text || '' : '';
-
         const payload = {
             tipo,
-            fecha:                  $('#fc-modal-fecha')?.value || '',
-            horario:                $('#fc-modal-horario')?.value || '',
-            hora_recoleccion:       $('#fc-modal-hora-recoleccion')?.value || '',
-            direccion:              $('#fc-modal-direccion')?.value || '',
-            canal:                  canalVal,
-            canal_nombre:           $('#fc-modal-canal-nombre')?.value || '',
-            canal_contacto:         $('#fc-modal-canal-contacto')?.value || '',
-            destinatario:           $('#fc-modal-destinatario')?.value || '',
-            destinatario_telefono:  $('#fc-modal-destinatario-telefono')?.value || '',
-            mensaje_tarjeta:        $('#fc-modal-mensaje-tarjeta')?.value || '',
-            nota:                   $('#fc-modal-nota')?.value || '',
-            arreglo_id:             arregloId,
-            arreglo_nombre:         arregloNombre,
-            tamano:                 tamanoNombre,
-            color:                  colorNombre,
+            fecha:            $('#fc-modal-fecha')?.value            || '',
+            horario:          $('#fc-modal-horario')?.value          || '',
+            hora_recoleccion: $('#fc-modal-hora-recoleccion')?.value || '',
+            direccion:        $('#fc-modal-direccion')?.value        || '',
+            canal:            canalVal,
+            canal_nombre:     $('#fc-modal-canal-nombre')?.value     || '',
+            canal_contacto:   $('#fc-modal-canal-contacto')?.value   || '',
+            nota:             $('#fc-modal-nota')?.value             || '',
+            items_json:       JSON.stringify(items),
         };
 
         const action = currentEditId ? 'fc_panel_actualizar_pedido' : 'fc_panel_crear_pedido';
@@ -988,7 +1177,7 @@
                     const successBox = $('#fc-pedido-success');
                     const linkEl     = $('#fc-pedido-link');
                     const numEl      = $('#fc-pedido-num-result');
-                    if (numEl)      numEl.textContent = data.data.numero;
+                    if (numEl)      numEl.textContent  = data.data.numero;
                     if (linkEl)     linkEl.textContent = data.data.client_url;
                     if (successBox) {
                         successBox.classList.add('show');
@@ -1019,118 +1208,6 @@
                 const url = box?.dataset.url || '';
                 if (url) copyToClipboard(url);
             }
-        });
-    }
-
-    // ── Arreglo autocomplete ──
-    let debounceTimer = null;
-
-    function initArregloSearch() {
-        const input    = $('#fc-arreglo-search');
-        const dropdown = $('#fc-arreglo-dropdown');
-        const idInput  = $('#fc-arreglo-id');
-        const nameInput = $('#fc-arreglo-nombre');
-
-        if (!input || !dropdown) return;
-
-        input.addEventListener('input', () => {
-            clearTimeout(debounceTimer);
-            const term = input.value.trim();
-            if (term.length < 2) {
-                dropdown.classList.remove('open');
-                dropdown.innerHTML = '';
-                return;
-            }
-            debounceTimer = setTimeout(async () => {
-                try {
-                    const data = await ajax('fc_panel_buscar_arreglos', { term });
-                    if (data.success && data.data.arreglos.length) {
-                        allArreglos = data.data.arreglos;
-                        dropdown.innerHTML = data.data.arreglos.map(a =>
-                            `<div class="fc-autocomplete-item" data-id="${a.id}">${escHtml(a.title)}</div>`
-                        ).join('');
-                        dropdown.classList.add('open');
-                    } else {
-                        dropdown.innerHTML = '<div class="fc-autocomplete-item">Sin resultados</div>';
-                        dropdown.classList.add('open');
-                    }
-                } catch {
-                    dropdown.classList.remove('open');
-                }
-            }, 350);
-        });
-
-        dropdown.addEventListener('click', (e) => {
-            const item = e.target.closest('.fc-autocomplete-item');
-            if (!item || !item.dataset.id) return;
-
-            const arregloId = parseInt(item.dataset.id, 10);
-            selectedArreglo = allArreglos.find(a => a.id === arregloId);
-
-            input.value = selectedArreglo?.title || '';
-            if (idInput)   idInput.value   = arregloId;
-            if (nameInput) nameInput.value = selectedArreglo?.title || '';
-            dropdown.classList.remove('open');
-
-            populateTamanos(selectedArreglo?.tamanos || []);
-        });
-
-        // Close dropdown on outside click
-        document.addEventListener('click', (e) => {
-            if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-                dropdown.classList.remove('open');
-            }
-        });
-    }
-
-    function populateTamanos(tamanos) {
-        const tamSelect = $('#fc-tamano-select');
-        const colSelect = $('#fc-color-select');
-        const colGroup  = $('#fc-color-group');
-        if (!tamSelect) return;
-
-        tamSelect.innerHTML = '<option value="">-- Selecciona tamaño --</option>';
-        if (colSelect) colSelect.innerHTML = '<option value="">-- Selecciona color --</option>';
-        if (colGroup)  colGroup.style.display = 'none';
-
-        tamanos.forEach((t, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.dataset.nombre = t.nombre;   // nombre limpio sin precio, para guardar en el pedido
-            opt.textContent = t.nombre + (t.precio ? ` ($${Number(t.precio).toLocaleString('es-MX')})` : '');
-            tamSelect.appendChild(opt);
-        });
-
-        tamSelect.addEventListener('change', () => {
-            const idx = parseInt(tamSelect.value, 10);
-            if (!isNaN(idx) && tamanos[idx]) {
-                populateColores(tamanos[idx].colores || []);
-            } else {
-                if (colSelect) colSelect.innerHTML = '<option value="">-- Selecciona color --</option>';
-            }
-        });
-    }
-
-    function populateColores(colores) {
-        const colSelect  = $('#fc-color-select');
-        const colGroup   = $('#fc-color-group');
-        if (!colSelect) return;
-
-        colSelect.innerHTML = '<option value="">-- Selecciona color --</option>';
-
-        if (!colores || colores.length === 0) {
-            // Sin variantes de color: ocultar el campo
-            if (colGroup) colGroup.style.display = 'none';
-            return;
-        }
-
-        // Con variantes: mostrar y poblar
-        if (colGroup) colGroup.style.display = '';
-        colores.forEach((c, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.textContent = c.nombre;
-            colSelect.appendChild(opt);
         });
     }
 
@@ -1265,10 +1342,8 @@
 
     // ── Init ──
     function init() {
-        // Modal, arreglo search y copy link funcionan tanto en el panel
-        // como en la página de admin (donde no existe .fc-panel-body)
+        // Modal y copy link funcionan tanto en el panel como en admin
         initNewOrderModal();
-        initArregloSearch();
         initCopySuccessLink();
 
         const isPanel = document.body.classList.contains('fc-panel-body') ||
@@ -1291,6 +1366,9 @@
             loadPedidos('all', today);
         }
     }
+
+    // Expose openEditModal for admin page use
+    window._fcOpenEditModal = openEditModal;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);

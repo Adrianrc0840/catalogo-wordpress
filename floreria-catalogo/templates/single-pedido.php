@@ -48,18 +48,58 @@ $fecha            = $pid ? get_post_meta( $pid, '_fc_pedido_fecha',            t
 $horario          = $pid ? get_post_meta( $pid, '_fc_pedido_horario',          true ) : '';
 $direccion        = $pid ? get_post_meta( $pid, '_fc_pedido_direccion',        true ) : '';
 $hora_recoleccion = $pid ? get_post_meta( $pid, '_fc_pedido_hora_recoleccion', true ) : '';
-$arreglo_nombre   = $pid ? get_post_meta( $pid, '_fc_pedido_arreglo_nombre',   true ) : '';
-$tamano           = $pid ? get_post_meta( $pid, '_fc_pedido_tamano',           true ) : '';
-$color_raw        = $pid ? get_post_meta( $pid, '_fc_pedido_color',            true ) : '';
-$color            = ( $color_raw && strpos( $color_raw, '--' ) === false ) ? $color_raw : '';
-$destinatario     = $pid ? get_post_meta( $pid, '_fc_pedido_destinatario',     true ) : '';
-$mensaje_tarjeta  = $pid ? get_post_meta( $pid, '_fc_pedido_mensaje_tarjeta',  true ) : '';
 $nota             = $pid ? get_post_meta( $pid, '_fc_pedido_nota',             true ) : '';
 $nota_floreria    = $pid ? get_post_meta( $pid, '_fc_pedido_nota_floreria',    true ) : '';
 
-$shop_name      = get_bloginfo( 'name' );
-$catalog_url    = get_option( 'fc_catalog_page_url', home_url() );
-$arreglo_thumb  = $pid ? fc_get_pedido_arreglo_thumb( $pid ) : '';
+$shop_name   = get_bloginfo( 'name' );
+$catalog_url = get_option( 'fc_catalog_page_url', home_url() );
+
+// ── Items (multi-arreglo) ──
+$items = [];
+if ( $pid ) {
+    $items_raw = get_post_meta( $pid, '_fc_pedido_items', true );
+    if ( $items_raw ) {
+        $decoded = json_decode( $items_raw, true );
+        if ( is_array( $decoded ) && count( $decoded ) ) {
+            foreach ( $decoded as $item ) {
+                $img = $item['imagen_url'] ?? '';
+                if ( ! $img && ! empty( $item['arreglo_id'] ) ) {
+                    $img = fc_get_arreglo_thumb_by_tamano_color(
+                        (int) $item['arreglo_id'],
+                        $item['tamano'] ?? '',
+                        $item['color']  ?? ''
+                    );
+                }
+                $items[] = [
+                    'arreglo_nombre'        => $item['arreglo_nombre']        ?? '',
+                    'imagen_url'            => $img,
+                    'tamano'                => $item['tamano']                ?? '',
+                    'color'                 => ( isset( $item['color'] ) && strpos( $item['color'], '--' ) === false ) ? $item['color'] : '',
+                    'destinatario'          => $item['destinatario']          ?? '',
+                    'destinatario_telefono' => $item['destinatario_telefono'] ?? '',
+                    'mensaje_tarjeta'       => $item['mensaje_tarjeta']       ?? '',
+                ];
+            }
+        }
+    }
+    // Legacy fallback
+    if ( empty( $items ) ) {
+        $color_raw = get_post_meta( $pid, '_fc_pedido_color', true );
+        $items[] = [
+            'arreglo_nombre'        => get_post_meta( $pid, '_fc_pedido_arreglo_nombre',          true ),
+            'imagen_url'            => fc_get_pedido_arreglo_thumb( $pid ),
+            'tamano'                => get_post_meta( $pid, '_fc_pedido_tamano',                  true ),
+            'color'                 => ( $color_raw && strpos( $color_raw, '--' ) === false ) ? $color_raw : '',
+            'destinatario'          => get_post_meta( $pid, '_fc_pedido_destinatario',            true ),
+            'destinatario_telefono' => get_post_meta( $pid, '_fc_pedido_destinatario_telefono',   true ),
+            'mensaje_tarjeta'       => get_post_meta( $pid, '_fc_pedido_mensaje_tarjeta',         true ),
+        ];
+    }
+}
+
+// For backward-compat references still used below
+$arreglo_nombre = $items[0]['arreglo_nombre'] ?? '';
+$arreglo_thumb  = $items[0]['imagen_url']     ?? '';
 
 $status_colors = [
     'aceptado'          => '#3b82f6',
@@ -377,7 +417,7 @@ get_header();
     text-decoration: underline;
 }
 
-/* ── Arreglo photo ── */
+/* ── Single arreglo photo (1 item) ── */
 .fc-arreglo-photo-wrap {
     text-align: center;
     margin-bottom: 20px;
@@ -399,6 +439,86 @@ get_header();
 .fc-arreglo-photo:hover {
     transform: scale(1.02);
     box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+}
+
+/* ── Multi-item list ── */
+.fc-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.fc-item-card {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: #fdf5f7;
+    border: 1.5px solid #f0c0d0;
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.fc-item-card-thumb {
+    flex-shrink: 0;
+    cursor: zoom-in;
+}
+
+.fc-item-card-thumb img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 2px solid #f9a8d4;
+    display: block;
+    transition: transform 0.18s;
+}
+
+.fc-item-card-thumb img:hover {
+    transform: scale(1.05);
+}
+
+.fc-item-card-no-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
+    border: 2px dashed #f9a8d4;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.fc-item-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.fc-item-card-nombre {
+    font-size: 15px;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.fc-item-card-sub {
+    font-size: 13px;
+    color: #718096;
+}
+
+.fc-item-card-dest {
+    font-size: 13px;
+    color: #4a5568;
+    font-weight: 600;
+}
+
+.fc-item-card-tarjeta {
+    font-size: 13px;
+    color: #4a5568;
+    font-style: italic;
 }
 
 /* ── Lightbox ── */
@@ -577,38 +697,84 @@ get_header();
         <!-- Details -->
         <div class="fc-pedido-details">
 
-            <!-- Foto del arreglo -->
-            <?php if ( $arreglo_thumb ) : ?>
+            <?php
+            $single_item   = count( $items ) === 1;
+            $first_item    = $items[0] ?? [];
+            $has_gift_info = false;
+            foreach ( $items as $it ) {
+                if ( $it['destinatario'] || $it['mensaje_tarjeta'] ) { $has_gift_info = true; break; }
+            }
+            ?>
+
+            <?php if ( $single_item ) : ?>
+            <!-- ── Single item layout (photo + details) ── -->
+            <?php if ( $first_item['imagen_url'] ) : ?>
             <div class="fc-arreglo-photo-wrap">
                 <img
-                    src="<?php echo esc_url( $arreglo_thumb ); ?>"
-                    alt="<?php echo esc_attr( $arreglo_nombre ); ?>"
-                    class="fc-arreglo-photo"
-                    id="fc-arreglo-photo"
+                    src="<?php echo esc_url( $first_item['imagen_url'] ); ?>"
+                    alt="<?php echo esc_attr( $first_item['arreglo_nombre'] ); ?>"
+                    class="fc-arreglo-photo fc-item-lb-trigger"
+                    data-src="<?php echo esc_url( $first_item['imagen_url'] ); ?>"
                 />
             </div>
             <?php endif; ?>
 
-            <!-- Arreglo info -->
             <div class="fc-detail-section">
                 <h3>Arreglo</h3>
                 <div class="fc-detail-row">
                     <span class="fc-detail-label">Nombre</span>
-                    <span class="fc-detail-value"><?php echo esc_html( $arreglo_nombre ); ?></span>
+                    <span class="fc-detail-value"><?php echo esc_html( $first_item['arreglo_nombre'] ); ?></span>
                 </div>
-                <?php if ( $tamano ) : ?>
+                <?php if ( $first_item['tamano'] ) : ?>
                 <div class="fc-detail-row">
                     <span class="fc-detail-label">Tamaño</span>
-                    <span class="fc-detail-value"><?php echo esc_html( $tamano ); ?></span>
+                    <span class="fc-detail-value"><?php echo esc_html( $first_item['tamano'] ); ?></span>
                 </div>
                 <?php endif; ?>
-                <?php if ( $color ) : ?>
+                <?php if ( $first_item['color'] ) : ?>
                 <div class="fc-detail-row">
                     <span class="fc-detail-label">Color</span>
-                    <span class="fc-detail-value"><?php echo esc_html( $color ); ?></span>
+                    <span class="fc-detail-value"><?php echo esc_html( $first_item['color'] ); ?></span>
                 </div>
                 <?php endif; ?>
             </div>
+
+            <?php else : ?>
+            <!-- ── Multi-item layout ── -->
+            <div class="fc-detail-section">
+                <h3>Arreglos (<?php echo count( $items ); ?>)</h3>
+                <div class="fc-items-list">
+                <?php foreach ( $items as $it ) : ?>
+                <div class="fc-item-card">
+                    <?php if ( $it['imagen_url'] ) : ?>
+                    <div class="fc-item-card-thumb">
+                        <img src="<?php echo esc_url( $it['imagen_url'] ); ?>"
+                             alt="<?php echo esc_attr( $it['arreglo_nombre'] ); ?>"
+                             class="fc-item-lb-trigger"
+                             data-src="<?php echo esc_url( $it['imagen_url'] ); ?>" />
+                    </div>
+                    <?php else : ?>
+                    <div class="fc-item-card-no-img">🌸</div>
+                    <?php endif; ?>
+                    <div class="fc-item-card-info">
+                        <span class="fc-item-card-nombre"><?php echo esc_html( $it['arreglo_nombre'] ); ?></span>
+                        <?php
+                        $sub = array_filter( [ $it['tamano'], $it['color'] ] );
+                        if ( $sub ) : ?>
+                        <span class="fc-item-card-sub"><?php echo esc_html( implode( ' · ', $sub ) ); ?></span>
+                        <?php endif; ?>
+                        <?php if ( $it['destinatario'] ) : ?>
+                        <span class="fc-item-card-dest">Para: <?php echo esc_html( $it['destinatario'] ); ?><?php echo $it['destinatario_telefono'] ? ' · ' . esc_html( $it['destinatario_telefono'] ) : ''; ?></span>
+                        <?php endif; ?>
+                        <?php if ( $it['mensaje_tarjeta'] ) : ?>
+                        <span class="fc-item-card-tarjeta">"<?php echo esc_html( $it['mensaje_tarjeta'] ); ?>"</span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <hr class="fc-divider" />
 
@@ -645,22 +811,20 @@ get_header();
                 <?php endif; ?>
             </div>
 
-            <?php if ( $destinatario || $mensaje_tarjeta || $nota ) : ?>
+            <?php if ( $single_item && ( $first_item['destinatario'] || $first_item['mensaje_tarjeta'] || $nota ) ) : ?>
             <hr class="fc-divider" />
-
-            <!-- Destinatario & mensaje -->
             <div class="fc-detail-section">
                 <h3>Detalles del regalo</h3>
-                <?php if ( $destinatario ) : ?>
+                <?php if ( $first_item['destinatario'] ) : ?>
                 <div class="fc-detail-row">
                     <span class="fc-detail-label">Para</span>
-                    <span class="fc-detail-value"><?php echo esc_html( $destinatario ); ?></span>
+                    <span class="fc-detail-value"><?php echo esc_html( $first_item['destinatario'] ); ?><?php echo $first_item['destinatario_telefono'] ? ' · ' . esc_html( $first_item['destinatario_telefono'] ) : ''; ?></span>
                 </div>
                 <?php endif; ?>
-                <?php if ( $mensaje_tarjeta ) : ?>
+                <?php if ( $first_item['mensaje_tarjeta'] ) : ?>
                 <div class="fc-detail-row">
                     <span class="fc-detail-label">Tarjeta</span>
-                    <span class="fc-detail-value">"<?php echo esc_html( $mensaje_tarjeta ); ?>"</span>
+                    <span class="fc-detail-value">"<?php echo esc_html( $first_item['mensaje_tarjeta'] ); ?>"</span>
                 </div>
                 <?php endif; ?>
                 <?php if ( $nota ) : ?>
@@ -669,6 +833,14 @@ get_header();
                     <span class="fc-detail-value"><?php echo esc_html( $nota ); ?></span>
                 </div>
                 <?php endif; ?>
+            </div>
+            <?php elseif ( ! $single_item && $nota ) : ?>
+            <hr class="fc-divider" />
+            <div class="fc-detail-section">
+                <h3>Nota especial</h3>
+                <div class="fc-detail-row">
+                    <span class="fc-detail-value"><?php echo esc_html( $nota ); ?></span>
+                </div>
             </div>
             <?php endif; ?>
 
@@ -681,22 +853,28 @@ get_header();
 
 </div>
 
-<?php if ( $arreglo_thumb ) : ?>
-<!-- Lightbox -->
+<?php
+$any_thumb = false;
+foreach ( $items as $it ) { if ( $it['imagen_url'] ) { $any_thumb = true; break; } }
+?>
+<?php if ( $any_thumb ) : ?>
+<!-- Lightbox (shared for all item images) -->
 <div class="fc-lb-overlay" id="fc-lb-overlay" role="dialog" aria-modal="true" aria-label="Imagen del arreglo">
     <button class="fc-lb-close" id="fc-lb-close" aria-label="Cerrar">&times;</button>
-    <img class="fc-lb-img" src="<?php echo esc_url( $arreglo_thumb ); ?>" alt="<?php echo esc_attr( $arreglo_nombre ); ?>" />
+    <img class="fc-lb-img" id="fc-lb-img" src="" alt="Foto del arreglo" />
 </div>
 <script>
 (function () {
-    var overlay = document.getElementById('fc-lb-overlay');
-    var photo   = document.getElementById('fc-arreglo-photo');
+    var overlay  = document.getElementById('fc-lb-overlay');
+    var lbImg    = document.getElementById('fc-lb-img');
     var closeBtn = document.getElementById('fc-lb-close');
 
-    function openLb() { overlay.classList.add('open'); }
-    function closeLb() { overlay.classList.remove('open'); }
+    function openLb(src) { lbImg.src = src; overlay.classList.add('open'); }
+    function closeLb()   { overlay.classList.remove('open'); }
 
-    if (photo)    photo.addEventListener('click', openLb);
+    document.querySelectorAll('.fc-item-lb-trigger').forEach(function(el) {
+        el.addEventListener('click', function() { openLb(el.dataset.src || el.src); });
+    });
     if (closeBtn) closeBtn.addEventListener('click', closeLb);
     if (overlay)  overlay.addEventListener('click', function (e) {
         if (e.target === overlay) closeLb();
