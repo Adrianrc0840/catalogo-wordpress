@@ -77,8 +77,9 @@
     function fmtDatetime(ts) {
         if (!ts) return '';
         const d = new Date(ts.replace(' ', 'T'));
-        return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })
-            + ' ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        const tz = { timeZone: 'America/Tijuana' };
+        return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', ...tz })
+            + ' ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', ...tz });
     }
 
     // ── Render badge ──
