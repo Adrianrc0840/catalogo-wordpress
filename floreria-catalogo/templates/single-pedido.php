@@ -62,7 +62,7 @@ $catalog_url    = get_option( 'fc_catalog_page_url', home_url() );
 $arreglo_thumb  = $pid ? fc_get_pedido_arreglo_thumb( $pid ) : '';
 
 $status_colors = [
-    'recibido'          => '#3b82f6',
+    'aceptado'          => '#3b82f6',
     'en_preparacion'    => '#f59e0b',
     'en_camino'         => '#8b5cf6',
     'listo_recoleccion' => '#06b6d4',
@@ -72,14 +72,14 @@ $line_color = $status_colors[ $status ] ?? '#c8185a';
 
 // ── Status steps ──
 $all_statuses = [
-    'recibido',
+    'aceptado',
     'en_preparacion',
     ( $tipo === 'recoleccion' ? 'listo_recoleccion' : 'en_camino' ),
     'entregado',
 ];
 
 $status_labels_map = [
-    'recibido'          => 'Recibido',
+    'aceptado'          => 'Aceptado',
     'en_preparacion'    => 'En preparación',
     'en_camino'         => 'En camino',
     'listo_recoleccion' => 'Listo para recolección',
@@ -88,7 +88,7 @@ $status_labels_map = [
 
 // Current step index (0-based)
 $current_step = 0;
-$status_order = [ 'recibido', 'en_preparacion', 'en_camino', 'listo_recoleccion', 'entregado' ];
+$status_order = [ 'aceptado', 'en_preparacion', 'en_camino', 'listo_recoleccion', 'entregado' ];
 foreach ( $all_statuses as $i => $s ) {
     if ( $s === $status ) {
         $current_step = $i;
@@ -173,7 +173,7 @@ get_header();
 
 /* ── Status colors (same as panel) ── */
 :root {
-    --fc-s-recibido:          #3b82f6;
+    --fc-s-aceptado:          #3b82f6;
     --fc-s-en_preparacion:    #f59e0b;
     --fc-s-en_camino:         #8b5cf6;
     --fc-s-listo_recoleccion: #06b6d4;
@@ -236,10 +236,10 @@ get_header();
 }
 
 /* Colores por status para done y current */
-.fc-progress-step.step-recibido.done .fc-progress-dot,
-.fc-progress-step.step-recibido.current .fc-progress-dot {
-    background: var(--fc-s-recibido);
-    box-shadow: 0 0 0 2px var(--fc-s-recibido);
+.fc-progress-step.step-aceptado.done .fc-progress-dot,
+.fc-progress-step.step-aceptado.current .fc-progress-dot {
+    background: var(--fc-s-aceptado);
+    box-shadow: 0 0 0 2px var(--fc-s-aceptado);
     color: #fff;
 }
 .fc-progress-step.step-en_preparacion.done .fc-progress-dot,
@@ -268,15 +268,15 @@ get_header();
 }
 
 /* Anillo extra en el paso actual */
-.fc-progress-step.step-recibido.current .fc-progress-dot          { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--fc-s-recibido);          transform: scale(1.15); }
+.fc-progress-step.step-aceptado.current .fc-progress-dot          { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--fc-s-aceptado);          transform: scale(1.15); }
 .fc-progress-step.step-en_preparacion.current .fc-progress-dot    { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--fc-s-en_preparacion);    transform: scale(1.15); }
 .fc-progress-step.step-en_camino.current .fc-progress-dot         { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--fc-s-en_camino);         transform: scale(1.15); }
 .fc-progress-step.step-listo_recoleccion.current .fc-progress-dot { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--fc-s-listo_recoleccion); transform: scale(1.15); }
 .fc-progress-step.step-entregado.current .fc-progress-dot         { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--fc-s-entregado);         transform: scale(1.15); }
 
 /* Labels coloreados según status */
-.fc-progress-step.step-recibido.done .fc-progress-label,
-.fc-progress-step.step-recibido.current .fc-progress-label          { color: var(--fc-s-recibido);          font-weight: 600; }
+.fc-progress-step.step-aceptado.done .fc-progress-label,
+.fc-progress-step.step-aceptado.current .fc-progress-label          { color: var(--fc-s-aceptado);          font-weight: 600; }
 .fc-progress-step.step-en_preparacion.done .fc-progress-label,
 .fc-progress-step.step-en_preparacion.current .fc-progress-label    { color: var(--fc-s-en_preparacion);    font-weight: 600; }
 .fc-progress-step.step-en_camino.done .fc-progress-label,
@@ -552,7 +552,7 @@ get_header();
                 $step_label = $status_labels_map[ $step_status ] ?? $step_status;
 
                 $icons = [
-                    'recibido'          => '&#10003;',
+                    'aceptado'          => '&#10003;',
                     'en_preparacion'    => '&#9878;',
                     'en_camino'         => '&#x1F4E6;',
                     'listo_recoleccion' => '&#x1F3EA;',

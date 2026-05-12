@@ -223,7 +223,7 @@ function fc_get_pedido_arreglo_thumb( $pedido_id ) {
 
 function fc_pedido_status_labels() {
     return [
-        'recibido'          => 'Recibido',
+        'aceptado'          => 'Aceptado',
         'en_preparacion'    => 'En preparación',
         'en_camino'         => 'En camino',
         'listo_recoleccion' => 'Listo para recolección',
@@ -288,13 +288,32 @@ add_action( 'admin_enqueue_scripts', 'fc_enqueue_pedidos_admin' );
 function fc_enqueue_pedidos_admin( $hook ) {
     if ( $hook !== 'arreglo_page_fc-pedidos' ) return;
     wp_enqueue_style(  'fc-panel', FC_URL . 'assets/css/panel.css', [], FC_VERSION );
+    wp_add_inline_style( 'fc-panel', '
+        #fc-modal-overlay .fc-modal select,
+        #fc-modal-overlay .fc-modal input[type="text"],
+        #fc-modal-overlay .fc-modal input[type="tel"],
+        #fc-modal-overlay .fc-modal input[type="date"],
+        #fc-modal-overlay .fc-modal input[type="time"],
+        #fc-modal-overlay .fc-modal textarea {
+            height: auto !important;
+            min-height: 38px !important;
+            padding: 8px 10px !important;
+            font-size: 14px !important;
+            line-height: 1.5 !important;
+            border: 1px solid #ddd !important;
+            border-radius: 6px !important;
+            box-sizing: border-box !important;
+            width: 100% !important;
+        }
+    ' );
     wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js',   [], FC_VERSION, true );
     wp_localize_script( 'fc-panel', 'fcPanel', [
-        'ajaxurl'   => admin_url( 'admin-ajax.php' ),
-        'nonce'     => wp_create_nonce( 'fc_panel_nonce' ),
-        'siteurl'   => home_url(),
-        'schedules' => fc_get_schedules(),
-        'isAdmin'   => true,
+        'ajaxurl'          => admin_url( 'admin-ajax.php' ),
+        'nonce'            => wp_create_nonce( 'fc_panel_nonce' ),
+        'siteurl'          => home_url(),
+        'schedules'        => fc_get_schedules(),
+        'fechasEspeciales' => fc_get_fechas_especiales(),
+        'isAdmin'          => true,
     ] );
 }
 
@@ -357,19 +376,21 @@ function fc_handle_pedido_admin_actions() {
         $pedido_id = (int) $_POST['pedido_id'];
         if ( $pedido_id && get_post_type( $pedido_id ) === 'pedido' ) {
             $fields = [
-                '_fc_pedido_tipo'             => sanitize_key( $_POST['tipo'] ?? 'envio' ),
-                '_fc_pedido_fecha'            => sanitize_text_field( $_POST['fecha'] ?? '' ),
-                '_fc_pedido_horario'          => sanitize_text_field( $_POST['horario'] ?? '' ),
-                '_fc_pedido_direccion'        => sanitize_text_field( $_POST['direccion'] ?? '' ),
-                '_fc_pedido_hora_recoleccion' => sanitize_text_field( $_POST['hora_recoleccion'] ?? '' ),
-                '_fc_pedido_cliente_nombre'   => sanitize_text_field( $_POST['cliente_nombre'] ?? '' ),
-                '_fc_pedido_cliente_telefono' => sanitize_text_field( $_POST['cliente_telefono'] ?? '' ),
-                '_fc_pedido_destinatario'     => sanitize_text_field( $_POST['destinatario'] ?? '' ),
-                '_fc_pedido_mensaje_tarjeta'  => sanitize_textarea_field( $_POST['mensaje_tarjeta'] ?? '' ),
-                '_fc_pedido_nota'             => sanitize_textarea_field( $_POST['nota'] ?? '' ),
-                '_fc_pedido_arreglo_nombre'   => sanitize_text_field( $_POST['arreglo_nombre'] ?? '' ),
-                '_fc_pedido_tamano'           => sanitize_text_field( $_POST['tamano'] ?? '' ),
-                '_fc_pedido_color'            => sanitize_text_field( $_POST['color'] ?? '' ),
+                '_fc_pedido_tipo'                  => sanitize_key( $_POST['tipo'] ?? 'envio' ),
+                '_fc_pedido_fecha'                 => sanitize_text_field( $_POST['fecha'] ?? '' ),
+                '_fc_pedido_horario'               => sanitize_text_field( $_POST['horario'] ?? '' ),
+                '_fc_pedido_direccion'             => sanitize_text_field( $_POST['direccion'] ?? '' ),
+                '_fc_pedido_hora_recoleccion'      => sanitize_text_field( $_POST['hora_recoleccion'] ?? '' ),
+                '_fc_pedido_canal'                 => sanitize_key( $_POST['canal'] ?? '' ),
+                '_fc_pedido_canal_nombre'          => sanitize_text_field( $_POST['canal_nombre'] ?? '' ),
+                '_fc_pedido_canal_contacto'        => sanitize_text_field( $_POST['canal_contacto'] ?? '' ),
+                '_fc_pedido_destinatario'          => sanitize_text_field( $_POST['destinatario'] ?? '' ),
+                '_fc_pedido_destinatario_telefono' => sanitize_text_field( $_POST['destinatario_telefono'] ?? '' ),
+                '_fc_pedido_mensaje_tarjeta'       => sanitize_textarea_field( $_POST['mensaje_tarjeta'] ?? '' ),
+                '_fc_pedido_nota'                  => sanitize_textarea_field( $_POST['nota'] ?? '' ),
+                '_fc_pedido_arreglo_nombre'        => sanitize_text_field( $_POST['arreglo_nombre'] ?? '' ),
+                '_fc_pedido_tamano'                => sanitize_text_field( $_POST['tamano'] ?? '' ),
+                '_fc_pedido_color'                 => sanitize_text_field( $_POST['color'] ?? '' ),
             ];
             foreach ( $fields as $key => $val ) {
                 update_post_meta( $pedido_id, $key, $val );
@@ -522,7 +543,7 @@ function fc_render_pedidos_admin_page() {
     $labels  = fc_pedido_status_labels();
 
     $status_colors = [
-        'recibido'          => '#3b82f6',
+        'aceptado'          => '#3b82f6',
         'en_preparacion'    => '#f59e0b',
         'en_camino'         => '#8b5cf6',
         'listo_recoleccion' => '#06b6d4',
@@ -641,21 +662,24 @@ function fc_render_pedidos_admin_page() {
 
         <?php if ( $edit_pedido ) :
             $e = $edit_id;
+            $canal_opts = [ '' => '-- ¿Por dónde contactó? --', 'whatsapp' => 'WhatsApp', 'instagram' => 'Instagram', 'facebook' => 'Facebook', 'otro' => 'Otro' ];
             $ef = [
-                'tipo'             => get_post_meta( $e, '_fc_pedido_tipo',             true ),
-                'fecha'            => get_post_meta( $e, '_fc_pedido_fecha',            true ),
-                'horario'          => get_post_meta( $e, '_fc_pedido_horario',          true ),
-                'direccion'        => get_post_meta( $e, '_fc_pedido_direccion',        true ),
-                'hora_recoleccion' => get_post_meta( $e, '_fc_pedido_hora_recoleccion', true ),
-                'cliente_nombre'   => get_post_meta( $e, '_fc_pedido_cliente_nombre',   true ),
-                'cliente_telefono' => get_post_meta( $e, '_fc_pedido_cliente_telefono', true ),
-                'destinatario'     => get_post_meta( $e, '_fc_pedido_destinatario',     true ),
-                'mensaje_tarjeta'  => get_post_meta( $e, '_fc_pedido_mensaje_tarjeta',  true ),
-                'nota'             => get_post_meta( $e, '_fc_pedido_nota',             true ),
-                'arreglo_nombre'   => get_post_meta( $e, '_fc_pedido_arreglo_nombre',   true ),
-                'tamano'           => get_post_meta( $e, '_fc_pedido_tamano',           true ),
-                'color'            => get_post_meta( $e, '_fc_pedido_color',            true ),
-                'numero'           => get_post_meta( $e, '_fc_pedido_numero',           true ),
+                'tipo'                  => get_post_meta( $e, '_fc_pedido_tipo',                  true ),
+                'fecha'                 => get_post_meta( $e, '_fc_pedido_fecha',                 true ),
+                'horario'               => get_post_meta( $e, '_fc_pedido_horario',               true ),
+                'direccion'             => get_post_meta( $e, '_fc_pedido_direccion',             true ),
+                'hora_recoleccion'      => get_post_meta( $e, '_fc_pedido_hora_recoleccion',      true ),
+                'canal'                 => get_post_meta( $e, '_fc_pedido_canal',                 true ),
+                'canal_nombre'          => get_post_meta( $e, '_fc_pedido_canal_nombre',          true ),
+                'canal_contacto'        => get_post_meta( $e, '_fc_pedido_canal_contacto',        true ),
+                'destinatario'          => get_post_meta( $e, '_fc_pedido_destinatario',          true ),
+                'destinatario_telefono' => get_post_meta( $e, '_fc_pedido_destinatario_telefono', true ),
+                'mensaje_tarjeta'       => get_post_meta( $e, '_fc_pedido_mensaje_tarjeta',       true ),
+                'nota'                  => get_post_meta( $e, '_fc_pedido_nota',                  true ),
+                'arreglo_nombre'        => get_post_meta( $e, '_fc_pedido_arreglo_nombre',        true ),
+                'tamano'                => get_post_meta( $e, '_fc_pedido_tamano',                true ),
+                'color'                 => get_post_meta( $e, '_fc_pedido_color',                 true ),
+                'numero'                => get_post_meta( $e, '_fc_pedido_numero',                true ),
             ];
             $cancel_url = remove_query_arg( 'edit_id' );
         ?>
@@ -693,14 +717,24 @@ function fc_render_pedidos_admin_page() {
                     <div><label style="font-weight:600;display:block;margin-bottom:4px;">Dirección</label>
                     <input type="text" name="direccion" value="<?php echo esc_attr( $ef['direccion'] ); ?>" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
 
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Nombre del cliente</label>
-                    <input type="text" name="cliente_nombre" value="<?php echo esc_attr( $ef['cliente_nombre'] ); ?>" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
+                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Canal de contacto <span style="color:#b91c1c;">*</span></label>
+                    <select name="canal" required style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;">
+                        <?php foreach ( $canal_opts as $val => $lbl ) : ?>
+                        <option value="<?php echo esc_attr( $val ); ?>" <?php selected( $ef['canal'], $val ); ?>><?php echo esc_html( $lbl ); ?></option>
+                        <?php endforeach; ?>
+                    </select></div>
 
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Teléfono del cliente</label>
-                    <input type="tel" name="cliente_telefono" value="<?php echo esc_attr( $ef['cliente_telefono'] ); ?>" inputmode="numeric" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
+                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Nombre del contacto</label>
+                    <input type="text" name="canal_nombre" value="<?php echo esc_attr( $ef['canal_nombre'] ); ?>" placeholder="Solo para WhatsApp" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
 
-                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Destinatario</label>
+                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Usuario / Número de contacto</label>
+                    <input type="text" name="canal_contacto" value="<?php echo esc_attr( $ef['canal_contacto'] ); ?>" placeholder="@usuario, número, etc." style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
+
+                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Nombre del destinatario</label>
                     <input type="text" name="destinatario" value="<?php echo esc_attr( $ef['destinatario'] ); ?>" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
+
+                    <div><label style="font-weight:600;display:block;margin-bottom:4px;">Teléfono del destinatario</label>
+                    <input type="tel" name="destinatario_telefono" value="<?php echo esc_attr( $ef['destinatario_telefono'] ); ?>" inputmode="numeric" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;" /></div>
 
                     <div><label style="font-weight:600;display:block;margin-bottom:4px;">Mensaje de tarjeta</label>
                     <textarea name="mensaje_tarjeta" rows="2" style="width:100%;padding:7px 10px;border:1px solid #c3c4c7;border-radius:4px;"><?php echo esc_textarea( $ef['mensaje_tarjeta'] ); ?></textarea></div>
@@ -799,8 +833,8 @@ function fc_render_pedidos_admin_page() {
                     <th style="width:32px;"><input type="checkbox" id="fc-select-all" title="Seleccionar todos" /></th>
                     <th style="width:150px;">Número</th>
                     <th style="width:130px;">Estado</th>
-                    <th>Cliente</th>
-                    <th style="width:110px;">Teléfono</th>
+                    <th>Canal</th>
+                    <th>Destinatario</th>
                     <th>Arreglo</th>
                     <th style="width:95px;">Tamaño</th>
                     <th style="width:75px;">Color</th>
@@ -814,11 +848,17 @@ function fc_render_pedidos_admin_page() {
             </thead>
             <tbody>
                 <?php foreach ( $pedidos as $pedido ) :
-                    $num      = get_post_meta( $pedido->ID, '_fc_pedido_numero',           true );
-                    $status   = get_post_meta( $pedido->ID, '_fc_pedido_status',           true );
-                    $cliente  = get_post_meta( $pedido->ID, '_fc_pedido_cliente_nombre',   true );
-                    $tel      = get_post_meta( $pedido->ID, '_fc_pedido_cliente_telefono', true );
-                    $arreglo  = get_post_meta( $pedido->ID, '_fc_pedido_arreglo_nombre',   true );
+                    $num      = get_post_meta( $pedido->ID, '_fc_pedido_numero',                  true );
+                    $status   = get_post_meta( $pedido->ID, '_fc_pedido_status',                  true );
+                    $p_canal  = get_post_meta( $pedido->ID, '_fc_pedido_canal',                   true );
+                    $p_cnom   = get_post_meta( $pedido->ID, '_fc_pedido_canal_nombre',             true );
+                    $p_ccon   = get_post_meta( $pedido->ID, '_fc_pedido_canal_contacto',           true );
+                    $p_dest   = get_post_meta( $pedido->ID, '_fc_pedido_destinatario',             true );
+                    $p_dtel   = get_post_meta( $pedido->ID, '_fc_pedido_destinatario_telefono',    true );
+                    $arreglo  = get_post_meta( $pedido->ID, '_fc_pedido_arreglo_nombre',           true );
+                    $p_canal_labels = [ 'whatsapp' => 'WA', 'instagram' => 'IG', 'facebook' => 'FB', 'otro' => 'Otro' ];
+                    $p_canal_str = $p_canal ? ( $p_canal_labels[ $p_canal ] ?? ucfirst( $p_canal ) ) : '—';
+                    $p_canal_det = implode( ' · ', array_filter( [ $p_cnom, $p_ccon ] ) );
                     $tamano   = get_post_meta( $pedido->ID, '_fc_pedido_tamano',           true );
                     $color    = get_post_meta( $pedido->ID, '_fc_pedido_color',            true );
                     $tipo     = get_post_meta( $pedido->ID, '_fc_pedido_tipo',             true );
@@ -836,8 +876,8 @@ function fc_render_pedidos_admin_page() {
                             <?php echo esc_html( fc_pedido_status_label( $status ) ); ?>
                         </span>
                     </td>
-                    <td><?php echo esc_html( $cliente ); ?></td>
-                    <td style="white-space:nowrap;"><?php echo esc_html( $tel ); ?></td>
+                    <td style="white-space:nowrap;"><strong><?php echo esc_html( $p_canal_str ); ?></strong><?php echo $p_canal_det ? ' · ' . esc_html( $p_canal_det ) : ''; ?></td>
+                    <td><?php echo esc_html( $p_dest ); ?><?php echo $p_dtel ? '<br><span style="color:#888;font-size:11px;">' . esc_html( $p_dtel ) . '</span>' : ''; ?></td>
                     <td><?php echo esc_html( $arreglo ); ?></td>
                     <td><?php echo esc_html( $tamano ); ?></td>
                     <td><?php echo esc_html( $color ); ?></td>
@@ -928,16 +968,28 @@ function fc_render_pedidos_admin_page() {
                             <input type="time" id="fc-modal-hora-recoleccion" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
                         </div>
                     </div>
-                    <div class="fc-form-group"><label>Nombre del cliente</label>
-                        <input type="text" id="fc-modal-cliente-nombre" placeholder="Nombre completo" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
+                    <div class="fc-form-group"><label>Canal de contacto <span style="color:#b91c1c;">*</span></label>
+                        <select id="fc-modal-canal" name="canal" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">
+                            <option value="">-- ¿Por dónde contactó? --</option>
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="instagram">Instagram</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="otro">Otro</option>
+                        </select>
                     </div>
-                    <div class="fc-form-group"><label>Teléfono</label>
-                        <input type="tel" id="fc-modal-cliente-telefono" placeholder="10 dígitos"
-                               inputmode="numeric" pattern="[0-9]*" maxlength="15"
-                               style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
+                    <div class="fc-form-group" id="fc-canal-nombre-group" style="display:none;"><label for="fc-modal-canal-nombre">Nombre del contacto</label>
+                        <input type="text" id="fc-modal-canal-nombre" name="canal_nombre" placeholder="Nombre completo" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
+                    </div>
+                    <div class="fc-form-group" id="fc-canal-contacto-group" style="display:none;"><label for="fc-modal-canal-contacto" id="fc-canal-contacto-label">Contacto</label>
+                        <input type="text" id="fc-modal-canal-contacto" name="canal_contacto" placeholder="" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
                     </div>
                     <div class="fc-form-group"><label>Nombre del destinatario</label>
                         <input type="text" id="fc-modal-destinatario" placeholder="¿A quién va dirigido?" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
+                    </div>
+                    <div class="fc-form-group"><label>Teléfono del destinatario</label>
+                        <input type="tel" id="fc-modal-destinatario-telefono" placeholder="10 dígitos"
+                               inputmode="numeric" pattern="[0-9]*" maxlength="15"
+                               style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;" />
                     </div>
                     <div class="fc-form-group"><label>Mensaje de tarjeta</label>
                         <textarea id="fc-modal-mensaje-tarjeta" rows="2" placeholder="Mensaje para la tarjeta..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;resize:vertical;"></textarea>

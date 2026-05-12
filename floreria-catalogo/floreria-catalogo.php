@@ -30,10 +30,20 @@ add_action( 'wp_enqueue_scripts', 'fc_enqueue_frontend' );
 function fc_enqueue_frontend() {
     wp_enqueue_style( 'fc-catalogo', FC_URL . 'assets/css/catalogo.css', [], FC_VERSION );
 
+    // Cart assets on all frontend pages
+    wp_enqueue_style(  'fc-cart', FC_URL . 'assets/css/cart.css', [], FC_VERSION );
+    wp_enqueue_script( 'fc-cart', FC_URL . 'assets/js/cart.js',   [], FC_VERSION, true );
+    // Localize schedule/whatsapp data to cart script (always fresh, no stale localStorage)
+    wp_localize_script( 'fc-cart', 'fcCartData', [
+        'schedules'        => fc_get_schedules(),
+        'fechasEspeciales' => fc_get_fechas_especiales(),
+        'whatsapp'         => get_option( 'fc_whatsapp', '' ),
+    ] );
+
     if ( is_singular( 'arreglo' ) ) {
         wp_enqueue_style( 'fc-detalle', FC_URL . 'assets/css/detalle.css', [], FC_VERSION );
 
-        wp_enqueue_script( 'fc-detalle', FC_URL . 'assets/js/detalle.js', [], FC_VERSION, true );
+        wp_enqueue_script( 'fc-detalle', FC_URL . 'assets/js/detalle.js', [ 'fc-cart' ], FC_VERSION, true );
 
         global $post;
         $tamanos = get_post_meta( $post->ID, '_fc_tamanos', true );
@@ -49,6 +59,7 @@ function fc_enqueue_frontend() {
         }
 
         wp_localize_script( 'fc-detalle', 'fcArreglo', [
+            'arregloId'        => $post->ID,
             'tamanos'          => $tamanos,
             'tamano_principal' => $tamano_principal,
             'whatsapp'         => get_option( 'fc_whatsapp', '' ),

@@ -183,22 +183,36 @@ get_header();
                     </div>
                 </div>
 
-                <!-- Cliente -->
+                <!-- Canal de contacto (obligatorio) -->
                 <div class="fc-form-group">
-                    <label for="fc-modal-cliente-nombre">Nombre del cliente</label>
-                    <input type="text" id="fc-modal-cliente-nombre" name="cliente_nombre" placeholder="Nombre completo" required />
+                    <label for="fc-modal-canal">Canal de contacto <span style="color:#b91c1c;">*</span></label>
+                    <select id="fc-modal-canal" name="canal" required>
+                        <option value="">-- ¿Por dónde contactó? --</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="facebook">Facebook</option>
+                        <option value="otro">Otro</option>
+                    </select>
                 </div>
-
-                <div class="fc-form-group">
-                    <label for="fc-modal-cliente-telefono">Teléfono del cliente</label>
-                    <input type="tel" id="fc-modal-cliente-telefono" name="cliente_telefono"
-                           placeholder="10 dígitos" inputmode="numeric" pattern="[0-9]*" maxlength="15" />
+                <div class="fc-form-group" id="fc-canal-nombre-group" style="display:none;">
+                    <label for="fc-modal-canal-nombre">Nombre del contacto</label>
+                    <input type="text" id="fc-modal-canal-nombre" name="canal_nombre" placeholder="Nombre completo" />
+                </div>
+                <div class="fc-form-group" id="fc-canal-contacto-group" style="display:none;">
+                    <label for="fc-modal-canal-contacto" id="fc-canal-contacto-label">Contacto</label>
+                    <input type="text" id="fc-modal-canal-contacto" name="canal_contacto" placeholder="" />
                 </div>
 
                 <!-- Destinatario -->
                 <div class="fc-form-group">
                     <label for="fc-modal-destinatario">Nombre del destinatario</label>
                     <input type="text" id="fc-modal-destinatario" name="destinatario" placeholder="¿A quién va dirigido?" />
+                </div>
+
+                <div class="fc-form-group">
+                    <label for="fc-modal-destinatario-telefono">Teléfono del destinatario</label>
+                    <input type="tel" id="fc-modal-destinatario-telefono" name="destinatario_telefono"
+                           placeholder="10 dígitos" inputmode="numeric" pattern="[0-9]*" maxlength="15" />
                 </div>
 
                 <!-- Mensaje tarjeta -->

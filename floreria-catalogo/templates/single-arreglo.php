@@ -217,6 +217,10 @@ while ( have_posts() ) : the_post();
                     </svg>
                     Pedir por WhatsApp
                 </a>
+
+                <button type="button" class="fc-agregar-pedido-btn" id="fc-agregar-pedido">
+                    &#43; Agregar al pedido
+                </button>
             </div>
             <?php endif; ?>
 

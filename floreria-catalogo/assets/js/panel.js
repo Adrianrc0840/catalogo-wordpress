@@ -6,7 +6,7 @@
 
     // ── Status labels ──
     const STATUS_LABELS = {
-        recibido:          'Recibido',
+        aceptado:          'Aceptado',
         en_preparacion:    'En preparación',
         en_camino:         'En camino',
         listo_recoleccion: 'Listo para recolección',
@@ -120,6 +120,16 @@
                </div>`
             : '';
 
+        const CANAL_LABELS = { whatsapp: 'WhatsApp', instagram: 'Instagram', facebook: 'Facebook', otro: 'Otro' };
+        const canalLabel = p.canal ? CANAL_LABELS[p.canal] || p.canal : '';
+        const canalInfo  = [p.canal_nombre, p.canal_contacto].filter(Boolean).map(escHtml).join(' · ');
+        const canalHtml  = canalLabel
+            ? `<div class="fc-card-row"><span class="fc-label">Canal</span><span class="fc-value">${escHtml(canalLabel)}${canalInfo ? ' · ' + canalInfo : ''}</span></div>`
+            : '';
+        const destTelHtml = p.destinatario_telefono
+            ? ` · ${escHtml(p.destinatario_telefono)}`
+            : '';
+
         const isMobile = window.innerWidth <= 640;
 
         return `
@@ -139,10 +149,8 @@
                 <span class="fc-label">Arreglo</span>
                 <span class="fc-value">${escHtml(p.arreglo_nombre)} — ${escHtml(p.tamano)}${(p.color && !p.color.startsWith('--')) ? ' / ' + escHtml(p.color) : ''}</span>
             </div>
-            <div class="fc-card-row">
-                <span class="fc-label">Cliente</span>
-                <span class="fc-value">${escHtml(p.cliente_nombre)} · ${escHtml(p.cliente_telefono)}</span>
-            </div>
+            ${canalHtml}
+            ${p.destinatario ? `<div class="fc-card-row"><span class="fc-label">Destinatario</span><span class="fc-value">${escHtml(p.destinatario)}${destTelHtml}</span></div>` : ''}
             <div class="fc-card-row">
                 <span class="fc-label">Entrega</span>
                 <span class="fc-value">${escHtml(tipoLabel)} · ${escHtml(p.fecha)}${horarioLabel ? ' · ' + escHtml(horarioLabel) : ''}</span>
@@ -611,6 +619,46 @@
         });
     }
 
+    // ── Canal de contacto ──
+    const CANAL_CONFIG = {
+        whatsapp:  { label: 'Número de WhatsApp',  placeholder: 'Ej. 6641234567',    inputmode: 'numeric' },
+        instagram: { label: 'Usuario de Instagram', placeholder: '@usuario',           inputmode: 'text'    },
+        facebook:  { label: 'Nombre en Facebook',   placeholder: 'Nombre del perfil', inputmode: 'text'    },
+        otro:      { label: 'Detalle',              placeholder: '¿Cómo contactó?',   inputmode: 'text'    },
+    };
+
+    function updateCanalField(canal) {
+        const group      = $('#fc-canal-contacto-group');
+        const label      = $('#fc-canal-contacto-label');
+        const input      = $('#fc-modal-canal-contacto');
+        const nombreGrp  = $('#fc-canal-nombre-group');
+        const nombreInp  = $('#fc-modal-canal-nombre');
+        if (!group || !label || !input) return;
+
+        if (!canal) {
+            group.style.display      = 'none';
+            if (nombreGrp) nombreGrp.style.display = 'none';
+            input.value = '';
+            if (nombreInp) nombreInp.value = '';
+            return;
+        }
+
+        const cfg = CANAL_CONFIG[canal] || { label: 'Contacto', placeholder: '', inputmode: 'text' };
+        label.textContent   = cfg.label;
+        input.placeholder   = cfg.placeholder;
+        input.inputMode     = cfg.inputmode;
+        input.type          = canal === 'whatsapp' ? 'tel' : 'text';
+        group.style.display = '';
+
+        // Campo de nombre: solo para WhatsApp
+        if (nombreGrp) {
+            nombreGrp.style.display = canal === 'whatsapp' ? '' : 'none';
+            if (canal !== 'whatsapp' && nombreInp) nombreInp.value = '';
+        }
+
+        (canal === 'whatsapp' ? nombreInp : input)?.focus();
+    }
+
     // ── New order modal ──
     function initNewOrderModal() {
         const overlay = $('#fc-modal-overlay');
@@ -664,6 +712,12 @@
             telInput.addEventListener('input', () => {
                 telInput.value = telInput.value.replace(/\D/g, '');
             });
+        }
+
+        // Canal de contacto — mostrar/ocultar campo secundario
+        const canalSelect = $('#fc-modal-canal');
+        if (canalSelect) {
+            canalSelect.addEventListener('change', () => updateCanalField(canalSelect.value));
         }
 
         // Submit
@@ -757,15 +811,27 @@
             if (horarioEl && pedido.horario) horarioEl.value = pedido.horario;
         });
 
+        // Canal de contacto
+        const canalEl = $('#fc-modal-canal');
+        if (canalEl) {
+            canalEl.value = pedido.canal || '';
+            updateCanalField(pedido.canal || '');
+            requestAnimationFrame(() => {
+                const contactoEl = $('#fc-modal-canal-contacto');
+                if (contactoEl) contactoEl.value = pedido.canal_contacto || '';
+                const nombreEl = $('#fc-modal-canal-nombre');
+                if (nombreEl) nombreEl.value = pedido.canal_nombre || '';
+            });
+        }
+
         // Campos simples
         const simpleFields = {
-            '#fc-modal-direccion':        pedido.direccion,
-            '#fc-modal-hora-recoleccion': pedido.hora_recoleccion,
-            '#fc-modal-cliente-nombre':   pedido.cliente_nombre,
-            '#fc-modal-cliente-telefono': pedido.cliente_telefono,
-            '#fc-modal-destinatario':     pedido.destinatario,
-            '#fc-modal-mensaje-tarjeta':  pedido.mensaje_tarjeta,
-            '#fc-modal-nota':             pedido.nota,
+            '#fc-modal-direccion':             pedido.direccion,
+            '#fc-modal-hora-recoleccion':      pedido.hora_recoleccion,
+            '#fc-modal-destinatario':          pedido.destinatario,
+            '#fc-modal-destinatario-telefono': pedido.destinatario_telefono,
+            '#fc-modal-mensaje-tarjeta':       pedido.mensaje_tarjeta,
+            '#fc-modal-nota':                  pedido.nota,
         };
         for (const [sel, val] of Object.entries(simpleFields)) {
             const el = $(sel);
@@ -840,6 +906,9 @@
         const horarioSelect = $('#fc-modal-horario');
         if (horarioSelect) horarioSelect.innerHTML = '<option value="">-- Selecciona fecha primero --</option>';
 
+        const canalSel = $('#fc-modal-canal');
+        if (canalSel) { canalSel.value = ''; updateCanalField(''); }
+
         const tamSelect = $('#fc-tamano-select');
         if (tamSelect) tamSelect.innerHTML = '<option value="">-- Selecciona tamaño --</option>';
 
@@ -861,6 +930,15 @@
 
     async function submitNewPedido() {
         const btn = $('#fc-submit-pedido');
+
+        // Validar canal obligatorio
+        const canalVal = $('#fc-modal-canal')?.value || '';
+        if (!canalVal) {
+            showToast('Selecciona el canal de contacto', 'error');
+            $('#fc-modal-canal')?.focus();
+            return;
+        }
+
         btn.textContent = currentEditId ? 'Guardando...' : 'Registrando...';
         btn.disabled    = true;
 
@@ -876,19 +954,21 @@
 
         const payload = {
             tipo,
-            fecha:            $('#fc-modal-fecha')?.value || '',
-            horario:          $('#fc-modal-horario')?.value || '',
-            hora_recoleccion: $('#fc-modal-hora-recoleccion')?.value || '',
-            direccion:        $('#fc-modal-direccion')?.value || '',
-            cliente_nombre:   $('#fc-modal-cliente-nombre')?.value || '',
-            cliente_telefono: $('#fc-modal-cliente-telefono')?.value || '',
-            destinatario:     $('#fc-modal-destinatario')?.value || '',
-            mensaje_tarjeta:  $('#fc-modal-mensaje-tarjeta')?.value || '',
-            nota:             $('#fc-modal-nota')?.value || '',
-            arreglo_id:       arregloId,
-            arreglo_nombre:   arregloNombre,
-            tamano:           tamanoNombre,
-            color:            colorNombre,
+            fecha:                  $('#fc-modal-fecha')?.value || '',
+            horario:                $('#fc-modal-horario')?.value || '',
+            hora_recoleccion:       $('#fc-modal-hora-recoleccion')?.value || '',
+            direccion:              $('#fc-modal-direccion')?.value || '',
+            canal:                  canalVal,
+            canal_nombre:           $('#fc-modal-canal-nombre')?.value || '',
+            canal_contacto:         $('#fc-modal-canal-contacto')?.value || '',
+            destinatario:           $('#fc-modal-destinatario')?.value || '',
+            destinatario_telefono:  $('#fc-modal-destinatario-telefono')?.value || '',
+            mensaje_tarjeta:        $('#fc-modal-mensaje-tarjeta')?.value || '',
+            nota:                   $('#fc-modal-nota')?.value || '',
+            arreglo_id:             arregloId,
+            arreglo_nombre:         arregloNombre,
+            tamano:                 tamanoNombre,
+            color:                  colorNombre,
         };
 
         const action = currentEditId ? 'fc_panel_actualizar_pedido' : 'fc_panel_crear_pedido';

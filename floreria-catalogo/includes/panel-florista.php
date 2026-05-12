@@ -194,7 +194,11 @@ function fc_build_pedido_data( $p ) {
         'arreglo_thumb'     => fc_get_pedido_arreglo_thumb( $p->ID ),
         'tamano'            => get_post_meta( $p->ID, '_fc_pedido_tamano',           true ),
         'color'             => get_post_meta( $p->ID, '_fc_pedido_color',            true ),
-        'nota_floreria'     => get_post_meta( $p->ID, '_fc_pedido_nota_floreria',    true ),
+        'nota_floreria'          => get_post_meta( $p->ID, '_fc_pedido_nota_floreria',         true ),
+        'canal'                  => get_post_meta( $p->ID, '_fc_pedido_canal',                 true ),
+        'canal_nombre'           => get_post_meta( $p->ID, '_fc_pedido_canal_nombre',          true ),
+        'canal_contacto'         => get_post_meta( $p->ID, '_fc_pedido_canal_contacto',        true ),
+        'destinatario_telefono'  => get_post_meta( $p->ID, '_fc_pedido_destinatario_telefono', true ),
         'historial'         => $historial,
         'last_change'       => $last,
         'fecha_registro'    => get_the_date( 'd/m/Y H:i', $p ),
@@ -286,22 +290,24 @@ function fc_ajax_crear_pedido() {
     $fields = [
         '_fc_pedido_numero'           => $numero,
         '_fc_pedido_token'            => $token,
-        '_fc_pedido_status'           => 'recibido',
+        '_fc_pedido_status'           => 'aceptado',
         '_fc_pedido_tipo'             => sanitize_key( $_POST['tipo'] ?? 'envio' ),
         '_fc_pedido_fecha'            => sanitize_text_field( $_POST['fecha'] ?? '' ),
         '_fc_pedido_horario'          => sanitize_text_field( $_POST['horario'] ?? '' ),
         '_fc_pedido_direccion'        => sanitize_text_field( $_POST['direccion'] ?? '' ),
         '_fc_pedido_hora_recoleccion' => sanitize_text_field( $_POST['hora_recoleccion'] ?? '' ),
-        '_fc_pedido_cliente_nombre'   => sanitize_text_field( $_POST['cliente_nombre'] ?? '' ),
-        '_fc_pedido_cliente_telefono' => sanitize_text_field( $_POST['cliente_telefono'] ?? '' ),
-        '_fc_pedido_destinatario'     => sanitize_text_field( $_POST['destinatario'] ?? '' ),
-        '_fc_pedido_mensaje_tarjeta'  => sanitize_textarea_field( $_POST['mensaje_tarjeta'] ?? '' ),
-        '_fc_pedido_nota'             => sanitize_textarea_field( $_POST['nota'] ?? '' ),
-        '_fc_pedido_arreglo_id'       => (int) ( $_POST['arreglo_id'] ?? 0 ),
-        '_fc_pedido_arreglo_nombre'   => sanitize_text_field( $_POST['arreglo_nombre'] ?? '' ),
-        '_fc_pedido_tamano'           => sanitize_text_field( $_POST['tamano'] ?? '' ),
-        '_fc_pedido_color'            => sanitize_text_field( $_POST['color'] ?? '' ),
-        '_fc_pedido_registrado_por'   => get_current_user_id(),
+        '_fc_pedido_canal'                   => sanitize_key( $_POST['canal'] ?? '' ),
+        '_fc_pedido_canal_nombre'            => sanitize_text_field( $_POST['canal_nombre'] ?? '' ),
+        '_fc_pedido_canal_contacto'          => sanitize_text_field( $_POST['canal_contacto'] ?? '' ),
+        '_fc_pedido_destinatario'            => sanitize_text_field( $_POST['destinatario'] ?? '' ),
+        '_fc_pedido_destinatario_telefono'   => sanitize_text_field( $_POST['destinatario_telefono'] ?? '' ),
+        '_fc_pedido_mensaje_tarjeta'         => sanitize_textarea_field( $_POST['mensaje_tarjeta'] ?? '' ),
+        '_fc_pedido_nota'                    => sanitize_textarea_field( $_POST['nota'] ?? '' ),
+        '_fc_pedido_arreglo_id'              => (int) ( $_POST['arreglo_id'] ?? 0 ),
+        '_fc_pedido_arreglo_nombre'          => sanitize_text_field( $_POST['arreglo_nombre'] ?? '' ),
+        '_fc_pedido_tamano'                  => sanitize_text_field( $_POST['tamano'] ?? '' ),
+        '_fc_pedido_color'                   => sanitize_text_field( $_POST['color'] ?? '' ),
+        '_fc_pedido_registrado_por'          => get_current_user_id(),
     ];
 
     foreach ( $fields as $key => $value ) {
@@ -309,7 +315,7 @@ function fc_ajax_crear_pedido() {
     }
 
     $historial = [ [
-        'status'    => 'recibido',
+        'status'    => 'aceptado',
         'user_id'   => get_current_user_id(),
         'user_name' => $current_user->display_name,
         'timestamp' => current_time( 'mysql' ),
@@ -430,15 +436,17 @@ function fc_ajax_actualizar_pedido_datos() {
         '_fc_pedido_horario'          => sanitize_text_field( $_POST['horario'] ?? '' ),
         '_fc_pedido_direccion'        => sanitize_text_field( $_POST['direccion'] ?? '' ),
         '_fc_pedido_hora_recoleccion' => sanitize_text_field( $_POST['hora_recoleccion'] ?? '' ),
-        '_fc_pedido_cliente_nombre'   => sanitize_text_field( $_POST['cliente_nombre'] ?? '' ),
-        '_fc_pedido_cliente_telefono' => sanitize_text_field( $_POST['cliente_telefono'] ?? '' ),
-        '_fc_pedido_destinatario'     => sanitize_text_field( $_POST['destinatario'] ?? '' ),
-        '_fc_pedido_mensaje_tarjeta'  => sanitize_textarea_field( $_POST['mensaje_tarjeta'] ?? '' ),
-        '_fc_pedido_nota'             => sanitize_textarea_field( $_POST['nota'] ?? '' ),
-        '_fc_pedido_arreglo_id'       => (int) ( $_POST['arreglo_id'] ?? 0 ),
-        '_fc_pedido_arreglo_nombre'   => sanitize_text_field( $_POST['arreglo_nombre'] ?? '' ),
-        '_fc_pedido_tamano'           => sanitize_text_field( $_POST['tamano'] ?? '' ),
-        '_fc_pedido_color'            => sanitize_text_field( $_POST['color'] ?? '' ),
+        '_fc_pedido_canal'                   => sanitize_key( $_POST['canal'] ?? '' ),
+        '_fc_pedido_canal_nombre'            => sanitize_text_field( $_POST['canal_nombre'] ?? '' ),
+        '_fc_pedido_canal_contacto'          => sanitize_text_field( $_POST['canal_contacto'] ?? '' ),
+        '_fc_pedido_destinatario'            => sanitize_text_field( $_POST['destinatario'] ?? '' ),
+        '_fc_pedido_destinatario_telefono'   => sanitize_text_field( $_POST['destinatario_telefono'] ?? '' ),
+        '_fc_pedido_mensaje_tarjeta'         => sanitize_textarea_field( $_POST['mensaje_tarjeta'] ?? '' ),
+        '_fc_pedido_nota'                    => sanitize_textarea_field( $_POST['nota'] ?? '' ),
+        '_fc_pedido_arreglo_id'              => (int) ( $_POST['arreglo_id'] ?? 0 ),
+        '_fc_pedido_arreglo_nombre'          => sanitize_text_field( $_POST['arreglo_nombre'] ?? '' ),
+        '_fc_pedido_tamano'                  => sanitize_text_field( $_POST['tamano'] ?? '' ),
+        '_fc_pedido_color'                   => sanitize_text_field( $_POST['color'] ?? '' ),
     ];
 
     foreach ( $fields as $key => $value ) {
@@ -597,9 +605,14 @@ function fc_print_pedido_page() {
     $horario     = get_post_meta( $pedido_id, '_fc_pedido_horario',          true );
     $direccion   = get_post_meta( $pedido_id, '_fc_pedido_direccion',        true );
     $hora_rec    = get_post_meta( $pedido_id, '_fc_pedido_hora_recoleccion', true );
-    $cliente     = get_post_meta( $pedido_id, '_fc_pedido_cliente_nombre',   true );
-    $telefono    = get_post_meta( $pedido_id, '_fc_pedido_cliente_telefono', true );
-    $destinat    = get_post_meta( $pedido_id, '_fc_pedido_destinatario',     true );
+    $canal           = get_post_meta( $pedido_id, '_fc_pedido_canal',                 true );
+    $canal_nombre    = get_post_meta( $pedido_id, '_fc_pedido_canal_nombre',          true );
+    $canal_contacto  = get_post_meta( $pedido_id, '_fc_pedido_canal_contacto',        true );
+    $canal_labels    = [ 'whatsapp' => 'WhatsApp', 'instagram' => 'Instagram', 'facebook' => 'Facebook', 'otro' => 'Otro' ];
+    $canal_label     = $canal ? ( $canal_labels[ $canal ] ?? ucfirst( $canal ) ) : '';
+    $canal_detalle   = implode( ' · ', array_filter( [ $canal_nombre, $canal_contacto ] ) );
+    $destinat        = get_post_meta( $pedido_id, '_fc_pedido_destinatario',          true );
+    $destinat_tel    = get_post_meta( $pedido_id, '_fc_pedido_destinatario_telefono', true );
     $tarjeta     = get_post_meta( $pedido_id, '_fc_pedido_mensaje_tarjeta',  true );
     $nota        = get_post_meta( $pedido_id, '_fc_pedido_nota',             true );
     $nota_fl     = get_post_meta( $pedido_id, '_fc_pedido_nota_floreria',    true );
@@ -959,20 +972,16 @@ function fc_print_pedido_page() {
 
             <!-- Cliente -->
             <div class="fc-section-title">Cliente</div>
+            <?php if ( $canal_label ) : ?>
             <div class="fc-row">
-                <span class="fc-row-label">Nombre</span>
-                <span class="fc-row-value"><?php echo esc_html( $cliente ); ?></span>
-            </div>
-            <?php if ( $telefono ) : ?>
-            <div class="fc-row">
-                <span class="fc-row-label">Teléfono</span>
-                <span class="fc-row-value"><?php echo esc_html( $telefono ); ?></span>
+                <span class="fc-row-label">Canal</span>
+                <span class="fc-row-value"><?php echo esc_html( $canal_label ); ?><?php echo $canal_detalle ? ' · ' . esc_html( $canal_detalle ) : ''; ?></span>
             </div>
             <?php endif; ?>
             <?php if ( $destinat ) : ?>
             <div class="fc-row">
                 <span class="fc-row-label">Destinatario</span>
-                <span class="fc-row-value"><?php echo esc_html( $destinat ); ?></span>
+                <span class="fc-row-value"><?php echo esc_html( $destinat ); ?><?php echo $destinat_tel ? ' · ' . esc_html( $destinat_tel ) : ''; ?></span>
             </div>
             <?php endif; ?>
             <?php if ( $tarjeta ) : ?>

@@ -489,6 +489,31 @@
         });
     }
 
+    // ── Agregar al pedido (carrito) ──
+    var agregarBtn = document.getElementById('fc-agregar-pedido');
+    if (agregarBtn) {
+        agregarBtn.addEventListener('click', function () {
+            if (!selectedTamano) {
+                alert('Por favor selecciona un tamaño.');
+                return;
+            }
+
+            var item = {
+                arregloId:  data.arregloId || 0,
+                titulo:     titulo,
+                permalink:  permalink,
+                tamano:     selectedTamano ? selectedTamano.nombre : '',
+                color:      selectedColor  ? selectedColor.nombre  : '',
+                precio:     selectedTamano ? parseFloat(selectedTamano.precio) || 0 : 0,
+            };
+
+            if (window.fcCart) {
+                window.fcCart.add(item);
+                window.fcCart.open();
+            }
+        });
+    }
+
     // ── Lightbox ──
     document.addEventListener('DOMContentLoaded', function () {
         updateColores(tamanoPrincipal);
