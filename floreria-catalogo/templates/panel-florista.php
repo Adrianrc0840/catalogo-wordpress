@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 $is_logged_in    = is_user_logged_in();
 $has_cap         = $is_logged_in && ( current_user_can( 'fc_ver_pedidos' ) || current_user_can( 'manage_options' ) );
 $current_user    = $is_logged_in ? wp_get_current_user() : null;
-$shop_name     = get_bloginfo( 'name' );
+$shop_name     = 'Florería Monarca';
 $status_labels = fc_pedido_status_labels();
 
 get_header();
@@ -114,36 +114,24 @@ get_header();
         <div class="fc-modal-body">
             <form id="fc-new-pedido-form">
 
-                <!-- Arreglo search -->
+                <!-- Canal de contacto (obligatorio) -->
                 <div class="fc-form-group">
-                    <label for="fc-arreglo-search">Arreglo</label>
-                    <div class="fc-autocomplete-wrap">
-                        <input
-                            type="text"
-                            id="fc-arreglo-search"
-                            placeholder="Buscar por nombre..."
-                            autocomplete="off"
-                        />
-                        <input type="hidden" id="fc-arreglo-id" name="arreglo_id" />
-                        <input type="hidden" id="fc-arreglo-nombre" name="arreglo_nombre" />
-                        <div class="fc-autocomplete-dropdown" id="fc-arreglo-dropdown"></div>
-                    </div>
-                </div>
-
-                <!-- Tamaño -->
-                <div class="fc-form-group">
-                    <label for="fc-tamano-select">Tamaño</label>
-                    <select id="fc-tamano-select" name="tamano_idx">
-                        <option value="">-- Selecciona tamaño --</option>
+                    <label for="fc-modal-canal">Canal de contacto <span style="color:#b91c1c;">*</span></label>
+                    <select id="fc-modal-canal" name="canal" required>
+                        <option value="">-- ¿Por dónde contactó? --</option>
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="facebook">Facebook</option>
+                        <option value="otro">Otro</option>
                     </select>
                 </div>
-
-                <!-- Color -->
-                <div class="fc-form-group" id="fc-color-group" style="display:none;">
-                    <label for="fc-color-select">Color</label>
-                    <select id="fc-color-select" name="color_idx">
-                        <option value="">-- Selecciona color --</option>
-                    </select>
+                <div class="fc-form-group" id="fc-canal-nombre-group" style="display:none;">
+                    <label for="fc-modal-canal-nombre">Nombre del contacto</label>
+                    <input type="text" id="fc-modal-canal-nombre" name="canal_nombre" placeholder="Nombre completo" />
+                </div>
+                <div class="fc-form-group" id="fc-canal-contacto-group" style="display:none;">
+                    <label for="fc-modal-canal-contacto" id="fc-canal-contacto-label">Contacto</label>
+                    <input type="text" id="fc-modal-canal-contacto" name="canal_contacto" placeholder="" />
                 </div>
 
                 <!-- Tipo -->
@@ -183,34 +171,21 @@ get_header();
                     </div>
                 </div>
 
-                <!-- Cliente -->
-                <div class="fc-form-group">
-                    <label for="fc-modal-cliente-nombre">Nombre del cliente</label>
-                    <input type="text" id="fc-modal-cliente-nombre" name="cliente_nombre" placeholder="Nombre completo" required />
-                </div>
-
-                <div class="fc-form-group">
-                    <label for="fc-modal-cliente-telefono">Teléfono del cliente</label>
-                    <input type="tel" id="fc-modal-cliente-telefono" name="cliente_telefono"
-                           placeholder="10 dígitos" inputmode="numeric" pattern="[0-9]*" maxlength="15" />
-                </div>
-
-                <!-- Destinatario -->
-                <div class="fc-form-group">
-                    <label for="fc-modal-destinatario">Nombre del destinatario</label>
-                    <input type="text" id="fc-modal-destinatario" name="destinatario" placeholder="¿A quién va dirigido?" />
-                </div>
-
-                <!-- Mensaje tarjeta -->
-                <div class="fc-form-group">
-                    <label for="fc-modal-mensaje-tarjeta">Mensaje de tarjeta</label>
-                    <textarea id="fc-modal-mensaje-tarjeta" name="mensaje_tarjeta" rows="2" placeholder="Mensaje para incluir en la tarjeta..."></textarea>
-                </div>
-
                 <!-- Nota especial -->
                 <div class="fc-form-group">
                     <label for="fc-modal-nota">Nota especial</label>
                     <textarea id="fc-modal-nota" name="nota" rows="2" placeholder="Indicaciones especiales del cliente..."></textarea>
+                </div>
+
+                <!-- ── Arreglos (multi-ítem) ── -->
+                <div class="fc-items-section">
+                    <div class="fc-items-section-title">Arreglos</div>
+                    <div id="fc-items-container">
+                        <!-- Blocks added dynamically by JS -->
+                    </div>
+                    <button type="button" class="fc-btn-add-item" id="fc-add-item-btn">
+                        &#43; Agregar arreglo
+                    </button>
                 </div>
 
             </form>

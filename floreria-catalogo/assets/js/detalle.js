@@ -254,6 +254,17 @@
         var dayOfWeek = String(date.getDay());
         var daySlots  = schedules[dayOfWeek] || [];
 
+        // Domingo: solo mostrar horarios si la fecha está en la lista de fechas especiales
+        if (dayOfWeek === '0') {
+            var mo   = String(date.getMonth() + 1).padStart(2, '0');
+            var dy   = String(date.getDate()).padStart(2, '0');
+            var ddmm = dy + '/' + mo;
+            var fechasEspeciales = (window.fcArreglo || {}).fechasEspeciales || [];
+            if (fechasEspeciales.indexOf(ddmm) === -1) {
+                daySlots = []; // tratar como día cerrado
+            }
+        }
+
         if (fechaDisplayEl) {
             fechaDisplayEl.textContent = dias[date.getDay()] + ', ' + date.getDate() + ' de ' + meses[date.getMonth()] + ' de ' + date.getFullYear();
         }
@@ -475,6 +486,31 @@
             }
 
             window.open('https://wa.me/' + whatsapp + '?text=' + encodeURIComponent(mensaje), '_blank');
+        });
+    }
+
+    // ── Agregar al pedido (carrito) ──
+    var agregarBtn = document.getElementById('fc-agregar-pedido');
+    if (agregarBtn) {
+        agregarBtn.addEventListener('click', function () {
+            if (!selectedTamano) {
+                alert('Por favor selecciona un tamaño.');
+                return;
+            }
+
+            var item = {
+                arregloId:  data.arregloId || 0,
+                titulo:     titulo,
+                permalink:  permalink,
+                tamano:     selectedTamano ? selectedTamano.nombre : '',
+                color:      selectedColor  ? selectedColor.nombre  : '',
+                precio:     selectedTamano ? parseFloat(selectedTamano.precio) || 0 : 0,
+            };
+
+            if (window.fcCart) {
+                window.fcCart.add(item);
+                window.fcCart.open();
+            }
         });
     }
 

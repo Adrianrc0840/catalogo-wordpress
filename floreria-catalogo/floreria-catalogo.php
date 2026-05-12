@@ -17,6 +17,7 @@ define( 'FC_VERSION', '1.0.0' );
 require_once FC_PATH . 'includes/cpt.php';
 require_once FC_PATH . 'includes/meta-boxes.php';
 require_once FC_PATH . 'includes/shortcode.php';
+require_once FC_PATH . 'includes/admin-horarios.php';
 require_once FC_PATH . 'includes/schedules.php';
 require_once FC_PATH . 'includes/settings.php';
 require_once FC_PATH . 'includes/admin-list.php';
@@ -29,10 +30,20 @@ add_action( 'wp_enqueue_scripts', 'fc_enqueue_frontend' );
 function fc_enqueue_frontend() {
     wp_enqueue_style( 'fc-catalogo', FC_URL . 'assets/css/catalogo.css', [], FC_VERSION );
 
+    // Cart assets on all frontend pages
+    wp_enqueue_style(  'fc-cart', FC_URL . 'assets/css/cart.css', [], FC_VERSION );
+    wp_enqueue_script( 'fc-cart', FC_URL . 'assets/js/cart.js',   [], FC_VERSION, true );
+    // Localize schedule/whatsapp data to cart script (always fresh, no stale localStorage)
+    wp_localize_script( 'fc-cart', 'fcCartData', [
+        'schedules'        => fc_get_schedules(),
+        'fechasEspeciales' => fc_get_fechas_especiales(),
+        'whatsapp'         => get_option( 'fc_whatsapp', '' ),
+    ] );
+
     if ( is_singular( 'arreglo' ) ) {
         wp_enqueue_style( 'fc-detalle', FC_URL . 'assets/css/detalle.css', [], FC_VERSION );
 
-        wp_enqueue_script( 'fc-detalle', FC_URL . 'assets/js/detalle.js', [], FC_VERSION, true );
+        wp_enqueue_script( 'fc-detalle', FC_URL . 'assets/js/detalle.js', [ 'fc-cart' ], FC_VERSION, true );
 
         global $post;
         $tamanos = get_post_meta( $post->ID, '_fc_tamanos', true );
@@ -48,14 +59,16 @@ function fc_enqueue_frontend() {
         }
 
         wp_localize_script( 'fc-detalle', 'fcArreglo', [
+            'arregloId'        => $post->ID,
             'tamanos'          => $tamanos,
             'tamano_principal' => $tamano_principal,
-            'whatsapp'  => get_option( 'fc_whatsapp', '' ),
-            'schedules' => fc_get_schedules(),
-            'permalink' => get_permalink( $post->ID ),
-            'titulo'    => get_the_title( $post->ID ),
-            'especial'      => get_post_meta( $post->ID, '_fc_especial', true ) === '1',
-            'politicas_url' => get_option( 'fc_politicas_url', '' ),
+            'whatsapp'         => get_option( 'fc_whatsapp', '' ),
+            'schedules'        => fc_get_schedules(),
+            'fechasEspeciales' => fc_get_fechas_especiales(),
+            'permalink'        => get_permalink( $post->ID ),
+            'titulo'           => get_the_title( $post->ID ),
+            'especial'         => get_post_meta( $post->ID, '_fc_especial', true ) === '1',
+            'politicas_url'    => get_option( 'fc_politicas_url', '' ),
         ] );
     } else {
         wp_enqueue_script( 'fc-catalogo', FC_URL . 'assets/js/catalogo.js', [], FC_VERSION, true );
