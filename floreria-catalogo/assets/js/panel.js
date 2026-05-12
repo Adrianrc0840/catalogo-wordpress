@@ -76,7 +76,8 @@
     // ── Format datetime ──
     function fmtDatetime(ts) {
         if (!ts) return '';
-        const d = new Date(ts.replace(' ', 'T'));
+        // El timestamp viene en UTC desde WordPress; añadir 'Z' para que JS lo interprete correctamente
+        const d = new Date(ts.replace(' ', 'T') + 'Z');
         const tz = { timeZone: 'America/Tijuana' };
         return d.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', ...tz })
             + ' ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', ...tz });
@@ -684,9 +685,22 @@
             return;
         }
 
-        const date    = new Date(fechaVal + 'T12:00:00');
-        const dayKey  = String(date.getDay()); // 0=Dom, 1=Lun...
-        const slots   = schedules[dayKey] || [];
+        const date   = new Date(fechaVal + 'T12:00:00');
+        const dayKey = String(date.getDay()); // 0=Dom, 1=Lun...
+
+        // Domingo: solo permitir si es fecha especial
+        if (dayKey === '0') {
+            const mm   = String(date.getMonth() + 1).padStart(2, '0');
+            const dd   = String(date.getDate()).padStart(2, '0');
+            const ddmm = `${dd}/${mm}`;
+            const fechasEspeciales = (window.fcPanel || {}).fechasEspeciales || [];
+            if (!fechasEspeciales.includes(ddmm)) {
+                horarioEl.innerHTML = '<option value="">No hay horarios para este día</option>';
+                return;
+            }
+        }
+
+        const slots = schedules[dayKey] || [];
 
         if (slots.length === 0) {
             horarioEl.innerHTML = '<option value="">No hay horarios para este día</option>';

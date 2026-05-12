@@ -39,12 +39,13 @@ function fc_enqueue_panel() {
     $today = ( new DateTime( 'now', $tz ) )->format( 'Y-m-d' );
 
     wp_localize_script( 'fc-panel', 'fcPanel', [
-        'ajaxurl'   => admin_url( 'admin-ajax.php' ),
-        'nonce'     => wp_create_nonce( 'fc_panel_nonce' ),
-        'siteurl'   => home_url(),
-        'schedules' => fc_get_schedules(),
-        'isAdmin'   => current_user_can( 'manage_options' ),
-        'today'     => $today,
+        'ajaxurl'          => admin_url( 'admin-ajax.php' ),
+        'nonce'            => wp_create_nonce( 'fc_panel_nonce' ),
+        'siteurl'          => home_url(),
+        'schedules'        => fc_get_schedules(),
+        'fechasEspeciales' => fc_get_fechas_especiales(),
+        'isAdmin'          => current_user_can( 'manage_options' ),
+        'today'            => $today,
     ] );
 }
 

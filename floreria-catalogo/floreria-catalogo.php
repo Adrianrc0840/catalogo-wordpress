@@ -17,6 +17,7 @@ define( 'FC_VERSION', '1.0.0' );
 require_once FC_PATH . 'includes/cpt.php';
 require_once FC_PATH . 'includes/meta-boxes.php';
 require_once FC_PATH . 'includes/shortcode.php';
+require_once FC_PATH . 'includes/admin-horarios.php';
 require_once FC_PATH . 'includes/schedules.php';
 require_once FC_PATH . 'includes/settings.php';
 require_once FC_PATH . 'includes/admin-list.php';
@@ -50,12 +51,13 @@ function fc_enqueue_frontend() {
         wp_localize_script( 'fc-detalle', 'fcArreglo', [
             'tamanos'          => $tamanos,
             'tamano_principal' => $tamano_principal,
-            'whatsapp'  => get_option( 'fc_whatsapp', '' ),
-            'schedules' => fc_get_schedules(),
-            'permalink' => get_permalink( $post->ID ),
-            'titulo'    => get_the_title( $post->ID ),
-            'especial'      => get_post_meta( $post->ID, '_fc_especial', true ) === '1',
-            'politicas_url' => get_option( 'fc_politicas_url', '' ),
+            'whatsapp'         => get_option( 'fc_whatsapp', '' ),
+            'schedules'        => fc_get_schedules(),
+            'fechasEspeciales' => fc_get_fechas_especiales(),
+            'permalink'        => get_permalink( $post->ID ),
+            'titulo'           => get_the_title( $post->ID ),
+            'especial'         => get_post_meta( $post->ID, '_fc_especial', true ) === '1',
+            'politicas_url'    => get_option( 'fc_politicas_url', '' ),
         ] );
     } else {
         wp_enqueue_script( 'fc-catalogo', FC_URL . 'assets/js/catalogo.js', [], FC_VERSION, true );

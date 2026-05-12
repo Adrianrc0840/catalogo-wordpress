@@ -4,7 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 $is_logged_in    = is_user_logged_in();
 $has_cap         = $is_logged_in && ( current_user_can( 'fc_ver_pedidos' ) || current_user_can( 'manage_options' ) );
 $current_user    = $is_logged_in ? wp_get_current_user() : null;
-$shop_name     = get_bloginfo( 'name' );
+$shop_name     = 'Florería Monarca';
 $status_labels = fc_pedido_status_labels();
 
 get_header();

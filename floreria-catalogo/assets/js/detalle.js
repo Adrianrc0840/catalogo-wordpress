@@ -254,6 +254,17 @@
         var dayOfWeek = String(date.getDay());
         var daySlots  = schedules[dayOfWeek] || [];
 
+        // Domingo: solo mostrar horarios si la fecha está en la lista de fechas especiales
+        if (dayOfWeek === '0') {
+            var mo   = String(date.getMonth() + 1).padStart(2, '0');
+            var dy   = String(date.getDate()).padStart(2, '0');
+            var ddmm = dy + '/' + mo;
+            var fechasEspeciales = (window.fcArreglo || {}).fechasEspeciales || [];
+            if (fechasEspeciales.indexOf(ddmm) === -1) {
+                daySlots = []; // tratar como día cerrado
+            }
+        }
+
         if (fechaDisplayEl) {
             fechaDisplayEl.textContent = dias[date.getDay()] + ', ' + date.getDate() + ' de ' + meses[date.getMonth()] + ' de ' + date.getFullYear();
         }
