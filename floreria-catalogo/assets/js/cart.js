@@ -250,6 +250,9 @@
                          String(today.getDate()).padStart(2, '0');
         fechaInput.addEventListener('change', updateCartHorario);
 
+        /* ── Google Places en dirección ── */
+        initPlacesOnInput(document.getElementById('fc-cart-direccion'), { teleport: true });
+
         /* ── Keyboard close ── */
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && isOpen) closeDrawer();
@@ -437,7 +440,10 @@
             inp.addEventListener('input', function () { patchItem(inp.dataset.uid, 'destinatario', inp.value); });
         });
         listEl.querySelectorAll('.fc-cart-item-tel').forEach(function (inp) {
-            inp.addEventListener('input', function () { patchItem(inp.dataset.uid, 'destinatario_telefono', inp.value); });
+            inp.addEventListener('input', function () {
+                inp.value = inp.value.replace(/\D/g, '');
+                patchItem(inp.dataset.uid, 'destinatario_telefono', inp.value);
+            });
         });
         listEl.querySelectorAll('.fc-cart-item-tarjeta').forEach(function (ta) {
             ta.addEventListener('input', function () { patchItem(ta.dataset.uid, 'mensajeTarjeta', ta.value); });
@@ -515,6 +521,98 @@
         var wa  = getWhatsapp();
         var msg = lines.join('\n');
         window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(msg), '_blank');
+    }
+
+    /* ── Google Places Autocomplete helper ── */
+    function initPlacesOnInput(inputEl, opts) {
+        if (!inputEl) return;
+        if (
+            !window.google ||
+            !window.google.maps ||
+            !window.google.maps.places ||
+            typeof window.google.maps.places.PlaceAutocompleteElement === 'undefined'
+        ) return;
+
+        opts = opts || {};
+
+        try {
+            var pac = new window.google.maps.places.PlaceAutocompleteElement({
+                componentRestrictions: { country: 'mx' },
+            });
+
+            if (opts.teleport) {
+                // Teleportar al body para evitar clipping por overflow/stacking context del carrito
+                inputEl.style.opacity = '0';
+                pac.style.position   = 'fixed';
+                pac.style.zIndex     = '10000';
+                pac.style.display    = 'none';
+                document.body.appendChild(pac);
+
+                function positionPac() {
+                    var r = inputEl.getBoundingClientRect();
+                    pac.style.top   = r.top + 'px';
+                    pac.style.left  = r.left + 'px';
+                    pac.style.width = r.width + 'px';
+                }
+
+                // Mostrar/ocultar con el carrito
+                var drawer = document.getElementById('fc-cart-drawer');
+                if (drawer) {
+                    new MutationObserver(function() {
+                        var open = drawer.classList.contains('fc-cart-drawer--open');
+                        if (open) {
+                            pac.style.display = '';
+                            // Esperar a que termine la animación slide-in (220ms)
+                            setTimeout(positionPac, 250);
+                        } else {
+                            pac.style.display = 'none';
+                        }
+                    }).observe(drawer, { attributes: true, attributeFilter: ['class'] });
+                }
+
+                window.addEventListener('resize', function() {
+                    if (pac.style.display !== 'none') positionPac();
+                });
+
+                var cartBody = document.getElementById('fc-cart-body');
+                if (cartBody) cartBody.addEventListener('scroll', function() {
+                    if (pac.style.display !== 'none') positionPac();
+                });
+
+            } else {
+                inputEl.parentNode.insertBefore(pac, inputEl);
+                inputEl.style.display = 'none';
+            }
+
+            pac.addEventListener('gmp-select', function (event) {
+                var pred = event.placePrediction;
+                if (!pred) return;
+                var place = pred.toPlace();
+                place.fetchFields({ fields: ['displayName', 'formattedAddress'] }).then(function () {
+                    var name = place.displayName || '';
+                    var addr = place.formattedAddress || '';
+                    inputEl.value = (name && !addr.startsWith(name)) ? name + ', ' + addr : addr;
+                    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+            });
+
+            var syncSi = function () {
+                var si = pac.shadowRoot && pac.shadowRoot.querySelector('input');
+                if (si) {
+                    si.addEventListener('input', function () {
+                        inputEl.value = si.value;
+                        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                } else {
+                    setTimeout(syncSi, 150);
+                }
+            };
+            syncSi();
+
+        } catch (e) {
+            inputEl.style.display = '';
+            inputEl.style.opacity = '';
+        }
     }
 
     /* ── Init ── */

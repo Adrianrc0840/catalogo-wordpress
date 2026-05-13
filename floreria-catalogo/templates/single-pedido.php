@@ -573,6 +573,9 @@ get_header();
     background: rgba(255,255,255,0.28);
 }
 
+/* ── Hide cart FAB on tracking page ── */
+.fc-cart-fab { display: none !important; }
+
 /* ── Not found ── */
 .fc-not-found {
     text-align: center;

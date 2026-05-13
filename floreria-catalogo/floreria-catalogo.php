@@ -30,14 +30,29 @@ add_action( 'wp_enqueue_scripts', 'fc_enqueue_frontend' );
 function fc_enqueue_frontend() {
     wp_enqueue_style( 'fc-catalogo', FC_URL . 'assets/css/catalogo.css', [], FC_VERSION );
 
+    // Google Maps Places (si hay key configurada)
+    $gmaps_key  = get_option( 'fc_gmaps_key', '' );
+    $cart_deps  = [];
+    if ( $gmaps_key ) {
+        wp_enqueue_script(
+            'google-places',
+            'https://maps.googleapis.com/maps/api/js?key=' . urlencode( $gmaps_key ) . '&libraries=places',
+            [],
+            null,
+            true
+        );
+        $cart_deps[] = 'google-places';
+    }
+
     // Cart assets on all frontend pages
     wp_enqueue_style(  'fc-cart', FC_URL . 'assets/css/cart.css', [], FC_VERSION );
-    wp_enqueue_script( 'fc-cart', FC_URL . 'assets/js/cart.js',   [], FC_VERSION, true );
+    wp_enqueue_script( 'fc-cart', FC_URL . 'assets/js/cart.js', $cart_deps, FC_VERSION, true );
     // Localize schedule/whatsapp data to cart script (always fresh, no stale localStorage)
     wp_localize_script( 'fc-cart', 'fcCartData', [
         'schedules'        => fc_get_schedules(),
         'fechasEspeciales' => fc_get_fechas_especiales(),
         'whatsapp'         => get_option( 'fc_whatsapp', '' ),
+        'gmapsKey'         => $gmaps_key,
     ] );
 
     if ( is_singular( 'arreglo' ) ) {

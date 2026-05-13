@@ -115,9 +115,12 @@
 
         const CANAL_LABELS = { whatsapp: 'WhatsApp', instagram: 'Instagram', facebook: 'Facebook', otro: 'Otro' };
         const canalLabel = p.canal ? CANAL_LABELS[p.canal] || p.canal : '';
-        const canalInfo  = [p.canal_nombre, p.canal_contacto].filter(Boolean).map(escHtml).join(' · ');
+        const canalContactoHtml = p.canal === 'whatsapp' && p.canal_contacto
+            ? telLink(p.canal_contacto)
+            : escHtml(p.canal_contacto || '');
+        const canalInfoParts = [p.canal_nombre ? escHtml(p.canal_nombre) : '', canalContactoHtml].filter(Boolean);
         const canalHtml  = canalLabel
-            ? `<div class="fc-card-row"><span class="fc-label">Canal</span><span class="fc-value">${escHtml(canalLabel)}${canalInfo ? ' · ' + canalInfo : ''}</span></div>`
+            ? `<div class="fc-card-row"><span class="fc-label">Canal</span><span class="fc-value">${escHtml(canalLabel)}${canalInfoParts.length ? ' · ' + canalInfoParts.join(' · ') : ''}</span></div>`
             : '';
 
         // ── Items (multi-arreglo) ──
@@ -130,7 +133,7 @@
                 : `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
             const sub = [item.tamano, (item.color && !item.color.startsWith('--')) ? item.color : ''].filter(Boolean).join(' · ');
             const destLine = item.destinatario
-                ? `<span class="fc-card-item-dest">Para: ${escHtml(item.destinatario)}${item.destinatario_telefono ? ' · ' + escHtml(item.destinatario_telefono) : ''}</span>`
+                ? `<span class="fc-card-item-dest">Para: ${escHtml(item.destinatario)}${item.destinatario_telefono ? ' · ' + telLink(item.destinatario_telefono) : ''}</span>`
                 : '';
             const tarjetaLine = item.mensaje_tarjeta
                 ? `<span class="fc-card-item-tarjeta">"${escHtml(item.mensaje_tarjeta)}"</span>`
@@ -171,7 +174,7 @@
                 <span class="fc-label">Entrega</span>
                 <span class="fc-value">${escHtml(tipoLabel)} · ${escHtml(p.fecha)}${horarioLabel ? ' · ' + escHtml(horarioLabel) : ''}</span>
             </div>
-            ${p.tipo === 'envio' && p.direccion ? `<div class="fc-card-row"><span class="fc-label">Dirección</span><span class="fc-value">${escHtml(p.direccion)}</span></div>` : ''}
+            ${p.tipo === 'envio' && p.direccion ? `<div class="fc-card-row"><span class="fc-label">Dirección</span><span class="fc-value"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.direccion)}" target="_blank" rel="noopener" class="fc-maps-link">${escHtml(p.direccion)}</a></span></div>` : ''}
             ${p.nota ? `<div class="fc-card-row"><span class="fc-label">Nota</span><span class="fc-value">${escHtml(p.nota)}</span></div>` : ''}
 
             <!-- Arreglos -->
@@ -222,6 +225,12 @@
 
     function escAttr(str) {
         return escHtml(str);
+    }
+
+    function telLink(num) {
+        if (!num) return '';
+        var digits = String(num).replace(/\D/g, '');
+        return `<a href="tel:${digits}" class="fc-tel-link">${escHtml(num)}</a>`;
     }
 
     // ── Load & render orders ──
@@ -735,6 +744,14 @@
         const colGroup    = block.querySelector('.fc-item-color-group');
         const removeBtn   = block.querySelector('.fc-item-remove-btn');
 
+        // Solo números en teléfono del destinatario
+        const telInput = block.querySelector('.fc-item-dest-tel');
+        if (telInput) {
+            telInput.addEventListener('input', () => {
+                telInput.value = telInput.value.replace(/\D/g, '');
+            });
+        }
+
         // Remove button
         removeBtn.addEventListener('click', () => {
             block.remove();
@@ -1071,7 +1088,12 @@
         }
 
         // Campos simples
-        const dirEl    = $('#fc-modal-direccion');      if (dirEl)    dirEl.value    = pedido.direccion      || '';
+        const dirVal = pedido.direccion || '';
+        if (window._fcSetDireccionPac) {
+            window._fcSetDireccionPac(dirVal);
+        } else {
+            const dirEl = $('#fc-modal-direccion'); if (dirEl) dirEl.value = dirVal;
+        }
         const horaEl   = $('#fc-modal-hora-recoleccion'); if (horaEl) horaEl.value   = pedido.hora_recoleccion || '';
         const notaEl   = $('#fc-modal-nota');           if (notaEl)   notaEl.value   = pedido.nota            || '';
 
@@ -1252,7 +1274,7 @@
     </div>
     <div class="fc-card-collapsible">
         <div class="fc-card-info">
-            <div class="fc-card-row"><span class="fc-label">Cliente</span><span class="fc-value">${escHtml(p.cliente_nombre)}${p.cliente_telefono ? ' · ' + escHtml(p.cliente_telefono) : ''}</span></div>
+            <div class="fc-card-row"><span class="fc-label">Cliente</span><span class="fc-value">${escHtml(p.cliente_nombre)}${p.cliente_telefono ? ' · ' + telLink(p.cliente_telefono) : ''}</span></div>
             <div class="fc-card-row"><span class="fc-label">Arreglo</span><span class="fc-value">${escHtml(p.arreglo_nombre)}${p.tamano ? ' — ' + escHtml(p.tamano) : ''}</span></div>
             <div class="fc-card-row"><span class="fc-label">Fecha</span><span class="fc-value">${escHtml(p.fecha)} · ${escHtml(tipoLabel)}</span></div>
             ${p.destinatario ? `<div class="fc-card-row"><span class="fc-label">Para</span><span class="fc-value">${escHtml(p.destinatario)}</span></div>` : ''}
@@ -1340,11 +1362,73 @@
         });
     }
 
+    // ── Google Places Autocomplete en campo de dirección ──
+    // ── Google Places Autocomplete (PlaceAutocompleteElement — nueva API) ──
+    function initDireccionAutocomplete() {
+        if (
+            !window.google ||
+            !window.google.maps ||
+            !window.google.maps.places ||
+            typeof window.google.maps.places.PlaceAutocompleteElement === 'undefined'
+        ) return;
+
+        const inputEl = document.getElementById('fc-modal-direccion');
+        if (!inputEl) return;
+
+        try {
+            const pac = new google.maps.places.PlaceAutocompleteElement({
+                componentRestrictions: { country: 'mx' },
+            });
+            pac.id = 'fc-direccion-pac';
+
+            // Insertar el elemento antes del input original y ocultar el original
+            inputEl.parentNode.insertBefore(pac, inputEl);
+            inputEl.style.display = 'none';
+
+            // Al seleccionar una sugerencia, llenar el input oculto
+            pac.addEventListener('gmp-select', function(event) {
+                const pred = event.placePrediction;
+                if (!pred) return;
+                const place = pred.toPlace();
+                place.fetchFields({ fields: ['displayName', 'formattedAddress'] }).then(function() {
+                    const name = place.displayName || '';
+                    const addr = place.formattedAddress || '';
+                    inputEl.value = (name && !addr.startsWith(name)) ? name + ', ' + addr : addr;
+                });
+            });
+
+            // Sincronizar texto escrito manualmente al input oculto
+            const syncShadowInput = function() {
+                const si = pac.shadowRoot && pac.shadowRoot.querySelector('input');
+                if (si) {
+                    si.addEventListener('input', function() { inputEl.value = si.value; });
+                    if (inputEl.value) si.value = inputEl.value;
+                } else {
+                    setTimeout(syncShadowInput, 150);
+                }
+            };
+            syncShadowInput();
+
+            // Exponer función para pre-llenar desde modal de edición
+            window._fcSetDireccionPac = function(val) {
+                inputEl.value = val || '';
+                const si = pac.shadowRoot && pac.shadowRoot.querySelector('input');
+                if (si) si.value = val || '';
+            };
+
+        } catch (e) {
+            // Fallback: mostrar input original si Places falla
+            inputEl.style.display = '';
+            console.warn('Google Places no disponible:', e);
+        }
+    }
+
     // ── Init ──
     function init() {
         // Modal y copy link funcionan tanto en el panel como en admin
         initNewOrderModal();
         initCopySuccessLink();
+        initDireccionAutocomplete();
 
         const isPanel = document.body.classList.contains('fc-panel-body') ||
             document.querySelector('.fc-panel-body');

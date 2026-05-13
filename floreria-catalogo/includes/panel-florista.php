@@ -33,8 +33,23 @@ add_action( 'wp_enqueue_scripts', 'fc_enqueue_panel' );
 function fc_enqueue_panel() {
     if ( ! get_query_var( 'fc_panel_florista' ) ) return;
 
+    $gmaps_key = get_option( 'fc_gmaps_key', '' );
+    $panel_deps = [];
+
+    if ( $gmaps_key ) {
+        wp_enqueue_script(
+            'google-places',
+            'https://maps.googleapis.com/maps/api/js?key=' . urlencode( $gmaps_key ) . '&libraries=places',
+            [],
+            null,
+            true
+        );
+        $panel_deps[] = 'google-places';
+    }
+
     wp_enqueue_style( 'fc-panel', FC_URL . 'assets/css/panel.css', [], FC_VERSION );
-    wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js', [], FC_VERSION, true );
+    wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js', $panel_deps, FC_VERSION, true );
+
     $tz    = new DateTimeZone( 'America/Tijuana' );
     $today = ( new DateTime( 'now', $tz ) )->format( 'Y-m-d' );
 
@@ -46,6 +61,7 @@ function fc_enqueue_panel() {
         'fechasEspeciales' => fc_get_fechas_especiales(),
         'isAdmin'          => current_user_can( 'manage_options' ),
         'today'            => $today,
+        'gmapsKey'         => $gmaps_key,
     ] );
 }
 

@@ -396,10 +396,57 @@
     }
 
     if (horarioEl)   horarioEl.addEventListener('change',  checkFormReady);
-    if (direccionEl) direccionEl.addEventListener('input', function () {
-        direccionTocada = true;
-        checkFormReady();
-    });
+    if (direccionEl) {
+        direccionEl.addEventListener('input', function () {
+            direccionTocada = true;
+            checkFormReady();
+        });
+
+        // Google Places Autocomplete
+        if (
+            window.google &&
+            window.google.maps &&
+            window.google.maps.places &&
+            typeof window.google.maps.places.PlaceAutocompleteElement !== 'undefined'
+        ) {
+            try {
+                var pacDet = new window.google.maps.places.PlaceAutocompleteElement({
+                    componentRestrictions: { country: 'mx' },
+                });
+                direccionEl.parentNode.insertBefore(pacDet, direccionEl);
+                direccionEl.style.display = 'none';
+
+                pacDet.addEventListener('gmp-select', function (event) {
+                    var pred = event.placePrediction;
+                    if (!pred) return;
+                    var place = pred.toPlace();
+                    place.fetchFields({ fields: ['displayName', 'formattedAddress'] }).then(function () {
+                        var name = place.displayName || '';
+                        var addr = place.formattedAddress || '';
+                        direccionEl.value = (name && !addr.startsWith(name)) ? name + ', ' + addr : addr;
+                        direccionTocada = true;
+                        checkFormReady();
+                    });
+                });
+
+                var syncDetSi = function () {
+                    var si = pacDet.shadowRoot && pacDet.shadowRoot.querySelector('input');
+                    if (si) {
+                        si.addEventListener('input', function () {
+                            direccionEl.value = si.value;
+                            direccionTocada = true;
+                            checkFormReady();
+                        });
+                    } else {
+                        setTimeout(syncDetSi, 150);
+                    }
+                };
+                syncDetSi();
+            } catch (e) {
+                direccionEl.style.display = '';
+            }
+        }
+    }
     if (politicasCb) politicasCb.addEventListener('change',  checkFormReady);
 
     function onHoraRecoleccionChange() {

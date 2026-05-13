@@ -287,6 +287,21 @@ function fc_redirect_panel_link() {
 add_action( 'admin_enqueue_scripts', 'fc_enqueue_pedidos_admin' );
 function fc_enqueue_pedidos_admin( $hook ) {
     if ( $hook !== 'arreglo_page_fc-pedidos' ) return;
+
+    $gmaps_key  = get_option( 'fc_gmaps_key', '' );
+    $panel_deps = [];
+
+    if ( $gmaps_key ) {
+        wp_enqueue_script(
+            'google-places',
+            'https://maps.googleapis.com/maps/api/js?key=' . urlencode( $gmaps_key ) . '&libraries=places',
+            [],
+            null,
+            true
+        );
+        $panel_deps[] = 'google-places';
+    }
+
     wp_enqueue_style(  'fc-panel', FC_URL . 'assets/css/panel.css', [], FC_VERSION );
     wp_add_inline_style( 'fc-panel', '
         #fc-modal-overlay .fc-modal select,
@@ -306,7 +321,7 @@ function fc_enqueue_pedidos_admin( $hook ) {
             width: 100% !important;
         }
     ' );
-    wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js',   [], FC_VERSION, true );
+    wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js', $panel_deps, FC_VERSION, true );
     wp_localize_script( 'fc-panel', 'fcPanel', [
         'ajaxurl'          => admin_url( 'admin-ajax.php' ),
         'nonce'            => wp_create_nonce( 'fc_panel_nonce' ),
@@ -314,6 +329,7 @@ function fc_enqueue_pedidos_admin( $hook ) {
         'schedules'        => fc_get_schedules(),
         'fechasEspeciales' => fc_get_fechas_especiales(),
         'isAdmin'          => true,
+        'gmapsKey'         => $gmaps_key,
     ] );
 }
 
@@ -785,8 +801,9 @@ function fc_render_pedidos_admin_page() {
                     $p_canal  = get_post_meta( $pedido->ID, '_fc_pedido_canal',         true );
                     $p_cnom   = get_post_meta( $pedido->ID, '_fc_pedido_canal_nombre',  true );
                     $p_ccon   = get_post_meta( $pedido->ID, '_fc_pedido_canal_contacto',true );
-                    $tipo     = get_post_meta( $pedido->ID, '_fc_pedido_tipo',          true );
-                    $fecha    = get_post_meta( $pedido->ID, '_fc_pedido_fecha',         true );
+                    $tipo      = get_post_meta( $pedido->ID, '_fc_pedido_tipo',          true );
+                    $fecha     = get_post_meta( $pedido->ID, '_fc_pedido_fecha',         true );
+                    $direccion = get_post_meta( $pedido->ID, '_fc_pedido_direccion',     true );
                     $p_canal_labels = [ 'whatsapp' => 'WA', 'instagram' => 'IG', 'facebook' => 'FB', 'otro' => 'Otro' ];
                     $p_canal_str = $p_canal ? ( $p_canal_labels[ $p_canal ] ?? ucfirst( $p_canal ) ) : '—';
                     $p_canal_det = implode( ' · ', array_filter( [ $p_cnom, $p_ccon ] ) );
@@ -869,7 +886,16 @@ function fc_render_pedidos_admin_page() {
                         </div>
                         <?php endif; ?>
                     </td>
-                    <td style="white-space:nowrap;"><?php echo esc_html( $tipo === 'envio' ? 'Envío' : 'Recolección' ); ?></td>
+                    <td>
+                        <?php echo esc_html( $tipo === 'envio' ? 'Envío' : 'Recolección' ); ?>
+                        <?php if ( $tipo === 'envio' && $direccion ) : ?>
+                        <br><a href="<?php echo esc_url( 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $direccion ) ); ?>"
+                               target="_blank" rel="noopener"
+                               style="font-size:11px;color:#1a73e8;text-decoration:underline;white-space:normal;display:inline-block;max-width:160px;line-height:1.3;">
+                            <?php echo esc_html( $direccion ); ?>
+                        </a>
+                        <?php endif; ?>
+                    </td>
                     <td style="white-space:nowrap;"><?php echo esc_html( $fecha ); ?></td>
                     <td style="white-space:nowrap;"><?php
                         $tz_tj  = new DateTimeZone( 'America/Tijuana' );
