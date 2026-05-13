@@ -8,6 +8,7 @@
     var cartData = window.fcCartData || {};
     function getSchedules()        { return cartData.schedules        || {}; }
     function getFechasEspeciales() { return cartData.fechasEspeciales || []; }
+    function getFechasCerradas()   { return cartData.fechasCerradas   || []; }
     function getWhatsapp()         { return cartData.whatsapp         || ''; }
 
     /* ── Cart storage ── */
@@ -24,9 +25,10 @@
     function addItem(item) {
         var cart = getCart();
         item.uid                   = uid();
-        item.destinatario          = item.destinatario          || '';
-        item.destinatario_telefono = item.destinatario_telefono || '';
-        item.mensajeTarjeta        = item.mensajeTarjeta        || '';
+        item.destinatario           = item.destinatario           || '';
+        item.destinatario_telefono  = item.destinatario_telefono  || '';
+        item.destinatario_telefono2 = item.destinatario_telefono2 || '';
+        item.mensajeTarjeta         = item.mensajeTarjeta         || '';
         cart.push(item);
         saveCart(cart);
         updateFab();
@@ -272,6 +274,14 @@
 
         var schedules        = getSchedules();
         var fechasEspeciales = getFechasEspeciales();
+        var fechasCerradas   = getFechasCerradas();
+
+        /* Fecha cerrada — no se aceptan pedidos */
+        if (fechasCerradas.indexOf(val) !== -1) {
+            horarioSel.innerHTML = '<option value="">Lo sentimos, no recibimos pedidos para esta fecha</option>';
+            return;
+        }
+
         var date             = new Date(val + 'T12:00:00');
         var dayKey           = String(date.getDay());
         var daySlots         = schedules[dayKey] || [];
@@ -397,6 +407,10 @@
                             '<input type="tel" class="fc-cart-item-tel" data-uid="' + escHtml(item.uid) + '" value="' + escHtml(item.destinatario_telefono) + '" placeholder="10 dígitos" inputmode="numeric" maxlength="15" />' +
                         '</div>' +
                         '<div class="fc-form-group">' +
+                            '<label>Teléfono del destinatario 2 <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>' +
+                            '<input type="tel" class="fc-cart-item-tel2" data-uid="' + escHtml(item.uid) + '" value="' + escHtml(item.destinatario_telefono2 || '') + '" placeholder="Número alternativo" inputmode="numeric" maxlength="15" />' +
+                        '</div>' +
+                        '<div class="fc-form-group">' +
                             '<label>Mensaje de tarjeta</label>' +
                             '<textarea class="fc-cart-item-tarjeta" data-uid="' + escHtml(item.uid) + '" rows="2" placeholder="Mensaje para incluir en la tarjeta...">' + escHtml(item.mensajeTarjeta) + '</textarea>' +
                         '</div>' +
@@ -443,6 +457,12 @@
             inp.addEventListener('input', function () {
                 inp.value = inp.value.replace(/\D/g, '');
                 patchItem(inp.dataset.uid, 'destinatario_telefono', inp.value);
+            });
+        });
+        listEl.querySelectorAll('.fc-cart-item-tel2').forEach(function (inp) {
+            inp.addEventListener('input', function () {
+                inp.value = inp.value.replace(/\D/g, '');
+                patchItem(inp.dataset.uid, 'destinatario_telefono2', inp.value);
             });
         });
         listEl.querySelectorAll('.fc-cart-item-tarjeta').forEach(function (ta) {
@@ -509,8 +529,9 @@
             if (item.precio) {
                 lines.push('  Precio: $' + parseFloat(item.precio).toLocaleString('es-MX', { minimumFractionDigits: 0 }));
             }
-            if (item.destinatario)          lines.push('  Para: '         + item.destinatario);
-            if (item.destinatario_telefono) lines.push('  Tel. destino: ' + item.destinatario_telefono);
+            if (item.destinatario)            lines.push('  Para: '           + item.destinatario);
+            if (item.destinatario_telefono)  lines.push('  Tel. destino: '   + item.destinatario_telefono);
+            if (item.destinatario_telefono2) lines.push('  Tel. destino 2: ' + item.destinatario_telefono2);
             if (item.mensajeTarjeta)        lines.push('  Tarjeta: '      + item.mensajeTarjeta);
             if (item.permalink)             lines.push('  Link: '         + item.permalink);
             lines.push('');

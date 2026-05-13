@@ -75,9 +75,10 @@ if ( $pid ) {
                     'imagen_url'            => $img,
                     'tamano'                => $item['tamano']                ?? '',
                     'color'                 => ( isset( $item['color'] ) && strpos( $item['color'], '--' ) === false ) ? $item['color'] : '',
-                    'destinatario'          => $item['destinatario']          ?? '',
-                    'destinatario_telefono' => $item['destinatario_telefono'] ?? '',
-                    'mensaje_tarjeta'       => $item['mensaje_tarjeta']       ?? '',
+                    'destinatario'           => $item['destinatario']           ?? '',
+                    'destinatario_telefono'  => $item['destinatario_telefono']  ?? '',
+                    'destinatario_telefono2' => $item['destinatario_telefono2'] ?? '',
+                    'mensaje_tarjeta'        => $item['mensaje_tarjeta']        ?? '',
                 ];
             }
         }
@@ -90,9 +91,10 @@ if ( $pid ) {
             'imagen_url'            => fc_get_pedido_arreglo_thumb( $pid ),
             'tamano'                => get_post_meta( $pid, '_fc_pedido_tamano',                  true ),
             'color'                 => ( $color_raw && strpos( $color_raw, '--' ) === false ) ? $color_raw : '',
-            'destinatario'          => get_post_meta( $pid, '_fc_pedido_destinatario',            true ),
-            'destinatario_telefono' => get_post_meta( $pid, '_fc_pedido_destinatario_telefono',   true ),
-            'mensaje_tarjeta'       => get_post_meta( $pid, '_fc_pedido_mensaje_tarjeta',         true ),
+            'destinatario'           => get_post_meta( $pid, '_fc_pedido_destinatario',            true ),
+            'destinatario_telefono'  => get_post_meta( $pid, '_fc_pedido_destinatario_telefono',   true ),
+            'destinatario_telefono2' => '',
+            'mensaje_tarjeta'        => get_post_meta( $pid, '_fc_pedido_mensaje_tarjeta',         true ),
         ];
     }
 }
@@ -767,7 +769,7 @@ get_header();
                         <span class="fc-item-card-sub"><?php echo esc_html( implode( ' · ', $sub ) ); ?></span>
                         <?php endif; ?>
                         <?php if ( $it['destinatario'] ) : ?>
-                        <span class="fc-item-card-dest">Para: <?php echo esc_html( $it['destinatario'] ); ?><?php echo $it['destinatario_telefono'] ? ' · ' . esc_html( $it['destinatario_telefono'] ) : ''; ?></span>
+                        <span class="fc-item-card-dest">Para: <?php echo esc_html( $it['destinatario'] ); ?><?php echo $it['destinatario_telefono'] ? ' · ' . esc_html( $it['destinatario_telefono'] ) : ''; ?><?php echo $it['destinatario_telefono2'] ? ' · ' . esc_html( $it['destinatario_telefono2'] ) : ''; ?></span>
                         <?php endif; ?>
                         <?php if ( $it['mensaje_tarjeta'] ) : ?>
                         <span class="fc-item-card-tarjeta">"<?php echo esc_html( $it['mensaje_tarjeta'] ); ?>"</span>
@@ -821,7 +823,7 @@ get_header();
                 <?php if ( $first_item['destinatario'] ) : ?>
                 <div class="fc-detail-row">
                     <span class="fc-detail-label">Para</span>
-                    <span class="fc-detail-value"><?php echo esc_html( $first_item['destinatario'] ); ?><?php echo $first_item['destinatario_telefono'] ? ' · ' . esc_html( $first_item['destinatario_telefono'] ) : ''; ?></span>
+                    <span class="fc-detail-value"><?php echo esc_html( $first_item['destinatario'] ); ?><?php echo $first_item['destinatario_telefono'] ? ' · ' . esc_html( $first_item['destinatario_telefono'] ) : ''; ?><?php echo $first_item['destinatario_telefono2'] ? ' · ' . esc_html( $first_item['destinatario_telefono2'] ) : ''; ?></span>
                 </div>
                 <?php endif; ?>
                 <?php if ( $first_item['mensaje_tarjeta'] ) : ?>

@@ -51,6 +51,7 @@ function fc_enqueue_frontend() {
     wp_localize_script( 'fc-cart', 'fcCartData', [
         'schedules'        => fc_get_schedules(),
         'fechasEspeciales' => fc_get_fechas_especiales(),
+        'fechasCerradas'   => fc_get_fechas_cerradas(),
         'whatsapp'         => get_option( 'fc_whatsapp', '' ),
         'gmapsKey'         => $gmaps_key,
     ] );
@@ -80,6 +81,7 @@ function fc_enqueue_frontend() {
             'whatsapp'         => get_option( 'fc_whatsapp', '' ),
             'schedules'        => fc_get_schedules(),
             'fechasEspeciales' => fc_get_fechas_especiales(),
+            'fechasCerradas'   => fc_get_fechas_cerradas(),
             'permalink'        => get_permalink( $post->ID ),
             'titulo'           => get_the_title( $post->ID ),
             'especial'         => get_post_meta( $post->ID, '_fc_especial', true ) === '1',

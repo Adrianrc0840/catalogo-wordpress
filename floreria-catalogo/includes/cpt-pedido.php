@@ -863,7 +863,10 @@ function fc_render_pedidos_admin_page() {
                                 echo '<br><span style="color:#718096;font-size:11px;">' . esc_html( implode( ' · ', $pi_sub ) ) . '</span>';
                             }
                             if ( $pi_dest ) {
-                                echo '<br><span style="color:#4a5568;font-size:11px;">Para: ' . esc_html( $pi_dest ) . '</span>';
+                                $pi_tel  = $pi['destinatario_telefono']  ?? '';
+                                $pi_tel2 = $pi['destinatario_telefono2'] ?? '';
+                                $tel_str = implode( ' · ', array_filter( [ $pi_tel, $pi_tel2 ] ) );
+                                echo '<br><span style="color:#4a5568;font-size:11px;">Para: ' . esc_html( $pi_dest ) . ( $tel_str ? ' · ' . esc_html( $tel_str ) : '' ) . '</span>';
                             }
                             echo '</div>';
                         };

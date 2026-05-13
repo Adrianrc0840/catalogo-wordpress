@@ -250,6 +250,19 @@
         var val = fechaEl.value;
         if (!val) return;
 
+        // ── Verificar fecha cerrada ──
+        var fechasCerradas = (window.fcArreglo || {}).fechasCerradas || [];
+        if (fechasCerradas.indexOf(val) !== -1) {
+            diaDisponible = false;
+            if (horarioWrap) horarioWrap.classList.remove('visible');
+            if (cerradoEl) {
+                cerradoEl.textContent = 'Lo sentimos, ya no estamos recibiendo pedidos para esta fecha.';
+                cerradoEl.style.display = 'block';
+            }
+            checkFormReady();
+            return;
+        }
+
         var date      = new Date(val + 'T12:00:00');
         var dayOfWeek = String(date.getDay());
         var daySlots  = schedules[dayOfWeek] || [];

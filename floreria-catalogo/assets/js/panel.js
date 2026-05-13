@@ -133,7 +133,7 @@
                 : `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
             const sub = [item.tamano, (item.color && !item.color.startsWith('--')) ? item.color : ''].filter(Boolean).join(' · ');
             const destLine = item.destinatario
-                ? `<span class="fc-card-item-dest">Para: ${escHtml(item.destinatario)}${item.destinatario_telefono ? ' · ' + telLink(item.destinatario_telefono) : ''}</span>`
+                ? `<span class="fc-card-item-dest">Para: ${escHtml(item.destinatario)}${item.destinatario_telefono ? ' · ' + telLink(item.destinatario_telefono) : ''}${item.destinatario_telefono2 ? ' · ' + telLink(item.destinatario_telefono2) : ''}</span>`
                 : '';
             const tarjetaLine = item.mensaje_tarjeta
                 ? `<span class="fc-card-item-tarjeta">"${escHtml(item.mensaje_tarjeta)}"</span>`
@@ -726,6 +726,10 @@
                 <input type="tel" class="fc-item-dest-tel" placeholder="10 dígitos" inputmode="numeric" maxlength="15" value="${escHtml(prefill.destinatario_telefono || '')}" />
             </div>
             <div class="fc-form-group">
+                <label>Teléfono del destinatario 2 <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
+                <input type="tel" class="fc-item-dest-tel2" placeholder="Número alternativo" inputmode="numeric" maxlength="15" value="${escHtml(prefill.destinatario_telefono2 || '')}" />
+            </div>
+            <div class="fc-form-group">
                 <label>Mensaje de tarjeta</label>
                 <textarea class="fc-item-tarjeta" rows="2" placeholder="Mensaje para incluir en la tarjeta...">${escHtml(prefill.mensaje_tarjeta || '')}</textarea>
             </div>
@@ -744,11 +748,17 @@
         const colGroup    = block.querySelector('.fc-item-color-group');
         const removeBtn   = block.querySelector('.fc-item-remove-btn');
 
-        // Solo números en teléfono del destinatario
+        // Solo números en teléfonos del destinatario
         const telInput = block.querySelector('.fc-item-dest-tel');
         if (telInput) {
             telInput.addEventListener('input', () => {
                 telInput.value = telInput.value.replace(/\D/g, '');
+            });
+        }
+        const tel2Input = block.querySelector('.fc-item-dest-tel2');
+        if (tel2Input) {
+            tel2Input.addEventListener('input', () => {
+                tel2Input.value = tel2Input.value.replace(/\D/g, '');
             });
         }
 
@@ -914,9 +924,10 @@
                 imagen_url:            block.querySelector('.fc-item-imagen-url')?.value     || '',
                 tamano:                tamNombre,
                 color:                 colNombre,
-                destinatario:          block.querySelector('.fc-item-destinatario')?.value   || '',
-                destinatario_telefono: block.querySelector('.fc-item-dest-tel')?.value       || '',
-                mensaje_tarjeta:       block.querySelector('.fc-item-tarjeta')?.value        || '',
+                destinatario:           block.querySelector('.fc-item-destinatario')?.value  || '',
+                destinatario_telefono:  block.querySelector('.fc-item-dest-tel')?.value      || '',
+                destinatario_telefono2: block.querySelector('.fc-item-dest-tel2')?.value     || '',
+                mensaje_tarjeta:        block.querySelector('.fc-item-tarjeta')?.value       || '',
             };
         });
     }

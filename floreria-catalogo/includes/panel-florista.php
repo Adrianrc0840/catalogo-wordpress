@@ -207,14 +207,15 @@ function fc_build_pedido_data( $p ) {
                     );
                 }
                 $items[] = [
-                    'arreglo_id'           => (int) ( $item['arreglo_id'] ?? 0 ),
-                    'arreglo_nombre'       => sanitize_text_field( $item['arreglo_nombre'] ?? '' ),
-                    'imagen_url'           => esc_url_raw( $img ),
-                    'tamano'               => sanitize_text_field( $item['tamano'] ?? '' ),
-                    'color'                => sanitize_text_field( $item['color']  ?? '' ),
-                    'destinatario'         => sanitize_text_field( $item['destinatario'] ?? '' ),
-                    'destinatario_telefono'=> sanitize_text_field( $item['destinatario_telefono'] ?? '' ),
-                    'mensaje_tarjeta'      => sanitize_textarea_field( $item['mensaje_tarjeta'] ?? '' ),
+                    'arreglo_id'            => (int) ( $item['arreglo_id'] ?? 0 ),
+                    'arreglo_nombre'        => sanitize_text_field( $item['arreglo_nombre'] ?? '' ),
+                    'imagen_url'            => esc_url_raw( $img ),
+                    'tamano'                => sanitize_text_field( $item['tamano'] ?? '' ),
+                    'color'                 => sanitize_text_field( $item['color']  ?? '' ),
+                    'destinatario'          => sanitize_text_field( $item['destinatario'] ?? '' ),
+                    'destinatario_telefono' => sanitize_text_field( $item['destinatario_telefono']  ?? '' ),
+                    'destinatario_telefono2'=> sanitize_text_field( $item['destinatario_telefono2'] ?? '' ),
+                    'mensaje_tarjeta'       => sanitize_textarea_field( $item['mensaje_tarjeta'] ?? '' ),
                 ];
             }
         }
@@ -229,9 +230,10 @@ function fc_build_pedido_data( $p ) {
             'imagen_url'            => fc_get_pedido_arreglo_thumb( $p->ID ),
             'tamano'                => get_post_meta( $p->ID, '_fc_pedido_tamano',                  true ),
             'color'                 => get_post_meta( $p->ID, '_fc_pedido_color',                   true ),
-            'destinatario'          => get_post_meta( $p->ID, '_fc_pedido_destinatario',            true ),
-            'destinatario_telefono' => get_post_meta( $p->ID, '_fc_pedido_destinatario_telefono',   true ),
-            'mensaje_tarjeta'       => get_post_meta( $p->ID, '_fc_pedido_mensaje_tarjeta',         true ),
+            'destinatario'           => get_post_meta( $p->ID, '_fc_pedido_destinatario',            true ),
+            'destinatario_telefono'  => get_post_meta( $p->ID, '_fc_pedido_destinatario_telefono',   true ),
+            'destinatario_telefono2' => '',
+            'mensaje_tarjeta'        => get_post_meta( $p->ID, '_fc_pedido_mensaje_tarjeta',         true ),
         ];
     }
 
@@ -397,14 +399,15 @@ function fc_ajax_crear_pedido() {
     if ( is_array( $items_raw ) ) {
         foreach ( $items_raw as $item ) {
             $items_clean[] = [
-                'arreglo_id'            => (int)    ( $item['arreglo_id']            ?? 0  ),
-                'arreglo_nombre'        => sanitize_text_field(   $item['arreglo_nombre']        ?? '' ),
-                'imagen_url'            => esc_url_raw(           $item['imagen_url']            ?? '' ),
-                'tamano'                => sanitize_text_field(   $item['tamano']                ?? '' ),
-                'color'                 => sanitize_text_field(   $item['color']                 ?? '' ),
-                'destinatario'          => sanitize_text_field(   $item['destinatario']          ?? '' ),
-                'destinatario_telefono' => sanitize_text_field(   $item['destinatario_telefono'] ?? '' ),
-                'mensaje_tarjeta'       => sanitize_textarea_field( $item['mensaje_tarjeta']     ?? '' ),
+                'arreglo_id'             => (int)    ( $item['arreglo_id']             ?? 0  ),
+                'arreglo_nombre'         => sanitize_text_field(    $item['arreglo_nombre']         ?? '' ),
+                'imagen_url'             => esc_url_raw(            $item['imagen_url']             ?? '' ),
+                'tamano'                 => sanitize_text_field(    $item['tamano']                 ?? '' ),
+                'color'                  => sanitize_text_field(    $item['color']                  ?? '' ),
+                'destinatario'           => sanitize_text_field(    $item['destinatario']           ?? '' ),
+                'destinatario_telefono'  => sanitize_text_field(    $item['destinatario_telefono']  ?? '' ),
+                'destinatario_telefono2' => sanitize_text_field(    $item['destinatario_telefono2'] ?? '' ),
+                'mensaje_tarjeta'        => sanitize_textarea_field( $item['mensaje_tarjeta']       ?? '' ),
             ];
         }
     }
@@ -566,14 +569,15 @@ function fc_ajax_actualizar_pedido_datos() {
     if ( is_array( $items_raw ) ) {
         foreach ( $items_raw as $item ) {
             $items_clean[] = [
-                'arreglo_id'            => (int)    ( $item['arreglo_id']            ?? 0  ),
-                'arreglo_nombre'        => sanitize_text_field(    $item['arreglo_nombre']        ?? '' ),
-                'imagen_url'            => esc_url_raw(            $item['imagen_url']            ?? '' ),
-                'tamano'                => sanitize_text_field(    $item['tamano']                ?? '' ),
-                'color'                 => sanitize_text_field(    $item['color']                 ?? '' ),
-                'destinatario'          => sanitize_text_field(    $item['destinatario']          ?? '' ),
-                'destinatario_telefono' => sanitize_text_field(    $item['destinatario_telefono'] ?? '' ),
-                'mensaje_tarjeta'       => sanitize_textarea_field( $item['mensaje_tarjeta']      ?? '' ),
+                'arreglo_id'             => (int)    ( $item['arreglo_id']             ?? 0  ),
+                'arreglo_nombre'         => sanitize_text_field(    $item['arreglo_nombre']         ?? '' ),
+                'imagen_url'             => esc_url_raw(            $item['imagen_url']             ?? '' ),
+                'tamano'                 => sanitize_text_field(    $item['tamano']                 ?? '' ),
+                'color'                  => sanitize_text_field(    $item['color']                  ?? '' ),
+                'destinatario'           => sanitize_text_field(    $item['destinatario']           ?? '' ),
+                'destinatario_telefono'  => sanitize_text_field(    $item['destinatario_telefono']  ?? '' ),
+                'destinatario_telefono2' => sanitize_text_field(    $item['destinatario_telefono2'] ?? '' ),
+                'mensaje_tarjeta'        => sanitize_textarea_field( $item['mensaje_tarjeta']       ?? '' ),
             ];
         }
     }
@@ -1184,9 +1188,10 @@ function fc_print_pedido_page() {
                 $item['tamano'] ?? '',
                 ( ! empty( $item['color'] ) && strpos( $item['color'], '--' ) !== 0 ) ? $item['color'] : '',
             ] );
-            $item_dest  = $item['destinatario'] ?? '';
-            $item_tel   = $item['destinatario_telefono'] ?? '';
-            $item_tarj  = $item['mensaje_tarjeta'] ?? '';
+            $item_dest  = $item['destinatario']           ?? '';
+            $item_tel   = $item['destinatario_telefono']  ?? '';
+            $item_tel2  = $item['destinatario_telefono2'] ?? '';
+            $item_tarj  = $item['mensaje_tarjeta']        ?? '';
         ?>
         <div class="fc-item-print-row">
             <div class="fc-item-print-thumb">
@@ -1202,7 +1207,7 @@ function fc_print_pedido_page() {
                 <div class="fc-item-print-sub"><?php echo esc_html( implode( ' · ', $item_sub ) ); ?></div>
                 <?php endif; ?>
                 <?php if ( $item_dest ) : ?>
-                <div class="fc-item-print-dest">Para: <?php echo esc_html( $item_dest ); ?><?php echo $item_tel ? ' · ' . esc_html( $item_tel ) : ''; ?></div>
+                <div class="fc-item-print-dest">Para: <?php echo esc_html( $item_dest ); ?><?php echo $item_tel ? ' · ' . esc_html( $item_tel ) : ''; ?><?php echo $item_tel2 ? ' · ' . esc_html( $item_tel2 ) : ''; ?></div>
                 <?php endif; ?>
                 <?php if ( $item_tarj ) : ?>
                 <div class="fc-item-print-tarjeta">"<?php echo esc_html( $item_tarj ); ?>"</div>
