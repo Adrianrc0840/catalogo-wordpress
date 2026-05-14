@@ -183,6 +183,43 @@ function fc_ajax_get_pedidos() {
 }
 
 // ─────────────────────────────────────────────
+// Upload foto adicional para un item de pedido
+// ─────────────────────────────────────────────
+function fc_ajax_upload_foto() {
+    fc_panel_verify_nonce();
+
+    $pedido_id = intval( $_POST['pedido_id'] ?? 0 );
+    $item_idx  = intval( $_POST['item_idx']  ?? 0 );
+
+    if ( ! $pedido_id ) wp_send_json_error( [ 'message' => 'Pedido no válido.' ] );
+    if ( empty( $_FILES['foto']['name'] ) ) wp_send_json_error( [ 'message' => 'No se recibió archivo.' ] );
+
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/media.php';
+
+    $att_id = media_handle_upload( 'foto', 0 );
+    if ( is_wp_error( $att_id ) ) {
+        wp_send_json_error( [ 'message' => $att_id->get_error_message() ] );
+    }
+
+    $url = wp_get_attachment_url( $att_id );
+
+    // Guardar en el JSON del pedido
+    $items_raw = get_post_meta( $pedido_id, '_fc_pedido_items', true );
+    $items     = $items_raw ? json_decode( $items_raw, true ) : [];
+    if ( is_array( $items ) && isset( $items[ $item_idx ] ) ) {
+        if ( ! isset( $items[ $item_idx ]['fotos_extra'] ) || ! is_array( $items[ $item_idx ]['fotos_extra'] ) ) {
+            $items[ $item_idx ]['fotos_extra'] = [];
+        }
+        $items[ $item_idx ]['fotos_extra'][] = esc_url_raw( $url );
+        update_post_meta( $pedido_id, '_fc_pedido_items', wp_json_encode( $items ) );
+    }
+
+    wp_send_json_success( [ 'url' => $url ] );
+}
+
+// ─────────────────────────────────────────────
 // Helper: build pedido data array from WP_Post
 // ─────────────────────────────────────────────
 function fc_build_pedido_data( $p ) {
@@ -206,10 +243,12 @@ function fc_build_pedido_data( $p ) {
                         $item['color']  ?? ''
                     );
                 }
+                $fotos_extra_raw = is_array( $item['fotos_extra'] ?? null ) ? $item['fotos_extra'] : [];
                 $items[] = [
                     'arreglo_id'            => (int) ( $item['arreglo_id'] ?? 0 ),
                     'arreglo_nombre'        => sanitize_text_field( $item['arreglo_nombre'] ?? '' ),
                     'imagen_url'            => esc_url_raw( $img ),
+                    'fotos_extra'           => array_values( array_filter( array_map( 'esc_url_raw', $fotos_extra_raw ) ) ),
                     'tamano'                => sanitize_text_field( $item['tamano'] ?? '' ),
                     'color'                 => sanitize_text_field( $item['color']  ?? '' ),
                     'destinatario'          => sanitize_text_field( $item['destinatario'] ?? '' ),
@@ -402,6 +441,9 @@ function fc_ajax_crear_pedido() {
                 'arreglo_id'             => (int)    ( $item['arreglo_id']             ?? 0  ),
                 'arreglo_nombre'         => sanitize_text_field(    $item['arreglo_nombre']         ?? '' ),
                 'imagen_url'             => esc_url_raw(            $item['imagen_url']             ?? '' ),
+                'fotos_extra'            => array_values( array_filter( array_map( 'esc_url_raw',
+                    is_array( $item['fotos_extra'] ?? null ) ? $item['fotos_extra'] : []
+                ) ) ),
                 'tamano'                 => sanitize_text_field(    $item['tamano']                 ?? '' ),
                 'color'                  => sanitize_text_field(    $item['color']                  ?? '' ),
                 'destinatario'           => sanitize_text_field(    $item['destinatario']           ?? '' ),
@@ -572,6 +614,9 @@ function fc_ajax_actualizar_pedido_datos() {
                 'arreglo_id'             => (int)    ( $item['arreglo_id']             ?? 0  ),
                 'arreglo_nombre'         => sanitize_text_field(    $item['arreglo_nombre']         ?? '' ),
                 'imagen_url'             => esc_url_raw(            $item['imagen_url']             ?? '' ),
+                'fotos_extra'            => array_values( array_filter( array_map( 'esc_url_raw',
+                    is_array( $item['fotos_extra'] ?? null ) ? $item['fotos_extra'] : []
+                ) ) ),
                 'tamano'                 => sanitize_text_field(    $item['tamano']                 ?? '' ),
                 'color'                  => sanitize_text_field(    $item['color']                  ?? '' ),
                 'destinatario'           => sanitize_text_field(    $item['destinatario']           ?? '' ),
@@ -722,6 +767,7 @@ function fc_ajax_restaurar_pedido() {
 // AJAX: Eliminar pedido permanentemente (solo admin)
 // ─────────────────────────────────────────────
 add_action( 'wp_ajax_fc_panel_eliminar_permanente', 'fc_ajax_eliminar_permanente' );
+add_action( 'wp_ajax_fc_panel_upload_foto', 'fc_ajax_upload_foto' );
 function fc_ajax_eliminar_permanente() {
     fc_panel_verify_nonce();
     if ( ! current_user_can( 'manage_options' ) ) {

@@ -20,6 +20,10 @@
     let isPapeleraView   = false;
     let modalItemCounter = 0;      // unique index per item block
 
+    // Lightbox carousel state
+    let lbPhotos = [];
+    let lbIndex  = 0;
+
     // ── DOM helpers ──
     const $ = (sel, ctx = document) => ctx.querySelector(sel);
     const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
@@ -126,11 +130,22 @@
         // ── Items (multi-arreglo) ──
         const items = p.items || [];
         const itemsHtml = items.map((item, i) => {
-            const thumb = item.imagen_url
-                ? `<div class="fc-card-item-thumb-wrap" data-lightbox="${escAttr(item.imagen_url)}" title="Ver foto">
-                     <img class="fc-card-item-thumb" src="${escAttr(item.imagen_url)}" alt="" loading="lazy" />
-                   </div>`
-                : `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
+            const allPhotos = [item.imagen_url, ...(item.fotos_extra || [])].filter(Boolean);
+            const hasExtra  = allPhotos.length > 1;
+            const photosAttr = escAttr(JSON.stringify(allPhotos));
+
+            let thumb;
+            if (allPhotos.length > 0) {
+                thumb = `<div class="fc-card-item-thumb-wrap${hasExtra ? ' fc-photo-stack' : ''}"
+                              data-photos="${photosAttr}" title="${hasExtra ? 'Ver ' + allPhotos.length + ' fotos' : 'Ver foto'}">
+                           <img class="fc-card-item-thumb" src="${escAttr(allPhotos[0])}" alt="" loading="lazy"
+                                onerror="this.closest('.fc-card-item-thumb-wrap').classList.add('fc-photo-error');this.style.display='none'" />
+                           ${hasExtra ? `<span class="fc-photo-stack-count">${allPhotos.length}</span>` : ''}
+                         </div>`;
+            } else {
+                thumb = `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
+            }
+
             const sub = [item.tamano, (item.color && !item.color.startsWith('--')) ? item.color : ''].filter(Boolean).join(' · ');
             const destLine = item.destinatario
                 ? `<span class="fc-card-item-dest">Para: ${escHtml(item.destinatario)}${item.destinatario_telefono ? ' · ' + telLink(item.destinatario_telefono) : ''}${item.destinatario_telefono2 ? ' · ' + telLink(item.destinatario_telefono2) : ''}</span>`
@@ -140,7 +155,13 @@
                 : '';
             return `
             <div class="fc-card-item">
-                ${thumb}
+                <div class="fc-card-item-media">
+                    ${thumb}
+                    <button class="fc-btn-add-foto" type="button"
+                            data-pedido-id="${p.id}" data-item-idx="${i}" title="Añadir foto">
+                        📷 Añadir foto
+                    </button>
+                </div>
                 <div class="fc-card-item-info">
                     <strong class="fc-card-item-nombre">${escHtml(item.arreglo_nombre)}</strong>
                     ${sub ? `<span class="fc-card-item-sub">${escHtml(sub)}</span>` : ''}
@@ -259,33 +280,57 @@
         }
     }
 
-    // ── Lightbox ──
+    // ── Lightbox (carousel) ──
     function initLightbox() {
-        if (document.getElementById('fc-lightbox')) return; // already created
+        if (document.getElementById('fc-lightbox')) return;
         const lb = document.createElement('div');
         lb.id = 'fc-lightbox';
         lb.className = 'fc-lightbox';
         lb.innerHTML = `
             <button class="fc-lightbox-close" aria-label="Cerrar">&times;</button>
-            <img class="fc-lightbox-img" src="" alt="Arreglo" />
+            <button class="fc-lightbox-prev" aria-label="Anterior">&#8249;</button>
+            <img class="fc-lightbox-img" src="" alt="Foto" />
+            <button class="fc-lightbox-next" aria-label="Siguiente">&#8250;</button>
+            <div class="fc-lightbox-counter"></div>
         `;
         document.body.appendChild(lb);
 
         lb.addEventListener('click', (e) => {
-            if (e.target === lb || e.target.matches('.fc-lightbox-close')) {
-                lb.classList.remove('open');
-            }
+            if (e.target === lb || e.target.matches('.fc-lightbox-close')) lb.classList.remove('open');
+            if (e.target.matches('.fc-lightbox-prev')) lbStep(-1);
+            if (e.target.matches('.fc-lightbox-next')) lbStep(1);
         });
-
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') lb.classList.remove('open');
+            if (!lb.classList.contains('open')) return;
+            if (e.key === 'Escape')      lb.classList.remove('open');
+            if (e.key === 'ArrowLeft')   lbStep(-1);
+            if (e.key === 'ArrowRight')  lbStep(1);
         });
     }
 
-    function openLightbox(src) {
+    function lbStep(dir) {
+        if (lbPhotos.length <= 1) return;
+        lbIndex = (lbIndex + dir + lbPhotos.length) % lbPhotos.length;
+        lbRender();
+    }
+
+    function lbRender() {
         const lb = document.getElementById('fc-lightbox');
         if (!lb) return;
-        lb.querySelector('.fc-lightbox-img').src = src;
+        lb.querySelector('.fc-lightbox-img').src = lbPhotos[lbIndex] || '';
+        const counter  = lb.querySelector('.fc-lightbox-counter');
+        const showNav  = lbPhotos.length > 1;
+        lb.querySelector('.fc-lightbox-prev').style.display = showNav ? '' : 'none';
+        lb.querySelector('.fc-lightbox-next').style.display = showNav ? '' : 'none';
+        if (counter) counter.textContent = showNav ? `${lbIndex + 1} / ${lbPhotos.length}` : '';
+    }
+
+    function openLightbox(photos, startIndex = 0) {
+        const lb = document.getElementById('fc-lightbox');
+        if (!lb) return;
+        lbPhotos = Array.isArray(photos) ? photos.filter(Boolean) : [photos].filter(Boolean);
+        lbIndex  = Math.max(0, Math.min(startIndex, lbPhotos.length - 1));
+        lbRender();
         lb.classList.add('open');
     }
 
@@ -348,9 +393,75 @@
             });
         });
 
-        // Thumbnail lightbox (items)
+        // Thumbnail lightbox carousel (items)
         $$('.fc-card-item-thumb-wrap', grid).forEach(wrap => {
-            wrap.addEventListener('click', () => openLightbox(wrap.dataset.lightbox));
+            wrap.addEventListener('click', () => {
+                try {
+                    const photos = JSON.parse(wrap.dataset.photos || '[]');
+                    openLightbox(photos, 0);
+                } catch { openLightbox([wrap.dataset.photos], 0); }
+            });
+        });
+
+        // Añadir foto
+        if (!document.getElementById('fc-foto-file-input')) {
+            const fi = document.createElement('input');
+            fi.type = 'file';
+            fi.accept = 'image/*';
+            fi.id = 'fc-foto-file-input';
+            fi.style.display = 'none';
+            document.body.appendChild(fi);
+
+            fi.addEventListener('change', async () => {
+                if (!fi.files[0] || !fi._activeBtn) return;
+                const btn      = fi._activeBtn;
+                const pedidoId = parseInt(btn.dataset.pedidoId, 10);
+                const itemIdx  = parseInt(btn.dataset.itemIdx,  10);
+                const origText = btn.textContent;
+                btn.textContent = '⏳';
+                btn.disabled    = true;
+
+                const fd = new FormData();
+                fd.append('action', 'fc_panel_upload_foto');
+                fd.append('nonce',     nonce);
+                fd.append('pedido_id', pedidoId);
+                fd.append('item_idx',  itemIdx);
+                fd.append('foto', fi.files[0]);
+
+                try {
+                    const res  = await fetch(ajaxurl, { method: 'POST', body: fd });
+                    const data = await res.json();
+                    if (data.success) {
+                        const url = data.data.url;
+                        // Update in-memory map
+                        const pedido = pedidoDataMap[pedidoId];
+                        if (pedido && pedido.items[itemIdx]) {
+                            if (!pedido.items[itemIdx].fotos_extra) pedido.items[itemIdx].fotos_extra = [];
+                            pedido.items[itemIdx].fotos_extra.push(url);
+                            // Refresh media area
+                            refreshCardItemMedia(btn.closest('.fc-order-card'), itemIdx, pedido.items[itemIdx], pedidoId);
+                        }
+                        showToast('Foto añadida', 'success');
+                    } else {
+                        showToast(data.data?.message || 'Error al subir', 'error');
+                    }
+                } catch { showToast('Error de conexión', 'error'); }
+                finally {
+                    btn.textContent = origText;
+                    btn.disabled    = false;
+                    fi.value        = '';
+                    fi._activeBtn   = null;
+                }
+            });
+        }
+
+        $$('.fc-btn-add-foto', grid).forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const fi = document.getElementById('fc-foto-file-input');
+                fi._activeBtn = btn;
+                fi.click();
+            });
         });
 
         // Ver link — abre en nueva pestaña
@@ -425,6 +536,47 @@
                     btn.disabled    = false;
                 }
             });
+        });
+    }
+
+    // ── Refresh media area of a single card item after photo upload ──
+    function refreshCardItemMedia(cardEl, itemIdx, item, pedidoId) {
+        const itemEls = $$('.fc-card-item', cardEl);
+        const itemEl  = itemEls[itemIdx];
+        if (!itemEl) return;
+        const mediaEl = itemEl.querySelector('.fc-card-item-media');
+        if (!mediaEl) return;
+
+        const allPhotos = [item.imagen_url, ...(item.fotos_extra || [])].filter(Boolean);
+        const hasExtra  = allPhotos.length > 1;
+        const photosAttr = escAttr(JSON.stringify(allPhotos));
+
+        let thumbHtml;
+        if (allPhotos.length > 0) {
+            thumbHtml = `<div class="fc-card-item-thumb-wrap${hasExtra ? ' fc-photo-stack' : ''}"
+                              data-photos="${photosAttr}" title="${hasExtra ? 'Ver ' + allPhotos.length + ' fotos' : 'Ver foto'}">
+                           <img class="fc-card-item-thumb" src="${escAttr(allPhotos[0])}" alt="" loading="lazy"
+                                onerror="this.closest('.fc-card-item-thumb-wrap').classList.add('fc-photo-error');this.style.display='none'" />
+                           ${hasExtra ? `<span class="fc-photo-stack-count">${allPhotos.length}</span>` : ''}
+                         </div>`;
+        } else {
+            thumbHtml = `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
+        }
+
+        mediaEl.innerHTML = thumbHtml +
+            `<button class="fc-btn-add-foto" type="button"
+                     data-pedido-id="${pedidoId}" data-item-idx="${itemIdx}" title="Añadir foto">
+                 📷 Añadir foto
+             </button>`;
+
+        mediaEl.querySelector('.fc-card-item-thumb-wrap')?.addEventListener('click', () => {
+            openLightbox(allPhotos, 0);
+        });
+        mediaEl.querySelector('.fc-btn-add-foto')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const fi = document.getElementById('fc-foto-file-input');
+            fi._activeBtn = mediaEl.querySelector('.fc-btn-add-foto');
+            fi.click();
         });
     }
 
@@ -733,6 +885,12 @@
                 <label>Mensaje de tarjeta</label>
                 <textarea class="fc-item-tarjeta" rows="2" placeholder="Mensaje para incluir en la tarjeta...">${escHtml(prefill.mensaje_tarjeta || '')}</textarea>
             </div>
+            <div class="fc-form-group fc-item-fotos-section">
+                <label>Fotos adicionales</label>
+                <input type="hidden" class="fc-item-fotos-json" value="" />
+                <div class="fc-item-fotos-gallery"></div>
+                <button type="button" class="fc-item-upload-foto-btn">📷 Añadir foto</button>
+            </div>
         </div>`;
     }
 
@@ -867,6 +1025,76 @@
                 }
             } catch { /* falla silenciosa */ }
         }
+
+        // Fotos adicionales en modal
+        const fotosJsonInput = block.querySelector('.fc-item-fotos-json');
+        const fotosGallery   = block.querySelector('.fc-item-fotos-gallery');
+        const uploadFotoBtn  = block.querySelector('.fc-item-upload-foto-btn');
+
+        // Assign fotos JSON via JS (not via HTML attribute) to avoid HTML-entity encoding issues
+        if (fotosJsonInput) {
+            fotosJsonInput.value = JSON.stringify(Array.isArray(prefill.fotos_extra) ? prefill.fotos_extra : []);
+        }
+
+        function renderModalFotos() {
+            let urls = [];
+            try { urls = JSON.parse(fotosJsonInput.value || '[]'); } catch { urls = []; }
+            fotosGallery.innerHTML = urls.map((url, fi) =>
+                `<div class="fc-item-foto-thumb" style="position:relative;display:inline-block;margin:3px;">
+                    <img src="${escAttr(url)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px;border:1.5px solid #f0c0d0;"
+                         onerror="this.style.opacity='.3';this.style.border='2px dashed #f87171'" />
+                    <button type="button" class="fc-item-foto-remove" data-idx="${fi}"
+                            style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;line-height:1;padding:0;">✕</button>
+                </div>`
+            ).join('');
+            fotosGallery.querySelectorAll('.fc-item-foto-remove').forEach(rb => {
+                rb.addEventListener('click', () => {
+                    let urls2 = [];
+                    try { urls2 = JSON.parse(fotosJsonInput.value || '[]'); } catch { urls2 = []; }
+                    urls2.splice(parseInt(rb.dataset.idx, 10), 1);
+                    fotosJsonInput.value = JSON.stringify(urls2);
+                    renderModalFotos();
+                });
+            });
+        }
+        renderModalFotos();
+
+        if (uploadFotoBtn) {
+            uploadFotoBtn.addEventListener('click', () => {
+                const fi = document.createElement('input');
+                fi.type = 'file';
+                fi.accept = 'image/*';
+                fi.style.display = 'none';
+                document.body.appendChild(fi);
+                fi.addEventListener('change', async () => {
+                    if (!fi.files[0]) { fi.remove(); return; }
+                    uploadFotoBtn.textContent = '⏳ Subiendo...';
+                    uploadFotoBtn.disabled = true;
+                    const fd = new FormData();
+                    fd.append('action', 'fc_panel_upload_foto');
+                    fd.append('nonce', nonce);
+                    fd.append('pedido_id', '0'); // temp upload, no pedido yet
+                    fd.append('item_idx', '0');
+                    fd.append('foto', fi.files[0]);
+                    try {
+                        const res  = await fetch(ajaxurl, { method: 'POST', body: fd });
+                        const data = await res.json();
+                        if (data.success) {
+                            const urls = JSON.parse(fotosJsonInput.value || '[]');
+                            urls.push(data.data.url);
+                            fotosJsonInput.value = JSON.stringify(urls);
+                            renderModalFotos();
+                        } else { showToast(data.data?.message || 'Error al subir', 'error'); }
+                    } catch { showToast('Error de conexión', 'error'); }
+                    finally {
+                        uploadFotoBtn.textContent = '📷 Añadir foto';
+                        uploadFotoBtn.disabled = false;
+                        fi.remove();
+                    }
+                });
+                fi.click();
+            });
+        }
     }
 
     function itemPopulateTamanos(tamSelect, colSelect, colGroup, imgInput, tamanos) {
@@ -928,6 +1156,7 @@
                 destinatario_telefono:  block.querySelector('.fc-item-dest-tel')?.value      || '',
                 destinatario_telefono2: block.querySelector('.fc-item-dest-tel2')?.value     || '',
                 mensaje_tarjeta:        block.querySelector('.fc-item-tarjeta')?.value       || '',
+                fotos_extra:            (() => { try { return JSON.parse(block.querySelector('.fc-item-fotos-json')?.value || '[]'); } catch { return []; } })(),
             };
         });
     }
