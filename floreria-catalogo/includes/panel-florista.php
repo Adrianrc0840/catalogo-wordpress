@@ -156,6 +156,13 @@ function fc_ajax_get_pedidos() {
             'key'   => '_fc_pedido_status',
             'value' => $status,
         ];
+    } else {
+        // Exclude pedidos pendientes from the florista panel (they are admin-only)
+        $meta_conditions[] = [
+            'key'     => '_fc_pedido_status',
+            'value'   => 'pendiente',
+            'compare' => '!=',
+        ];
     }
 
     if ( $fecha ) {
@@ -407,6 +414,88 @@ function fc_ajax_search_pedidos() {
 }
 
 // ─────────────────────────────────────────────
+// AJAX: Crear pedido pendiente desde WhatsApp (público, sin login)
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_nopriv_fc_crear_pedido_whatsapp', 'fc_ajax_crear_pedido_whatsapp' );
+add_action( 'wp_ajax_fc_crear_pedido_whatsapp',        'fc_ajax_crear_pedido_whatsapp' );
+function fc_ajax_crear_pedido_whatsapp() {
+    $nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+    if ( ! wp_verify_nonce( $nonce, 'fc_whatsapp_pedido' ) ) {
+        wp_send_json_error( [ 'message' => 'Nonce inválido.' ], 403 );
+    }
+
+    $fecha_entrega = sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) );
+    $numero        = fc_generar_numero_pedido( $fecha_entrega );
+
+    $post_id = wp_insert_post( [
+        'post_type'   => 'pedido',
+        'post_status' => 'publish',
+        'post_title'  => $numero,
+    ] );
+
+    if ( is_wp_error( $post_id ) ) {
+        wp_send_json_error( [ 'message' => 'Error al crear el pedido.' ] );
+    }
+
+    // Parse items JSON
+    $items_json_raw = wp_unslash( $_POST['items_json'] ?? '' );
+    $items_raw      = json_decode( $items_json_raw, true );
+    $items_clean    = [];
+    if ( is_array( $items_raw ) ) {
+        foreach ( $items_raw as $item ) {
+            $items_clean[] = [
+                'arreglo_id'             => (int)                    ( $item['arreglo_id']             ?? 0  ),
+                'arreglo_nombre'         => sanitize_text_field(       $item['arreglo_nombre']         ?? '' ),
+                'imagen_url'             => esc_url_raw(               $item['imagen_url']             ?? '' ),
+                'fotos_extra'            => [],
+                'tamano'                 => sanitize_text_field(       $item['tamano']                 ?? '' ),
+                'color'                  => sanitize_text_field(       $item['color']                  ?? '' ),
+                'destinatario'           => sanitize_text_field(       $item['destinatario']           ?? '' ),
+                'destinatario_telefono'  => sanitize_text_field(       $item['destinatario_telefono']  ?? '' ),
+                'destinatario_telefono2' => sanitize_text_field(       $item['destinatario_telefono2'] ?? '' ),
+                'mensaje_tarjeta'        => sanitize_textarea_field(   $item['mensaje_tarjeta']        ?? '' ),
+            ];
+        }
+    }
+    $first = $items_clean[0] ?? [];
+
+    $fields = [
+        '_fc_pedido_numero'                  => $numero,
+        '_fc_pedido_token'                   => '',
+        '_fc_pedido_status'                  => 'pendiente',
+        '_fc_pedido_tipo'                    => sanitize_key(          $_POST['tipo']             ?? 'envio' ),
+        '_fc_pedido_fecha'                   => $fecha_entrega,
+        '_fc_pedido_horario'                 => sanitize_text_field(   $_POST['horario']          ?? '' ),
+        '_fc_pedido_direccion'               => sanitize_text_field(   $_POST['direccion']        ?? '' ),
+        '_fc_pedido_hora_recoleccion'        => sanitize_text_field(   $_POST['hora_recoleccion'] ?? '' ),
+        '_fc_pedido_canal'                   => 'whatsapp',
+        '_fc_pedido_canal_nombre'            => '',
+        '_fc_pedido_canal_contacto'          => '',
+        '_fc_pedido_nota'                    => sanitize_textarea_field( $_POST['nota']           ?? '' ),
+        // Legacy single-item fields for backward compat
+        '_fc_pedido_arreglo_id'              => $first['arreglo_id']            ?? 0,
+        '_fc_pedido_arreglo_nombre'          => $first['arreglo_nombre']        ?? '',
+        '_fc_pedido_tamano'                  => $first['tamano']                ?? '',
+        '_fc_pedido_color'                   => $first['color']                 ?? '',
+        '_fc_pedido_destinatario'            => $first['destinatario']          ?? '',
+        '_fc_pedido_destinatario_telefono'   => $first['destinatario_telefono'] ?? '',
+        '_fc_pedido_mensaje_tarjeta'         => $first['mensaje_tarjeta']       ?? '',
+    ];
+
+    foreach ( $fields as $key => $value ) {
+        update_post_meta( $post_id, $key, $value );
+    }
+
+    if ( ! empty( $items_clean ) ) {
+        update_post_meta( $post_id, '_fc_pedido_items', wp_json_encode( $items_clean ) );
+    }
+
+    update_post_meta( $post_id, '_fc_pedido_historial', maybe_serialize( [] ) );
+
+    wp_send_json_success( [ 'message' => 'Pendiente creado.', 'numero' => $numero ] );
+}
+
+// ─────────────────────────────────────────────
 // AJAX: Crear pedido
 // ─────────────────────────────────────────────
 add_action( 'wp_ajax_fc_panel_crear_pedido', 'fc_ajax_crear_pedido' );
@@ -414,10 +503,12 @@ function fc_ajax_crear_pedido() {
     fc_panel_verify_nonce();
     fc_panel_require_cap();
 
+    $modo         = sanitize_key( $_POST['modo'] ?? '' );
+    $es_pendiente = ( $modo === 'pendiente' );
+
     $fecha_entrega = sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) );
     $numero        = fc_generar_numero_pedido( $fecha_entrega );
-
-    $token  = fc_generar_token();
+    $token         = $es_pendiente ? '' : fc_generar_token();
 
     $current_user = wp_get_current_user();
 
@@ -458,7 +549,7 @@ function fc_ajax_crear_pedido() {
     $fields = [
         '_fc_pedido_numero'           => $numero,
         '_fc_pedido_token'            => $token,
-        '_fc_pedido_status'           => 'aceptado',
+        '_fc_pedido_status'           => $es_pendiente ? 'pendiente' : 'aceptado',
         '_fc_pedido_tipo'             => sanitize_key( $_POST['tipo'] ?? 'envio' ),
         '_fc_pedido_fecha'            => sanitize_text_field( $_POST['fecha'] ?? '' ),
         '_fc_pedido_horario'          => sanitize_text_field( $_POST['horario'] ?? '' ),
@@ -488,7 +579,7 @@ function fc_ajax_crear_pedido() {
         update_post_meta( $post_id, '_fc_pedido_items', wp_json_encode( $items_clean ) );
     }
 
-    $historial = [ [
+    $historial = $es_pendiente ? [] : [ [
         'status'    => 'aceptado',
         'user_id'   => get_current_user_id(),
         'user_name' => $current_user->display_name,
@@ -496,15 +587,23 @@ function fc_ajax_crear_pedido() {
     ] ];
     update_post_meta( $post_id, '_fc_pedido_historial', maybe_serialize( $historial ) );
 
-    $client_url = home_url( '/pedido/' . $numero );
-
-    wp_send_json_success( [
-        'message'    => 'Pedido creado correctamente.',
-        'numero'     => $numero,
-        'token'      => $token,
-        'client_url' => $client_url,
-        'pedido_id'  => $post_id,
-    ] );
+    if ( $es_pendiente ) {
+        wp_send_json_success( [
+            'message'   => 'Pedido guardado como pendiente.',
+            'numero'    => $numero,
+            'pedido_id' => $post_id,
+            'pendiente' => true,
+        ] );
+    } else {
+        $client_url = home_url( '/pedido/' . $numero );
+        wp_send_json_success( [
+            'message'    => 'Pedido creado correctamente.',
+            'numero'     => $numero,
+            'token'      => $token,
+            'client_url' => $client_url,
+            'pedido_id'  => $post_id,
+        ] );
+    }
 }
 
 // ─────────────────────────────────────────────

@@ -349,6 +349,50 @@
     padding-top: 10px;
 }
 
+/* ── Aviso anticipación arreglos especiales ── */
+.fc-cart-especial-aviso {
+    font-size: 12px;
+    color: #92400e;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 6px;
+    line-height: 1.4;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    padding: 0 10px;
+    margin: 0;
+    transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease, margin 0.25s ease;
+}
+.fc-cart-especial-aviso.fc-aviso-visible {
+    max-height: 80px;
+    opacity: 1;
+    padding: 8px 10px;
+    margin: -4px 0 10px;
+}
+
+/* ── "Mismos datos" checkbox ── */
+.fc-mismos-wrap {
+    margin-top: 4px;
+    margin-bottom: 2px;
+}
+.fc-mismos-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #64748b;
+    cursor: pointer;
+    user-select: none;
+}
+.fc-mismos-label input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: #9d174d;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
 .fc-cart-item-info {
     display: flex;
     flex-direction: column;

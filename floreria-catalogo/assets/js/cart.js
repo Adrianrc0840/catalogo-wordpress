@@ -62,6 +62,19 @@
         return new Date(str);
     }
 
+    /* Cuenta días hábiles estrictamente entre dos fechas (sin incluirlas) */
+    function countBusinessDays(from, to) {
+        var count = 0;
+        var d = new Date(from);
+        d.setDate(d.getDate() + 1);
+        while (d < to) {
+            var day = d.getDay();
+            if (day !== 0 && day !== 6) count++;
+            d.setDate(d.getDate() + 1);
+        }
+        return count;
+    }
+
     function escHtml(str) {
         if (str == null) return '';
         return String(str)
@@ -159,6 +172,7 @@
                                     '<label for="fc-cart-fecha">Fecha de entrega</label>' +
                                     '<input type="date" id="fc-cart-fecha" />' +
                                 '</div>' +
+                                '<p id="fc-cart-especial-aviso" class="fc-cart-especial-aviso"></p>' +
                                 '<div id="fc-cart-envio-fields">' +
                                     '<div class="fc-form-group">' +
                                         '<label for="fc-cart-horario">Horario de entrega</label>' +
@@ -261,6 +275,37 @@
         });
     }
 
+    /* ── Aviso de anticipación para arreglos especiales ── */
+    function checkEspecialAviso(fecha) {
+        var avisoEl = document.getElementById('fc-cart-especial-aviso');
+        if (!avisoEl) return;
+        if (!fecha) { avisoEl.classList.remove('fc-aviso-visible'); return; }
+
+        var cartNow    = getCart();
+        var hasEspecial = false;
+        for (var ei = 0; ei < cartNow.length; ei++) {
+            if (cartNow[ei].especial) { hasEspecial = true; break; }
+        }
+        if (!hasEspecial) { avisoEl.classList.remove('fc-aviso-visible'); return; }
+
+        var hoyE = new Date();
+        hoyE.setHours(0, 0, 0, 0);
+        var selE    = new Date(fecha + 'T00:00:00');
+        var diasE   = countBusinessDays(hoyE, selE);
+
+        if (diasE < 2) {
+            avisoEl.textContent = '⚠ Uno o más arreglos son sobre pedido y necesitan al menos 2 días hábiles de anticipación. Sábado y domingo no cuentan.';
+            avisoEl.classList.add('fc-aviso-visible');
+        } else {
+            avisoEl.classList.remove('fc-aviso-visible');
+        }
+
+        /* Reposicionar el widget de Google Places (teleportado al body como fixed)
+           al inicio y al final de la transición CSS (0.25 s) */
+        window.dispatchEvent(new Event('resize'));
+        setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 270);
+    }
+
     function updateCartHorario() {
         var fechaInput = document.getElementById('fc-cart-fecha');
         var horarioSel = document.getElementById('fc-cart-horario');
@@ -269,6 +314,7 @@
         var val = fechaInput.value;
         if (!val) {
             horarioSel.innerHTML = '<option value="">-- Selecciona fecha primero --</option>';
+            checkEspecialAviso('');
             return;
         }
 
@@ -279,6 +325,7 @@
         /* Fecha cerrada — no se aceptan pedidos */
         if (fechasCerradas.indexOf(val) !== -1) {
             horarioSel.innerHTML = '<option value="">Lo sentimos, no recibimos pedidos para esta fecha</option>';
+            checkEspecialAviso(val);
             return;
         }
 
@@ -296,6 +343,7 @@
 
         if (daySlots.length === 0) {
             horarioSel.innerHTML = '<option value="">No hay horarios disponibles este día</option>';
+            checkEspecialAviso(val);
             return;
         }
 
@@ -319,6 +367,8 @@
             o.value = o.textContent = s;
             horarioSel.appendChild(o);
         });
+
+        checkEspecialAviso(val);
     }
 
     function openDrawer() {
@@ -373,7 +423,7 @@
         secTitle.textContent = 'Arreglos (' + cart.length + ')';
         listEl.appendChild(secTitle);
 
-        cart.forEach(function (item) {
+        cart.forEach(function (item, i) {
             var isCollapsed = !!collapsedItems[item.uid];
             var precioStr   = item.precio
                 ? '$' + parseFloat(item.precio).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
@@ -399,11 +449,11 @@
                 '<div class="fc-collapsible-body' + (isCollapsed ? ' fc-collapsed' : '') + '">' +
                     '<div class="fc-collapsible-inner">' +
                         '<div class="fc-form-group">' +
-                            '<label>Nombre del destinatario</label>' +
+                            '<label>Nombre del destinatario <span style="color:#b91c1c;">*</span></label>' +
                             '<input type="text" class="fc-cart-item-dest" data-uid="' + escHtml(item.uid) + '" value="' + escHtml(item.destinatario) + '" placeholder="¿A quién va dirigido?" />' +
                         '</div>' +
                         '<div class="fc-form-group">' +
-                            '<label>Teléfono del destinatario</label>' +
+                            '<label>Teléfono del destinatario <span style="color:#b91c1c;">*</span></label>' +
                             '<input type="tel" class="fc-cart-item-tel" data-uid="' + escHtml(item.uid) + '" value="' + escHtml(item.destinatario_telefono) + '" placeholder="10 dígitos" inputmode="numeric" maxlength="15" />' +
                         '</div>' +
                         '<div class="fc-form-group">' +
@@ -414,6 +464,14 @@
                             '<label>Mensaje de tarjeta</label>' +
                             '<textarea class="fc-cart-item-tarjeta" data-uid="' + escHtml(item.uid) + '" rows="2" placeholder="Mensaje para incluir en la tarjeta...">' + escHtml(item.mensajeTarjeta) + '</textarea>' +
                         '</div>' +
+                        (i > 0 && cart.length > 1
+                            ? '<div class="fc-form-group fc-mismos-wrap">' +
+                                  '<label class="fc-mismos-label">' +
+                                      '<input type="checkbox" class="fc-cart-item-mismos" data-uid="' + escHtml(item.uid) + '" /> ' +
+                                      'Mismos datos que el arreglo 1' +
+                                  '</label>' +
+                              '</div>'
+                            : '') +
                     '</div>' +
                 '</div>';
 
@@ -468,6 +526,37 @@
         listEl.querySelectorAll('.fc-cart-item-tarjeta').forEach(function (ta) {
             ta.addEventListener('input', function () { patchItem(ta.dataset.uid, 'mensajeTarjeta', ta.value); });
         });
+
+        /* ── "Mismos datos que el arreglo 1" checkbox ── */
+        listEl.querySelectorAll('.fc-cart-item-mismos').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var id    = cb.dataset.uid;
+                var cart2 = getCart();
+                var first = cart2[0];
+                if (!first) return;
+
+                var destInp = listEl.querySelector('.fc-cart-item-dest[data-uid="'    + id + '"]');
+                var telInp  = listEl.querySelector('.fc-cart-item-tel[data-uid="'     + id + '"]');
+                var tel2Inp = listEl.querySelector('.fc-cart-item-tel2[data-uid="'    + id + '"]');
+                var tarjTa  = listEl.querySelector('.fc-cart-item-tarjeta[data-uid="' + id + '"]');
+
+                if (cb.checked) {
+                    var d  = first.destinatario           || '';
+                    var t  = first.destinatario_telefono  || '';
+                    var t2 = first.destinatario_telefono2 || '';
+                    if (destInp)  { destInp.value  = d;  destInp.disabled  = true; }
+                    if (telInp)   { telInp.value   = t;  telInp.disabled   = true; }
+                    if (tel2Inp)  { tel2Inp.value  = t2; tel2Inp.disabled  = true; }
+                    patchItem(id, 'destinatario',           d);
+                    patchItem(id, 'destinatario_telefono',  t);
+                    patchItem(id, 'destinatario_telefono2', t2);
+                } else {
+                    if (destInp)  destInp.disabled  = false;
+                    if (telInp)   telInp.disabled   = false;
+                    if (tel2Inp)  tel2Inp.disabled  = false;
+                }
+            });
+        });
     }
 
     function patchItem(id, field, value) {
@@ -499,6 +588,34 @@
         if (isEnvio && !horario) { alert('Por favor selecciona el horario de entrega.'); return; }
         if (isEnvio && !dir)     { alert('Por favor escribe la dirección de entrega.');  return; }
         if (!isEnvio && !hora)   { alert('Por favor escribe la hora de recolección.');   return; }
+
+        /* ── Validar nombre y teléfono del destinatario (obligatorios) ── */
+        for (var vi = 0; vi < cart.length; vi++) {
+            var label = cart.length > 1 ? ' para el arreglo ' + (vi + 1) : '';
+            if (!cart[vi].destinatario || !cart[vi].destinatario.trim()) {
+                alert('Por favor ingresa el nombre del destinatario' + label + '.');
+                return;
+            }
+            if (!cart[vi].destinatario_telefono || !cart[vi].destinatario_telefono.trim()) {
+                alert('Por favor ingresa el teléfono del destinatario' + label + '.');
+                return;
+            }
+        }
+
+        /* ── Validar anticipación para arreglos especiales (sobre pedido) ── */
+        var hoyVal = new Date();
+        hoyVal.setHours(0, 0, 0, 0);
+        var selDate = new Date(fecha + 'T00:00:00');
+        for (var si = 0; si < cart.length; si++) {
+            if (cart[si].especial) {
+                var diasHab = countBusinessDays(hoyVal, selDate);
+                if (diasHab < 2) {
+                    alert('El arreglo "' + cart[si].titulo + '" es sobre pedido y necesita al menos 2 días hábiles de anticipación. Sábado y domingo no cuentan.\nPor favor elige una fecha posterior.');
+                    return;
+                }
+                break; // todos usan la misma fecha, con uno basta
+            }
+        }
 
         var fechaStr = formatFecha(fecha);
         var lines    = ['Hola! Quisiera hacer el siguiente pedido:\n'];
@@ -541,6 +658,37 @@
 
         var wa  = getWhatsapp();
         var msg = lines.join('\n');
+
+        /* ── Fire-and-forget: registrar como pedido pendiente ── */
+        var ajaxurl       = cartData.ajaxurl       || '';
+        var whatsappNonce = cartData.whatsappNonce || '';
+        if (ajaxurl && whatsappNonce) {
+            var itemsPayload = cart.map(function (item) {
+                return {
+                    arreglo_id:             item.arregloId           || 0,
+                    arreglo_nombre:         item.titulo              || '',
+                    imagen_url:             '',
+                    tamano:                 item.tamano              || '',
+                    color:                  item.color               || '',
+                    destinatario:           item.destinatario        || '',
+                    destinatario_telefono:  item.destinatario_telefono  || '',
+                    destinatario_telefono2: item.destinatario_telefono2 || '',
+                    mensaje_tarjeta:        item.mensajeTarjeta      || '',
+                };
+            });
+            var body = new URLSearchParams({
+                action:           'fc_crear_pedido_whatsapp',
+                nonce:            whatsappNonce,
+                fecha:            fecha,
+                tipo:             isEnvio ? 'envio' : 'recoleccion',
+                horario:          isEnvio ? horario : '',
+                direccion:        isEnvio ? dir     : '',
+                hora_recoleccion: isEnvio ? ''      : hora,
+                items_json:       JSON.stringify(itemsPayload),
+            });
+            fetch(ajaxurl, { method: 'POST', body: body }).catch(function () {});
+        }
+
         window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(msg), '_blank');
     }
 

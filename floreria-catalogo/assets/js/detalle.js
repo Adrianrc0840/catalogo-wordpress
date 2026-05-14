@@ -545,6 +545,40 @@
                     'Esta disponible?';
             }
 
+            /* ── Fire-and-forget: registrar como pedido pendiente ── */
+            var ajaxurl       = data.ajaxurl       || '';
+            var whatsappNonce = data.whatsappNonce || '';
+            if (ajaxurl && whatsappNonce) {
+                var imagenUrl = (selectedColor && selectedColor.imagen_url)
+                    ? selectedColor.imagen_url
+                    : (selectedTamano && selectedTamano.imagen_url ? selectedTamano.imagen_url : '');
+                var tamanoStr = selectedTamano
+                    ? selectedTamano.nombre + (selectedTamano.precio ? ' ($' + parseFloat(selectedTamano.precio).toLocaleString('es-MX', { minimumFractionDigits: 0 }) + ')' : '')
+                    : '';
+                var itemPayload = [{
+                    arreglo_id:             data.arregloId || 0,
+                    arreglo_nombre:         titulo,
+                    imagen_url:             imagenUrl,
+                    tamano:                 tamanoStr,
+                    color:                  selectedColor ? selectedColor.nombre : '',
+                    destinatario:           '',
+                    destinatario_telefono:  '',
+                    destinatario_telefono2: '',
+                    mensaje_tarjeta:        '',
+                }];
+                var bodyDet = new URLSearchParams({
+                    action:           'fc_crear_pedido_whatsapp',
+                    nonce:            whatsappNonce,
+                    fecha:            fecha,
+                    tipo:             modoTipo,
+                    horario:          modoTipo === 'envio' ? (horarioEl ? horarioEl.value.trim() : '') : '',
+                    direccion:        modoTipo === 'envio' ? (direccionEl ? direccionEl.value.trim() : '') : '',
+                    hora_recoleccion: modoTipo === 'recoleccion' ? (horaRecoleccionEl ? horaRecoleccionEl.value : '') : '',
+                    items_json:       JSON.stringify(itemPayload),
+                });
+                fetch(ajaxurl, { method: 'POST', body: bodyDet }).catch(function () {});
+            }
+
             window.open('https://wa.me/' + whatsapp + '?text=' + encodeURIComponent(mensaje), '_blank');
         });
     }
@@ -560,6 +594,7 @@
 
             var item = {
                 arregloId:  data.arregloId || 0,
+                especial:   !!especial,
                 titulo:     titulo,
                 permalink:  permalink,
                 tamano:     selectedTamano ? selectedTamano.nombre : '',

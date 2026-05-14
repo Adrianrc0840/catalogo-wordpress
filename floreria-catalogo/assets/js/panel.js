@@ -18,6 +18,7 @@
     let currentEditId    = null;   // null = crear, número = editar
     let pedidoDataMap    = {};     // id → datos completos del pedido
     let isPapeleraView   = false;
+    let isPendienteMode  = false;
     let modalItemCounter = 0;      // unique index per item block
 
     // Lightbox carousel state
@@ -1167,12 +1168,27 @@
         const openBtn = $('#fc-btn-new-pedido');
         const closeBtn = $('#fc-modal-close');
 
-        if (!overlay || !openBtn) return;
+        if (!overlay) return;
 
-        openBtn.addEventListener('click', () => {
-            overlay.classList.add('open');
-            resetNewOrderForm();
-        });
+        if (openBtn) {
+            openBtn.addEventListener('click', () => {
+                overlay.classList.add('open');
+                resetNewOrderForm();
+            });
+        }
+
+        const pendienteBtn = $('#fc-btn-new-pendiente');
+        if (pendienteBtn) {
+            pendienteBtn.addEventListener('click', () => {
+                overlay.classList.add('open');
+                resetNewOrderForm();           // resetea isPendienteMode a false
+                isPendienteMode = true;        // luego lo activamos
+                const title = $('#fc-modal-title');
+                if (title) title.textContent = 'Nuevo pedido pendiente';
+                const submitBtn2 = $('#fc-submit-pedido');
+                if (submitBtn2) { submitBtn2.style.display = ''; submitBtn2.textContent = 'Guardar como pendiente'; }
+            });
+        }
 
         closeBtn && closeBtn.addEventListener('click', () => {
             overlay.classList.remove('open');
@@ -1351,6 +1367,7 @@
     }
 
     function resetNewOrderForm() {
+        isPendienteMode = false;
         currentEditId = null;
         const form = $('#fc-new-pedido-form');
         if (form) form.reset();
@@ -1422,13 +1439,32 @@
             items_json:       JSON.stringify(items),
         };
 
+        if (isPendienteMode) payload.modo = 'pendiente';
+
         const action = currentEditId ? 'fc_panel_actualizar_pedido' : 'fc_panel_crear_pedido';
         if (currentEditId) payload.pedido_id = currentEditId;
 
         try {
             const data = await ajax(action, payload);
             if (data.success) {
-                if (currentEditId) {
+                if (isPendienteMode) {
+                    showToast('Pedido guardado como pendiente', 'success');
+                    const overlay2 = $('#fc-modal-overlay');
+                    if (overlay2) overlay2.classList.remove('open');
+                    isPendienteMode = false;
+                    btn.textContent = 'Guardar como pendiente';
+                    btn.disabled    = false;
+                    if (isAdmin) {
+                        setTimeout(() => {
+                            const url = new URL(window.location.href);
+                            url.searchParams.set('view', 'pendiente');
+                            url.searchParams.set('pendiente_created', '1');
+                            window.location.href = url.toString();
+                        }, 800);
+                    } else {
+                        setTimeout(() => loadPedidos(currentFilter, getCurrentFecha()), 600);
+                    }
+                } else if (currentEditId) {
                     // Modo edición — cerrar modal y recargar
                     showToast('Pedido actualizado', 'success');
                     const overlay = $('#fc-modal-overlay');
