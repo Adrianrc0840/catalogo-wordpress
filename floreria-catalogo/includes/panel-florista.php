@@ -33,8 +33,23 @@ add_action( 'wp_enqueue_scripts', 'fc_enqueue_panel' );
 function fc_enqueue_panel() {
     if ( ! get_query_var( 'fc_panel_florista' ) ) return;
 
+    $gmaps_key = get_option( 'fc_gmaps_key', '' );
+    $panel_deps = [];
+
+    if ( $gmaps_key ) {
+        wp_enqueue_script(
+            'google-places',
+            'https://maps.googleapis.com/maps/api/js?key=' . urlencode( $gmaps_key ) . '&libraries=places',
+            [],
+            null,
+            true
+        );
+        $panel_deps[] = 'google-places';
+    }
+
     wp_enqueue_style( 'fc-panel', FC_URL . 'assets/css/panel.css', [], FC_VERSION );
-    wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js', [], FC_VERSION, true );
+    wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js', $panel_deps, FC_VERSION, true );
+
     $tz    = new DateTimeZone( 'America/Tijuana' );
     $today = ( new DateTime( 'now', $tz ) )->format( 'Y-m-d' );
 
@@ -46,6 +61,7 @@ function fc_enqueue_panel() {
         'fechasEspeciales' => fc_get_fechas_especiales(),
         'isAdmin'          => current_user_can( 'manage_options' ),
         'today'            => $today,
+        'gmapsKey'         => $gmaps_key,
     ] );
 }
 
@@ -140,6 +156,13 @@ function fc_ajax_get_pedidos() {
             'key'   => '_fc_pedido_status',
             'value' => $status,
         ];
+    } else {
+        // Exclude pedidos pendientes from the florista panel (they are admin-only)
+        $meta_conditions[] = [
+            'key'     => '_fc_pedido_status',
+            'value'   => 'pendiente',
+            'compare' => '!=',
+        ];
     }
 
     if ( $fecha ) {
@@ -167,6 +190,43 @@ function fc_ajax_get_pedidos() {
 }
 
 // ─────────────────────────────────────────────
+// Upload foto adicional para un item de pedido
+// ─────────────────────────────────────────────
+function fc_ajax_upload_foto() {
+    fc_panel_verify_nonce();
+
+    $pedido_id = intval( $_POST['pedido_id'] ?? 0 );
+    $item_idx  = intval( $_POST['item_idx']  ?? 0 );
+
+    if ( ! $pedido_id ) wp_send_json_error( [ 'message' => 'Pedido no válido.' ] );
+    if ( empty( $_FILES['foto']['name'] ) ) wp_send_json_error( [ 'message' => 'No se recibió archivo.' ] );
+
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/media.php';
+
+    $att_id = media_handle_upload( 'foto', 0 );
+    if ( is_wp_error( $att_id ) ) {
+        wp_send_json_error( [ 'message' => $att_id->get_error_message() ] );
+    }
+
+    $url = wp_get_attachment_url( $att_id );
+
+    // Guardar en el JSON del pedido
+    $items_raw = get_post_meta( $pedido_id, '_fc_pedido_items', true );
+    $items     = $items_raw ? json_decode( $items_raw, true ) : [];
+    if ( is_array( $items ) && isset( $items[ $item_idx ] ) ) {
+        if ( ! isset( $items[ $item_idx ]['fotos_extra'] ) || ! is_array( $items[ $item_idx ]['fotos_extra'] ) ) {
+            $items[ $item_idx ]['fotos_extra'] = [];
+        }
+        $items[ $item_idx ]['fotos_extra'][] = esc_url_raw( $url );
+        update_post_meta( $pedido_id, '_fc_pedido_items', wp_json_encode( $items ) );
+    }
+
+    wp_send_json_success( [ 'url' => $url ] );
+}
+
+// ─────────────────────────────────────────────
 // Helper: build pedido data array from WP_Post
 // ─────────────────────────────────────────────
 function fc_build_pedido_data( $p ) {
@@ -190,15 +250,18 @@ function fc_build_pedido_data( $p ) {
                         $item['color']  ?? ''
                     );
                 }
+                $fotos_extra_raw = is_array( $item['fotos_extra'] ?? null ) ? $item['fotos_extra'] : [];
                 $items[] = [
-                    'arreglo_id'           => (int) ( $item['arreglo_id'] ?? 0 ),
-                    'arreglo_nombre'       => sanitize_text_field( $item['arreglo_nombre'] ?? '' ),
-                    'imagen_url'           => esc_url_raw( $img ),
-                    'tamano'               => sanitize_text_field( $item['tamano'] ?? '' ),
-                    'color'                => sanitize_text_field( $item['color']  ?? '' ),
-                    'destinatario'         => sanitize_text_field( $item['destinatario'] ?? '' ),
-                    'destinatario_telefono'=> sanitize_text_field( $item['destinatario_telefono'] ?? '' ),
-                    'mensaje_tarjeta'      => sanitize_textarea_field( $item['mensaje_tarjeta'] ?? '' ),
+                    'arreglo_id'            => (int) ( $item['arreglo_id'] ?? 0 ),
+                    'arreglo_nombre'        => sanitize_text_field( $item['arreglo_nombre'] ?? '' ),
+                    'imagen_url'            => esc_url_raw( $img ),
+                    'fotos_extra'           => array_values( array_filter( array_map( 'esc_url_raw', $fotos_extra_raw ) ) ),
+                    'tamano'                => sanitize_text_field( $item['tamano'] ?? '' ),
+                    'color'                 => sanitize_text_field( $item['color']  ?? '' ),
+                    'destinatario'          => sanitize_text_field( $item['destinatario'] ?? '' ),
+                    'destinatario_telefono' => sanitize_text_field( $item['destinatario_telefono']  ?? '' ),
+                    'destinatario_telefono2'=> sanitize_text_field( $item['destinatario_telefono2'] ?? '' ),
+                    'mensaje_tarjeta'       => sanitize_textarea_field( $item['mensaje_tarjeta'] ?? '' ),
                 ];
             }
         }
@@ -213,9 +276,10 @@ function fc_build_pedido_data( $p ) {
             'imagen_url'            => fc_get_pedido_arreglo_thumb( $p->ID ),
             'tamano'                => get_post_meta( $p->ID, '_fc_pedido_tamano',                  true ),
             'color'                 => get_post_meta( $p->ID, '_fc_pedido_color',                   true ),
-            'destinatario'          => get_post_meta( $p->ID, '_fc_pedido_destinatario',            true ),
-            'destinatario_telefono' => get_post_meta( $p->ID, '_fc_pedido_destinatario_telefono',   true ),
-            'mensaje_tarjeta'       => get_post_meta( $p->ID, '_fc_pedido_mensaje_tarjeta',         true ),
+            'destinatario'           => get_post_meta( $p->ID, '_fc_pedido_destinatario',            true ),
+            'destinatario_telefono'  => get_post_meta( $p->ID, '_fc_pedido_destinatario_telefono',   true ),
+            'destinatario_telefono2' => '',
+            'mensaje_tarjeta'        => get_post_meta( $p->ID, '_fc_pedido_mensaje_tarjeta',         true ),
         ];
     }
 
@@ -350,6 +414,88 @@ function fc_ajax_search_pedidos() {
 }
 
 // ─────────────────────────────────────────────
+// AJAX: Crear pedido pendiente desde WhatsApp (público, sin login)
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_nopriv_fc_crear_pedido_whatsapp', 'fc_ajax_crear_pedido_whatsapp' );
+add_action( 'wp_ajax_fc_crear_pedido_whatsapp',        'fc_ajax_crear_pedido_whatsapp' );
+function fc_ajax_crear_pedido_whatsapp() {
+    $nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+    if ( ! wp_verify_nonce( $nonce, 'fc_whatsapp_pedido' ) ) {
+        wp_send_json_error( [ 'message' => 'Nonce inválido.' ], 403 );
+    }
+
+    $fecha_entrega = sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) );
+    $numero        = fc_generar_numero_pedido( $fecha_entrega );
+
+    $post_id = wp_insert_post( [
+        'post_type'   => 'pedido',
+        'post_status' => 'publish',
+        'post_title'  => $numero,
+    ] );
+
+    if ( is_wp_error( $post_id ) ) {
+        wp_send_json_error( [ 'message' => 'Error al crear el pedido.' ] );
+    }
+
+    // Parse items JSON
+    $items_json_raw = wp_unslash( $_POST['items_json'] ?? '' );
+    $items_raw      = json_decode( $items_json_raw, true );
+    $items_clean    = [];
+    if ( is_array( $items_raw ) ) {
+        foreach ( $items_raw as $item ) {
+            $items_clean[] = [
+                'arreglo_id'             => (int)                    ( $item['arreglo_id']             ?? 0  ),
+                'arreglo_nombre'         => sanitize_text_field(       $item['arreglo_nombre']         ?? '' ),
+                'imagen_url'             => esc_url_raw(               $item['imagen_url']             ?? '' ),
+                'fotos_extra'            => [],
+                'tamano'                 => sanitize_text_field(       $item['tamano']                 ?? '' ),
+                'color'                  => sanitize_text_field(       $item['color']                  ?? '' ),
+                'destinatario'           => sanitize_text_field(       $item['destinatario']           ?? '' ),
+                'destinatario_telefono'  => sanitize_text_field(       $item['destinatario_telefono']  ?? '' ),
+                'destinatario_telefono2' => sanitize_text_field(       $item['destinatario_telefono2'] ?? '' ),
+                'mensaje_tarjeta'        => sanitize_textarea_field(   $item['mensaje_tarjeta']        ?? '' ),
+            ];
+        }
+    }
+    $first = $items_clean[0] ?? [];
+
+    $fields = [
+        '_fc_pedido_numero'                  => $numero,
+        '_fc_pedido_token'                   => '',
+        '_fc_pedido_status'                  => 'pendiente',
+        '_fc_pedido_tipo'                    => sanitize_key(          $_POST['tipo']             ?? 'envio' ),
+        '_fc_pedido_fecha'                   => $fecha_entrega,
+        '_fc_pedido_horario'                 => sanitize_text_field(   $_POST['horario']          ?? '' ),
+        '_fc_pedido_direccion'               => sanitize_text_field(   $_POST['direccion']        ?? '' ),
+        '_fc_pedido_hora_recoleccion'        => sanitize_text_field(   $_POST['hora_recoleccion'] ?? '' ),
+        '_fc_pedido_canal'                   => 'whatsapp',
+        '_fc_pedido_canal_nombre'            => '',
+        '_fc_pedido_canal_contacto'          => '',
+        '_fc_pedido_nota'                    => sanitize_textarea_field( $_POST['nota']           ?? '' ),
+        // Legacy single-item fields for backward compat
+        '_fc_pedido_arreglo_id'              => $first['arreglo_id']            ?? 0,
+        '_fc_pedido_arreglo_nombre'          => $first['arreglo_nombre']        ?? '',
+        '_fc_pedido_tamano'                  => $first['tamano']                ?? '',
+        '_fc_pedido_color'                   => $first['color']                 ?? '',
+        '_fc_pedido_destinatario'            => $first['destinatario']          ?? '',
+        '_fc_pedido_destinatario_telefono'   => $first['destinatario_telefono'] ?? '',
+        '_fc_pedido_mensaje_tarjeta'         => $first['mensaje_tarjeta']       ?? '',
+    ];
+
+    foreach ( $fields as $key => $value ) {
+        update_post_meta( $post_id, $key, $value );
+    }
+
+    if ( ! empty( $items_clean ) ) {
+        update_post_meta( $post_id, '_fc_pedido_items', wp_json_encode( $items_clean ) );
+    }
+
+    update_post_meta( $post_id, '_fc_pedido_historial', maybe_serialize( [] ) );
+
+    wp_send_json_success( [ 'message' => 'Pendiente creado.', 'numero' => $numero ] );
+}
+
+// ─────────────────────────────────────────────
 // AJAX: Crear pedido
 // ─────────────────────────────────────────────
 add_action( 'wp_ajax_fc_panel_crear_pedido', 'fc_ajax_crear_pedido' );
@@ -357,10 +503,12 @@ function fc_ajax_crear_pedido() {
     fc_panel_verify_nonce();
     fc_panel_require_cap();
 
+    $modo         = sanitize_key( $_POST['modo'] ?? '' );
+    $es_pendiente = ( $modo === 'pendiente' );
+
     $fecha_entrega = sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) );
     $numero        = fc_generar_numero_pedido( $fecha_entrega );
-
-    $token  = fc_generar_token();
+    $token         = $es_pendiente ? '' : fc_generar_token();
 
     $current_user = wp_get_current_user();
 
@@ -381,14 +529,18 @@ function fc_ajax_crear_pedido() {
     if ( is_array( $items_raw ) ) {
         foreach ( $items_raw as $item ) {
             $items_clean[] = [
-                'arreglo_id'            => (int)    ( $item['arreglo_id']            ?? 0  ),
-                'arreglo_nombre'        => sanitize_text_field(   $item['arreglo_nombre']        ?? '' ),
-                'imagen_url'            => esc_url_raw(           $item['imagen_url']            ?? '' ),
-                'tamano'                => sanitize_text_field(   $item['tamano']                ?? '' ),
-                'color'                 => sanitize_text_field(   $item['color']                 ?? '' ),
-                'destinatario'          => sanitize_text_field(   $item['destinatario']          ?? '' ),
-                'destinatario_telefono' => sanitize_text_field(   $item['destinatario_telefono'] ?? '' ),
-                'mensaje_tarjeta'       => sanitize_textarea_field( $item['mensaje_tarjeta']     ?? '' ),
+                'arreglo_id'             => (int)    ( $item['arreglo_id']             ?? 0  ),
+                'arreglo_nombre'         => sanitize_text_field(    $item['arreglo_nombre']         ?? '' ),
+                'imagen_url'             => esc_url_raw(            $item['imagen_url']             ?? '' ),
+                'fotos_extra'            => array_values( array_filter( array_map( 'esc_url_raw',
+                    is_array( $item['fotos_extra'] ?? null ) ? $item['fotos_extra'] : []
+                ) ) ),
+                'tamano'                 => sanitize_text_field(    $item['tamano']                 ?? '' ),
+                'color'                  => sanitize_text_field(    $item['color']                  ?? '' ),
+                'destinatario'           => sanitize_text_field(    $item['destinatario']           ?? '' ),
+                'destinatario_telefono'  => sanitize_text_field(    $item['destinatario_telefono']  ?? '' ),
+                'destinatario_telefono2' => sanitize_text_field(    $item['destinatario_telefono2'] ?? '' ),
+                'mensaje_tarjeta'        => sanitize_textarea_field( $item['mensaje_tarjeta']       ?? '' ),
             ];
         }
     }
@@ -397,7 +549,7 @@ function fc_ajax_crear_pedido() {
     $fields = [
         '_fc_pedido_numero'           => $numero,
         '_fc_pedido_token'            => $token,
-        '_fc_pedido_status'           => 'aceptado',
+        '_fc_pedido_status'           => $es_pendiente ? 'pendiente' : 'aceptado',
         '_fc_pedido_tipo'             => sanitize_key( $_POST['tipo'] ?? 'envio' ),
         '_fc_pedido_fecha'            => sanitize_text_field( $_POST['fecha'] ?? '' ),
         '_fc_pedido_horario'          => sanitize_text_field( $_POST['horario'] ?? '' ),
@@ -427,7 +579,7 @@ function fc_ajax_crear_pedido() {
         update_post_meta( $post_id, '_fc_pedido_items', wp_json_encode( $items_clean ) );
     }
 
-    $historial = [ [
+    $historial = $es_pendiente ? [] : [ [
         'status'    => 'aceptado',
         'user_id'   => get_current_user_id(),
         'user_name' => $current_user->display_name,
@@ -435,15 +587,23 @@ function fc_ajax_crear_pedido() {
     ] ];
     update_post_meta( $post_id, '_fc_pedido_historial', maybe_serialize( $historial ) );
 
-    $client_url = home_url( '/pedido/' . $numero );
-
-    wp_send_json_success( [
-        'message'    => 'Pedido creado correctamente.',
-        'numero'     => $numero,
-        'token'      => $token,
-        'client_url' => $client_url,
-        'pedido_id'  => $post_id,
-    ] );
+    if ( $es_pendiente ) {
+        wp_send_json_success( [
+            'message'   => 'Pedido guardado como pendiente.',
+            'numero'    => $numero,
+            'pedido_id' => $post_id,
+            'pendiente' => true,
+        ] );
+    } else {
+        $client_url = home_url( '/pedido/' . $numero );
+        wp_send_json_success( [
+            'message'    => 'Pedido creado correctamente.',
+            'numero'     => $numero,
+            'token'      => $token,
+            'client_url' => $client_url,
+            'pedido_id'  => $post_id,
+        ] );
+    }
 }
 
 // ─────────────────────────────────────────────
@@ -550,14 +710,18 @@ function fc_ajax_actualizar_pedido_datos() {
     if ( is_array( $items_raw ) ) {
         foreach ( $items_raw as $item ) {
             $items_clean[] = [
-                'arreglo_id'            => (int)    ( $item['arreglo_id']            ?? 0  ),
-                'arreglo_nombre'        => sanitize_text_field(    $item['arreglo_nombre']        ?? '' ),
-                'imagen_url'            => esc_url_raw(            $item['imagen_url']            ?? '' ),
-                'tamano'                => sanitize_text_field(    $item['tamano']                ?? '' ),
-                'color'                 => sanitize_text_field(    $item['color']                 ?? '' ),
-                'destinatario'          => sanitize_text_field(    $item['destinatario']          ?? '' ),
-                'destinatario_telefono' => sanitize_text_field(    $item['destinatario_telefono'] ?? '' ),
-                'mensaje_tarjeta'       => sanitize_textarea_field( $item['mensaje_tarjeta']      ?? '' ),
+                'arreglo_id'             => (int)    ( $item['arreglo_id']             ?? 0  ),
+                'arreglo_nombre'         => sanitize_text_field(    $item['arreglo_nombre']         ?? '' ),
+                'imagen_url'             => esc_url_raw(            $item['imagen_url']             ?? '' ),
+                'fotos_extra'            => array_values( array_filter( array_map( 'esc_url_raw',
+                    is_array( $item['fotos_extra'] ?? null ) ? $item['fotos_extra'] : []
+                ) ) ),
+                'tamano'                 => sanitize_text_field(    $item['tamano']                 ?? '' ),
+                'color'                  => sanitize_text_field(    $item['color']                  ?? '' ),
+                'destinatario'           => sanitize_text_field(    $item['destinatario']           ?? '' ),
+                'destinatario_telefono'  => sanitize_text_field(    $item['destinatario_telefono']  ?? '' ),
+                'destinatario_telefono2' => sanitize_text_field(    $item['destinatario_telefono2'] ?? '' ),
+                'mensaje_tarjeta'        => sanitize_textarea_field( $item['mensaje_tarjeta']       ?? '' ),
             ];
         }
     }
@@ -702,6 +866,7 @@ function fc_ajax_restaurar_pedido() {
 // AJAX: Eliminar pedido permanentemente (solo admin)
 // ─────────────────────────────────────────────
 add_action( 'wp_ajax_fc_panel_eliminar_permanente', 'fc_ajax_eliminar_permanente' );
+add_action( 'wp_ajax_fc_panel_upload_foto', 'fc_ajax_upload_foto' );
 function fc_ajax_eliminar_permanente() {
     fc_panel_verify_nonce();
     if ( ! current_user_can( 'manage_options' ) ) {
@@ -1168,9 +1333,10 @@ function fc_print_pedido_page() {
                 $item['tamano'] ?? '',
                 ( ! empty( $item['color'] ) && strpos( $item['color'], '--' ) !== 0 ) ? $item['color'] : '',
             ] );
-            $item_dest  = $item['destinatario'] ?? '';
-            $item_tel   = $item['destinatario_telefono'] ?? '';
-            $item_tarj  = $item['mensaje_tarjeta'] ?? '';
+            $item_dest  = $item['destinatario']           ?? '';
+            $item_tel   = $item['destinatario_telefono']  ?? '';
+            $item_tel2  = $item['destinatario_telefono2'] ?? '';
+            $item_tarj  = $item['mensaje_tarjeta']        ?? '';
         ?>
         <div class="fc-item-print-row">
             <div class="fc-item-print-thumb">
@@ -1186,7 +1352,7 @@ function fc_print_pedido_page() {
                 <div class="fc-item-print-sub"><?php echo esc_html( implode( ' · ', $item_sub ) ); ?></div>
                 <?php endif; ?>
                 <?php if ( $item_dest ) : ?>
-                <div class="fc-item-print-dest">Para: <?php echo esc_html( $item_dest ); ?><?php echo $item_tel ? ' · ' . esc_html( $item_tel ) : ''; ?></div>
+                <div class="fc-item-print-dest">Para: <?php echo esc_html( $item_dest ); ?><?php echo $item_tel ? ' · ' . esc_html( $item_tel ) : ''; ?><?php echo $item_tel2 ? ' · ' . esc_html( $item_tel2 ) : ''; ?></div>
                 <?php endif; ?>
                 <?php if ( $item_tarj ) : ?>
                 <div class="fc-item-print-tarjeta">"<?php echo esc_html( $item_tarj ); ?>"</div>

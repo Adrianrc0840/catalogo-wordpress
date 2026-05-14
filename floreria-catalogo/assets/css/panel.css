@@ -338,6 +338,25 @@
     word-break: break-word;
 }
 
+.fc-maps-link,
+.fc-tel-link {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: rgba(0,0,0,.3);
+    text-underline-offset: 2px;
+    transition: color .15s;
+}
+
+.fc-maps-link:hover {
+    color: #1a73e8;
+    text-decoration-color: #1a73e8;
+}
+
+.fc-tel-link:hover {
+    color: #16a34a;
+    text-decoration-color: #16a34a;
+}
+
 .fc-card-divider {
     border: none;
     border-top: 1px solid #f0f0f0;
@@ -1163,3 +1182,192 @@
         flex-wrap: wrap;
     }
 }
+
+/* ── Google Places — nuevo elemento gmp-place-autocomplete ── */
+#fc-direccion-pac {
+    width: 100%;
+    display: block;
+}
+
+#fc-direccion-pac::part(input) {
+    width: 100%;
+    height: auto;
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1a202c;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#fc-direccion-pac::part(input):focus {
+    border-color: var(--fc-primary);
+    box-shadow: 0 0 0 3px rgba(200,24,90,0.1);
+}
+
+/* ── Card item media (foto + botón añadir) ── */
+.fc-card-item-media {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 4px;
+}
+
+/* ── Instagram stack effect ── */
+.fc-card-item-thumb-wrap {
+    position: relative;
+    z-index: 1;
+}
+
+.fc-photo-stack::before,
+.fc-photo-stack::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    background: #fff8fb;
+    border: 1.5px solid rgba(200,24,90,.18);
+}
+
+.fc-photo-stack::before {
+    transform: rotate(4deg) translate(2px, -2px);
+    z-index: -1;
+    background: #fdf0f5;
+}
+
+.fc-photo-stack::after {
+    transform: rotate(-3deg) translate(-2px, -3px);
+    z-index: -2;
+}
+
+.fc-photo-stack-count {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0,0,0,.62);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 10px;
+    line-height: 1.7;
+    pointer-events: none;
+}
+
+/* ── Foto eliminada / rota ── */
+.fc-photo-error {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9 !important;
+    border: 1.5px dashed #cbd5e1 !important;
+    border-radius: 8px;
+    min-width: 54px;
+    min-height: 54px;
+}
+
+.fc-photo-error::after {
+    content: '🚫';
+    font-size: 18px;
+    display: block;
+    title: 'Foto eliminada';
+}
+
+/* ── Botón añadir foto en tarjeta ── */
+.fc-btn-add-foto {
+    background: none;
+    border: 1px dashed #e2e8f0;
+    border-radius: 6px;
+    padding: 3px 6px;
+    font-size: 11px;
+    color: #94a3b8;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color .15s, color .15s;
+    width: 100%;
+    text-align: center;
+}
+
+.fc-btn-add-foto:hover {
+    border-color: var(--fc-primary, #c8185a);
+    color: var(--fc-primary, #c8185a);
+}
+
+/* ── Lightbox carousel ── */
+.fc-lightbox-prev,
+.fc-lightbox-next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,.15);
+    border: none;
+    color: #fff;
+    font-size: 40px;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .2s;
+    z-index: 1;
+    line-height: 1;
+    padding: 0;
+    font-family: serif;
+}
+
+.fc-lightbox-prev { left: 16px; }
+.fc-lightbox-next { right: 16px; }
+
+.fc-lightbox-prev:hover,
+.fc-lightbox-next:hover {
+    background: rgba(255,255,255,.28);
+}
+
+.fc-lightbox-counter {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font-size: 13px;
+    background: rgba(0,0,0,.5);
+    padding: 3px 12px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+
+/* ── Fotos modal item ── */
+.fc-item-fotos-section .fc-item-fotos-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 6px;
+    min-height: 0;
+}
+
+.fc-item-upload-foto-btn {
+    background: none;
+    border: 1px dashed #e2e8f0;
+    border-radius: 7px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: #64748b;
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+    font-family: inherit;
+}
+
+.fc-item-upload-foto-btn:hover {
+    border-color: var(--fc-primary, #c8185a);
+    color: var(--fc-primary, #c8185a);
+}
+

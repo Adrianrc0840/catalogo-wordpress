@@ -48,3 +48,12 @@ function fc_get_fechas_especiales() {
     $fechas = get_option( 'fc_fechas_especiales', [] );
     return is_array( $fechas ) ? $fechas : [];
 }
+
+/**
+ * Devuelve el array de fechas cerradas (formato 'YYYY-MM-DD').
+ * En estas fechas no se aceptan nuevos pedidos.
+ */
+function fc_get_fechas_cerradas() {
+    $fechas = get_option( 'fc_fechas_cerradas', [] );
+    return is_array( $fechas ) ? $fechas : [];
+}

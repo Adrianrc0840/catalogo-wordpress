@@ -250,6 +250,19 @@
         var val = fechaEl.value;
         if (!val) return;
 
+        // ── Verificar fecha cerrada ──
+        var fechasCerradas = (window.fcArreglo || {}).fechasCerradas || [];
+        if (fechasCerradas.indexOf(val) !== -1) {
+            diaDisponible = false;
+            if (horarioWrap) horarioWrap.classList.remove('visible');
+            if (cerradoEl) {
+                cerradoEl.textContent = 'Lo sentimos, ya no estamos recibiendo pedidos para esta fecha.';
+                cerradoEl.style.display = 'block';
+            }
+            checkFormReady();
+            return;
+        }
+
         var date      = new Date(val + 'T12:00:00');
         var dayOfWeek = String(date.getDay());
         var daySlots  = schedules[dayOfWeek] || [];
@@ -396,10 +409,57 @@
     }
 
     if (horarioEl)   horarioEl.addEventListener('change',  checkFormReady);
-    if (direccionEl) direccionEl.addEventListener('input', function () {
-        direccionTocada = true;
-        checkFormReady();
-    });
+    if (direccionEl) {
+        direccionEl.addEventListener('input', function () {
+            direccionTocada = true;
+            checkFormReady();
+        });
+
+        // Google Places Autocomplete
+        if (
+            window.google &&
+            window.google.maps &&
+            window.google.maps.places &&
+            typeof window.google.maps.places.PlaceAutocompleteElement !== 'undefined'
+        ) {
+            try {
+                var pacDet = new window.google.maps.places.PlaceAutocompleteElement({
+                    componentRestrictions: { country: 'mx' },
+                });
+                direccionEl.parentNode.insertBefore(pacDet, direccionEl);
+                direccionEl.style.display = 'none';
+
+                pacDet.addEventListener('gmp-select', function (event) {
+                    var pred = event.placePrediction;
+                    if (!pred) return;
+                    var place = pred.toPlace();
+                    place.fetchFields({ fields: ['displayName', 'formattedAddress'] }).then(function () {
+                        var name = place.displayName || '';
+                        var addr = place.formattedAddress || '';
+                        direccionEl.value = (name && !addr.startsWith(name)) ? name + ', ' + addr : addr;
+                        direccionTocada = true;
+                        checkFormReady();
+                    });
+                });
+
+                var syncDetSi = function () {
+                    var si = pacDet.shadowRoot && pacDet.shadowRoot.querySelector('input');
+                    if (si) {
+                        si.addEventListener('input', function () {
+                            direccionEl.value = si.value;
+                            direccionTocada = true;
+                            checkFormReady();
+                        });
+                    } else {
+                        setTimeout(syncDetSi, 150);
+                    }
+                };
+                syncDetSi();
+            } catch (e) {
+                direccionEl.style.display = '';
+            }
+        }
+    }
     if (politicasCb) politicasCb.addEventListener('change',  checkFormReady);
 
     function onHoraRecoleccionChange() {
@@ -485,6 +545,40 @@
                     'Esta disponible?';
             }
 
+            /* ── Fire-and-forget: registrar como pedido pendiente ── */
+            var ajaxurl       = data.ajaxurl       || '';
+            var whatsappNonce = data.whatsappNonce || '';
+            if (ajaxurl && whatsappNonce) {
+                var imagenUrl = (selectedColor && selectedColor.imagen_url)
+                    ? selectedColor.imagen_url
+                    : (selectedTamano && selectedTamano.imagen_url ? selectedTamano.imagen_url : '');
+                var tamanoStr = selectedTamano
+                    ? selectedTamano.nombre + (selectedTamano.precio ? ' ($' + parseFloat(selectedTamano.precio).toLocaleString('es-MX', { minimumFractionDigits: 0 }) + ')' : '')
+                    : '';
+                var itemPayload = [{
+                    arreglo_id:             data.arregloId || 0,
+                    arreglo_nombre:         titulo,
+                    imagen_url:             imagenUrl,
+                    tamano:                 tamanoStr,
+                    color:                  selectedColor ? selectedColor.nombre : '',
+                    destinatario:           '',
+                    destinatario_telefono:  '',
+                    destinatario_telefono2: '',
+                    mensaje_tarjeta:        '',
+                }];
+                var bodyDet = new URLSearchParams({
+                    action:           'fc_crear_pedido_whatsapp',
+                    nonce:            whatsappNonce,
+                    fecha:            fecha,
+                    tipo:             modoTipo,
+                    horario:          modoTipo === 'envio' ? (horarioEl ? horarioEl.value.trim() : '') : '',
+                    direccion:        modoTipo === 'envio' ? (direccionEl ? direccionEl.value.trim() : '') : '',
+                    hora_recoleccion: modoTipo === 'recoleccion' ? (horaRecoleccionEl ? horaRecoleccionEl.value : '') : '',
+                    items_json:       JSON.stringify(itemPayload),
+                });
+                fetch(ajaxurl, { method: 'POST', body: bodyDet }).catch(function () {});
+            }
+
             window.open('https://wa.me/' + whatsapp + '?text=' + encodeURIComponent(mensaje), '_blank');
         });
     }
@@ -500,6 +594,7 @@
 
             var item = {
                 arregloId:  data.arregloId || 0,
+                especial:   !!especial,
                 titulo:     titulo,
                 permalink:  permalink,
                 tamano:     selectedTamano ? selectedTamano.nombre : '',

@@ -82,6 +82,22 @@ function fc_save_horarios() {
     sort( $fechas );
     update_option( 'fc_fechas_especiales', $fechas );
 
+    // ── Fechas cerradas ──
+    $raw_cerradas = isset( $_POST['fechas_cerradas'] ) && is_array( $_POST['fechas_cerradas'] )
+        ? $_POST['fechas_cerradas'] : [];
+
+    $cerradas = [];
+    foreach ( $raw_cerradas as $f ) {
+        $f = sanitize_text_field( $f );
+        // Acepta YYYY-MM-DD (formato de input[type=date])
+        if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $f ) ) {
+            $cerradas[] = $f;
+        }
+    }
+    $cerradas = array_values( array_unique( $cerradas ) );
+    sort( $cerradas );
+    update_option( 'fc_fechas_cerradas', $cerradas );
+
     wp_safe_redirect( add_query_arg(
         [ 'post_type' => 'arreglo', 'page' => 'fc-horarios', 'saved' => '1' ],
         admin_url( 'edit.php' )
@@ -101,8 +117,11 @@ function fc_render_horarios_page() {
         update_option( 'fc_horarios', $horarios );
     }
 
-    $fechas = get_option( 'fc_fechas_especiales', [] );
+    $fechas   = get_option( 'fc_fechas_especiales', [] );
     if ( ! is_array( $fechas ) ) $fechas = [];
+
+    $cerradas = get_option( 'fc_fechas_cerradas', [] );
+    if ( ! is_array( $cerradas ) ) $cerradas = [];
 
     $saved = isset( $_GET['saved'] );
     ?>
@@ -213,6 +232,38 @@ function fc_render_horarios_page() {
                 <button type="button" id="fc-add-fecha" class="button">+ Añadir fecha</button>
             </div>
 
+            <!-- ── Fechas cerradas ── -->
+            <h2 style="margin-top:36px;margin-bottom:6px;font-size:15px;">Fechas cerradas</h2>
+            <p style="color:#666;margin-bottom:16px;max-width:600px;">
+                En estas fechas <strong>no se aceptarán nuevos pedidos</strong>. El cliente verá un mensaje indicando que ese día ya no hay disponibilidad.
+                A diferencia de las fechas especiales, aquí se especifica el <strong>año completo</strong>.
+            </p>
+
+            <div id="fc-cerradas-list" style="max-width:420px;">
+                <?php foreach ( $cerradas as $fecha ) :
+                    // Formatear para mostrar bonito junto al input
+                    $ts      = strtotime( $fecha );
+                    $meses   = [ 1=>'enero',2=>'febrero',3=>'marzo',4=>'abril',5=>'mayo',6=>'junio',
+                                 7=>'julio',8=>'agosto',9=>'septiembre',10=>'octubre',11=>'noviembre',12=>'diciembre' ];
+                    $display = $ts ? date( 'j', $ts ) . ' de ' . $meses[ (int) date( 'n', $ts ) ] . ' de ' . date( 'Y', $ts ) : $fecha;
+                ?>
+                <div class="fc-cerrada-row" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <input type="date"
+                        name="fechas_cerradas[]"
+                        value="<?php echo esc_attr( $fecha ); ?>"
+                        style="font-size:13px;padding:4px 6px;"
+                    />
+                    <span style="font-size:13px;color:#374151;"><?php echo esc_html( $display ); ?></span>
+                    <button type="button" class="button-link fc-delete-cerrada"
+                            style="color:#b91c1c;font-size:15px;" title="Eliminar">✕</button>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div style="margin-top:10px;">
+                <button type="button" id="fc-add-cerrada" class="button">+ Añadir fecha cerrada</button>
+            </div>
+
             <!-- ── Botón guardar ── -->
             <div style="margin-top:28px;">
                 <button type="submit" name="fc_save_horarios" class="button button-primary">Guardar cambios</button>
@@ -317,6 +368,26 @@ function fc_render_horarios_page() {
                 e.target.value = val.slice(0, 2) + '/' + val.slice(2);
             }
         }, true);
+
+        // ── Eliminar fecha cerrada ──
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.fc-delete-cerrada')) {
+                e.target.closest('.fc-cerrada-row').remove();
+            }
+        });
+
+        // ── Añadir fecha cerrada ──
+        document.getElementById('fc-add-cerrada').addEventListener('click', function() {
+            var list = document.getElementById('fc-cerradas-list');
+            var row  = document.createElement('div');
+            row.className = 'fc-cerrada-row';
+            row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:8px;';
+            row.innerHTML =
+                '<input type="date" name="fechas_cerradas[]" style="font-size:13px;padding:4px 6px;" />' +
+                '<button type="button" class="button-link fc-delete-cerrada" style="color:#b91c1c;font-size:15px;" title="Eliminar">✕</button>';
+            list.appendChild(row);
+            row.querySelector('input').focus();
+        });
 
         // ── Re-numerar índices tras eliminar ──
         function renumber() {

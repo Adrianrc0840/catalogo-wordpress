@@ -287,6 +287,21 @@ function fc_redirect_panel_link() {
 add_action( 'admin_enqueue_scripts', 'fc_enqueue_pedidos_admin' );
 function fc_enqueue_pedidos_admin( $hook ) {
     if ( $hook !== 'arreglo_page_fc-pedidos' ) return;
+
+    $gmaps_key  = get_option( 'fc_gmaps_key', '' );
+    $panel_deps = [];
+
+    if ( $gmaps_key ) {
+        wp_enqueue_script(
+            'google-places',
+            'https://maps.googleapis.com/maps/api/js?key=' . urlencode( $gmaps_key ) . '&libraries=places',
+            [],
+            null,
+            true
+        );
+        $panel_deps[] = 'google-places';
+    }
+
     wp_enqueue_style(  'fc-panel', FC_URL . 'assets/css/panel.css', [], FC_VERSION );
     wp_add_inline_style( 'fc-panel', '
         #fc-modal-overlay .fc-modal select,
@@ -306,7 +321,7 @@ function fc_enqueue_pedidos_admin( $hook ) {
             width: 100% !important;
         }
     ' );
-    wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js',   [], FC_VERSION, true );
+    wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js', $panel_deps, FC_VERSION, true );
     wp_localize_script( 'fc-panel', 'fcPanel', [
         'ajaxurl'          => admin_url( 'admin-ajax.php' ),
         'nonce'            => wp_create_nonce( 'fc_panel_nonce' ),
@@ -314,6 +329,7 @@ function fc_enqueue_pedidos_admin( $hook ) {
         'schedules'        => fc_get_schedules(),
         'fechasEspeciales' => fc_get_fechas_especiales(),
         'isAdmin'          => true,
+        'gmapsKey'         => $gmaps_key,
     ] );
 }
 
@@ -425,6 +441,28 @@ function fc_handle_pedido_admin_actions() {
         exit;
     }
 
+    // ── Aceptar pedido pendiente ──
+    if ( isset( $_POST['fc_admin_aceptar_pendiente'], $_POST['pedido_id'] ) && check_admin_referer( 'fc_admin_aceptar_pendiente' ) ) {
+        $pedido_id = (int) $_POST['pedido_id'];
+        if ( $pedido_id && get_post_type( $pedido_id ) === 'pedido' ) {
+            $current_user = wp_get_current_user();
+            $token        = fc_generar_token();
+            update_post_meta( $pedido_id, '_fc_pedido_token',  $token );
+            update_post_meta( $pedido_id, '_fc_pedido_status', 'aceptado' );
+            $historial   = maybe_unserialize( get_post_meta( $pedido_id, '_fc_pedido_historial', true ) );
+            $historial   = is_array( $historial ) ? $historial : [];
+            $historial[] = [
+                'status'    => 'aceptado',
+                'user_id'   => get_current_user_id(),
+                'user_name' => $current_user->display_name,
+                'timestamp' => current_time( 'mysql' ),
+            ];
+            update_post_meta( $pedido_id, '_fc_pedido_historial', maybe_serialize( $historial ) );
+        }
+        wp_safe_redirect( add_query_arg( 'accepted', '1', $base ) );
+        exit;
+    }
+
     // ── Acción masiva ──
     if ( isset( $_POST['fc_admin_bulk'] ) && check_admin_referer( 'fc_admin_bulk' ) ) {
         $ids        = array_map( 'intval', (array) ( $_POST['pedido_ids'] ?? [] ) );
@@ -498,6 +536,15 @@ function fc_render_pedidos_admin_page() {
     $count_active = (int) wp_count_posts( 'pedido' )->publish;
     $count_trash  = (int) wp_count_posts( 'pedido' )->trash;
 
+    // Count pedidos pendientes
+    $count_pendiente = count( get_posts( [
+        'post_type'      => 'pedido',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'meta_query'     => [ [ 'key' => '_fc_pedido_status', 'value' => 'pendiente' ] ],
+    ] ) );
+
     if ( $filter_q ) {
         // ── Búsqueda global — OR entre todos los campos ──
         $search_fields = [
@@ -554,9 +601,9 @@ function fc_render_pedidos_admin_page() {
             $args['meta_query'] = array_merge( [ 'relation' => 'AND' ], $meta_conditions );
             $pedidos = get_posts( $args );
         } else {
-            $excluir = array_merge( [ 'relation' => 'AND' ], $meta_conditions, [ [
-                'key' => '_fc_pedido_status', 'value' => 'entregado', 'compare' => '!=',
-            ] ] );
+            $excluir = array_merge( [ 'relation' => 'AND' ], $meta_conditions, [
+                [ 'key' => '_fc_pedido_status', 'value' => ['entregado', 'pendiente'], 'compare' => 'NOT IN' ],
+            ] );
             $solo_entregado = array_merge( [ 'relation' => 'AND' ], $meta_conditions, [ [
                 'key' => '_fc_pedido_status', 'value' => 'entregado',
             ] ] );
@@ -582,8 +629,10 @@ function fc_render_pedidos_admin_page() {
     ?>
     <div class="wrap">
         <h1 class="wp-heading-inline">Pedidos</h1>
-        <?php if ( $view !== 'trash' ) : ?>
+        <?php if ( $view !== 'trash' && $view !== 'pendiente' ) : ?>
         <button class="page-title-action" id="fc-btn-new-pedido">+ Nuevo pedido</button>
+        <?php elseif ( $view === 'pendiente' ) : ?>
+        <button class="page-title-action" id="fc-btn-new-pendiente">+ Nuevo pendiente</button>
         <?php endif; ?>
         <hr class="wp-header-end">
 
@@ -608,19 +657,31 @@ function fc_render_pedidos_admin_page() {
         ?>
         <div class="notice notice-success is-dismissible"><p><?php echo esc_html( $bmsg ); ?></p></div>
         <?php endif; ?>
+        <?php if ( isset( $_GET['accepted'] ) ) : ?>
+        <div class="notice notice-success is-dismissible"><p>&#10003; Pedido aceptado y activado. Ya tiene link de rastreo.</p></div>
+        <?php endif; ?>
+        <?php if ( isset( $_GET['pendiente_created'] ) ) : ?>
+        <div class="notice notice-success is-dismissible"><p>Pedido guardado como pendiente.</p></div>
+        <?php endif; ?>
 
-        <!-- View tabs: Activos | Papelera -->
+        <!-- View tabs: Activos | Pendientes | Papelera -->
         <ul class="subsubsub" style="margin-bottom:12px;">
             <li>
                 <a href="<?php echo esc_url( $base_url_admin ); ?>"
-                   class="<?php echo $view !== 'trash' ? 'current' : ''; ?>">
-                    Activos <span class="count">(<?php echo $count_active; ?>)</span>
+                   class="<?php echo ( $view !== 'trash' && $view !== 'pendiente' ) ? 'current' : ''; ?>">
+                    Activos <span class="count">(<?php echo max( 0, $count_active - $count_pendiente ); ?>)</span>
+                </a> |
+            </li>
+            <li>
+                <a href="<?php echo esc_url( add_query_arg( 'view', 'pendiente', $base_url_admin ) ); ?>"
+                   class="<?php echo $view === 'pendiente' ? 'current' : ''; ?>">
+                    &#9203; Pendientes <span class="count">(<?php echo $count_pendiente; ?>)</span>
                 </a> |
             </li>
             <li>
                 <a href="<?php echo esc_url( add_query_arg( 'view', 'trash', $base_url_admin ) ); ?>"
                    class="<?php echo $view === 'trash' ? 'current' : ''; ?>">
-                    🗑 Papelera <span class="count">(<?php echo $count_trash; ?>)</span>
+                    &#128465; Papelera <span class="count">(<?php echo $count_trash; ?>)</span>
                 </a>
             </li>
         </ul>
@@ -682,6 +743,136 @@ function fc_render_pedidos_admin_page() {
                 </tbody>
             </table>
             <?php endif; ?>
+
+        <?php elseif ( $view === 'pendiente' ) : ?>
+
+<?php
+$pendientes_q = get_posts( [
+    'post_type'      => 'pedido',
+    'post_status'    => 'publish',
+    'posts_per_page' => 200,
+    'meta_key'       => '_fc_pedido_fecha',
+    'orderby'        => 'meta_value',
+    'order'          => 'ASC',
+    'meta_query'     => [ [ 'key' => '_fc_pedido_status', 'value' => 'pendiente' ] ],
+] );
+?>
+
+<?php if ( empty( $pendientes_q ) ) : ?>
+<p style="color:#666;font-size:14px;margin-top:16px;">No hay pedidos pendientes. Usa el bot&#243;n <strong>+ Nuevo pendiente</strong> para agregar uno.</p>
+<?php else : ?>
+<table class="wp-list-table widefat striped" style="table-layout:auto;">
+    <thead>
+        <tr>
+            <th style="width:150px;">N&#250;mero</th>
+            <th>Canal</th>
+            <th style="min-width:180px;">Arreglo(s)</th>
+            <th style="width:100px;">Tipo</th>
+            <th style="width:105px;">Fecha entrega</th>
+            <th style="width:105px;">Registrado</th>
+            <th>Nota</th>
+            <th style="width:210px;">Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ( $pendientes_q as $pedido ) :
+            $num       = get_post_meta( $pedido->ID, '_fc_pedido_numero',          true );
+            $p_canal   = get_post_meta( $pedido->ID, '_fc_pedido_canal',           true );
+            $p_cnom    = get_post_meta( $pedido->ID, '_fc_pedido_canal_nombre',    true );
+            $p_ccon    = get_post_meta( $pedido->ID, '_fc_pedido_canal_contacto',  true );
+            $tipo      = get_post_meta( $pedido->ID, '_fc_pedido_tipo',            true );
+            $fecha     = get_post_meta( $pedido->ID, '_fc_pedido_fecha',           true );
+            $direccion = get_post_meta( $pedido->ID, '_fc_pedido_direccion',       true );
+            $nota      = get_post_meta( $pedido->ID, '_fc_pedido_nota',            true );
+
+            $p_canal_labels = [ 'whatsapp' => 'WA', 'instagram' => 'IG', 'facebook' => 'FB', 'otro' => 'Otro' ];
+            $p_canal_str    = $p_canal ? ( $p_canal_labels[ $p_canal ] ?? ucfirst( $p_canal ) ) : '&mdash;';
+            $p_canal_det    = implode( ' &middot; ', array_filter( [ $p_cnom, $p_ccon ] ) );
+
+            $p_items_raw = get_post_meta( $pedido->ID, '_fc_pedido_items', true );
+            $p_items     = [];
+            if ( $p_items_raw ) {
+                $p_dec = json_decode( $p_items_raw, true );
+                if ( is_array( $p_dec ) ) $p_items = $p_dec;
+            }
+            if ( empty( $p_items ) ) {
+                $p_items[] = [
+                    'arreglo_nombre'        => get_post_meta( $pedido->ID, '_fc_pedido_arreglo_nombre',        true ),
+                    'tamano'                => get_post_meta( $pedido->ID, '_fc_pedido_tamano',                true ),
+                    'color'                 => get_post_meta( $pedido->ID, '_fc_pedido_color',                 true ),
+                    'destinatario'          => get_post_meta( $pedido->ID, '_fc_pedido_destinatario',          true ),
+                    'destinatario_telefono' => get_post_meta( $pedido->ID, '_fc_pedido_destinatario_telefono', true ),
+                ];
+            }
+            $p_edit_data = fc_build_pedido_data( $pedido );
+        ?>
+        <tr>
+            <td><strong style="color:#d97706;"><?php echo esc_html( $num ); ?></strong></td>
+            <td style="white-space:nowrap;">
+                <strong><?php echo esc_html( $p_canal_str ); ?></strong>
+                <?php echo $p_canal_det ? '<br><span style="font-size:11px;color:#666;">' . esc_html( $p_canal_det ) . '</span>' : ''; ?>
+            </td>
+            <td>
+                <?php foreach ( $p_items as $i => $pi ) :
+                    if ( $i > 0 ) echo '<hr style="border:none;border-top:1px dashed #e2e8f0;margin:4px 0;">';
+                    $pi_sub = array_filter( [
+                        $pi['tamano'] ?? '',
+                        ( ( $pi['color'] ?? '' ) && strpos( $pi['color'] ?? '', '--' ) === false ) ? $pi['color'] : '',
+                    ] );
+                ?>
+                <div style="line-height:1.5;">
+                    <strong style="font-size:13px;"><?php echo esc_html( $pi['arreglo_nombre'] ?? '&mdash;' ); ?></strong>
+                    <?php if ( $pi_sub ) : ?>
+                    <br><span style="color:#718096;font-size:11px;"><?php echo esc_html( implode( ' &middot; ', $pi_sub ) ); ?></span>
+                    <?php endif; ?>
+                    <?php if ( ! empty( $pi['destinatario'] ) ) : ?>
+                    <br><span style="color:#4a5568;font-size:11px;">Para: <?php echo esc_html( $pi['destinatario'] );
+                        if ( ! empty( $pi['destinatario_telefono'] ) ) echo ' &middot; ' . esc_html( $pi['destinatario_telefono'] );
+                    ?></span>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            </td>
+            <td>
+                <?php echo esc_html( $tipo === 'recoleccion' ? 'Recolecci&#243;n' : 'Env&#237;o' ); ?>
+                <?php if ( $tipo !== 'recoleccion' && $direccion ) : ?>
+                <br><a href="<?php echo esc_url( 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $direccion ) ); ?>"
+                       target="_blank" rel="noopener"
+                       style="font-size:11px;color:#1a73e8;text-decoration:underline;max-width:130px;display:inline-block;line-height:1.3;">
+                    <?php echo esc_html( $direccion ); ?>
+                </a>
+                <?php endif; ?>
+            </td>
+            <td style="white-space:nowrap;"><?php echo esc_html( $fecha ); ?></td>
+            <td style="white-space:nowrap;"><?php
+                $tz_tj  = new DateTimeZone( 'America/Tijuana' );
+                $reg_dt = new DateTime( get_post_field( 'post_date_gmt', $pedido->ID ), new DateTimeZone( 'UTC' ) );
+                $reg_dt->setTimezone( $tz_tj );
+                echo esc_html( $reg_dt->format( 'd/m/Y H:i' ) );
+            ?></td>
+            <td style="font-size:12px;color:#555;max-width:150px;"><?php echo esc_html( $nota ); ?></td>
+            <td style="white-space:nowrap;">
+                <button type="button" class="button button-small fc-admin-edit-btn"
+                        data-pedido="<?php echo esc_attr( wp_json_encode( $p_edit_data ) ); ?>">&#9998; Editar</button>
+                <form method="post" style="display:inline-block;margin-left:4px;">
+                    <?php wp_nonce_field( 'fc_admin_aceptar_pendiente' ); ?>
+                    <input type="hidden" name="pedido_id" value="<?php echo esc_attr( $pedido->ID ); ?>" />
+                    <button type="submit" name="fc_admin_aceptar_pendiente" class="button button-small"
+                            style="background:#16a34a;border-color:#16a34a;color:#fff;">&#10003; Aceptar</button>
+                </form>
+                <form method="post" style="display:inline-block;margin-left:4px;"
+                      onsubmit="return confirm('&#191;Eliminar el pedido pendiente <?php echo esc_js( $num ); ?>?')">
+                    <?php wp_nonce_field( 'fc_admin_delete' ); ?>
+                    <input type="hidden" name="pedido_id" value="<?php echo esc_attr( $pedido->ID ); ?>" />
+                    <button type="submit" name="fc_admin_delete" class="button button-small"
+                            style="color:#b45309;border-color:#b45309;">&#128465;</button>
+                </form>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    </tbody>
+</table>
+<?php endif; ?>
 
         <?php else : // ── VISTA NORMAL ── ?>
 
@@ -785,8 +976,9 @@ function fc_render_pedidos_admin_page() {
                     $p_canal  = get_post_meta( $pedido->ID, '_fc_pedido_canal',         true );
                     $p_cnom   = get_post_meta( $pedido->ID, '_fc_pedido_canal_nombre',  true );
                     $p_ccon   = get_post_meta( $pedido->ID, '_fc_pedido_canal_contacto',true );
-                    $tipo     = get_post_meta( $pedido->ID, '_fc_pedido_tipo',          true );
-                    $fecha    = get_post_meta( $pedido->ID, '_fc_pedido_fecha',         true );
+                    $tipo      = get_post_meta( $pedido->ID, '_fc_pedido_tipo',          true );
+                    $fecha     = get_post_meta( $pedido->ID, '_fc_pedido_fecha',         true );
+                    $direccion = get_post_meta( $pedido->ID, '_fc_pedido_direccion',     true );
                     $p_canal_labels = [ 'whatsapp' => 'WA', 'instagram' => 'IG', 'facebook' => 'FB', 'otro' => 'Otro' ];
                     $p_canal_str = $p_canal ? ( $p_canal_labels[ $p_canal ] ?? ucfirst( $p_canal ) ) : '—';
                     $p_canal_det = implode( ' · ', array_filter( [ $p_cnom, $p_ccon ] ) );
@@ -846,7 +1038,10 @@ function fc_render_pedidos_admin_page() {
                                 echo '<br><span style="color:#718096;font-size:11px;">' . esc_html( implode( ' · ', $pi_sub ) ) . '</span>';
                             }
                             if ( $pi_dest ) {
-                                echo '<br><span style="color:#4a5568;font-size:11px;">Para: ' . esc_html( $pi_dest ) . '</span>';
+                                $pi_tel  = $pi['destinatario_telefono']  ?? '';
+                                $pi_tel2 = $pi['destinatario_telefono2'] ?? '';
+                                $tel_str = implode( ' · ', array_filter( [ $pi_tel, $pi_tel2 ] ) );
+                                echo '<br><span style="color:#4a5568;font-size:11px;">Para: ' . esc_html( $pi_dest ) . ( $tel_str ? ' · ' . esc_html( $tel_str ) : '' ) . '</span>';
                             }
                             echo '</div>';
                         };
@@ -869,7 +1064,16 @@ function fc_render_pedidos_admin_page() {
                         </div>
                         <?php endif; ?>
                     </td>
-                    <td style="white-space:nowrap;"><?php echo esc_html( $tipo === 'envio' ? 'Envío' : 'Recolección' ); ?></td>
+                    <td>
+                        <?php echo esc_html( $tipo === 'envio' ? 'Envío' : 'Recolección' ); ?>
+                        <?php if ( $tipo === 'envio' && $direccion ) : ?>
+                        <br><a href="<?php echo esc_url( 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $direccion ) ); ?>"
+                               target="_blank" rel="noopener"
+                               style="font-size:11px;color:#1a73e8;text-decoration:underline;white-space:normal;display:inline-block;max-width:160px;line-height:1.3;">
+                            <?php echo esc_html( $direccion ); ?>
+                        </a>
+                        <?php endif; ?>
+                    </td>
                     <td style="white-space:nowrap;"><?php echo esc_html( $fecha ); ?></td>
                     <td style="white-space:nowrap;"><?php
                         $tz_tj  = new DateTimeZone( 'America/Tijuana' );
@@ -923,7 +1127,7 @@ function fc_render_pedidos_admin_page() {
     <div class="fc-modal-overlay" id="fc-modal-overlay">
         <div class="fc-modal" role="dialog" style="background:#fff;border-radius:12px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
             <div class="fc-modal-header" style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid #eee;">
-                <h2 style="margin:0;font-size:18px;">Nuevo pedido</h2>
+                <h2 id="fc-modal-title" style="margin:0;font-size:18px;">Nuevo pedido</h2>
                 <button class="fc-modal-close" id="fc-modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>
             </div>
             <div class="fc-modal-body" style="padding:24px;">

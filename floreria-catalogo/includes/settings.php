@@ -18,12 +18,14 @@ function fc_render_settings_page() {
         update_option( 'fc_whatsapp',          sanitize_text_field( $_POST['fc_whatsapp']         ?? '' ) );
         update_option( 'fc_catalog_page_url',  esc_url_raw(         $_POST['fc_catalog_page_url']  ?? '' ) );
         update_option( 'fc_politicas_url',     esc_url_raw(         $_POST['fc_politicas_url']     ?? '' ) );
+        update_option( 'fc_gmaps_key',         sanitize_text_field( $_POST['fc_gmaps_key']         ?? '' ) );
         echo '<div class="notice notice-success is-dismissible"><p>¡Configuración guardada!</p></div>';
     }
 
     $whatsapp      = get_option( 'fc_whatsapp',         '' );
     $catalog_url   = get_option( 'fc_catalog_page_url', '' );
     $politicas_url = get_option( 'fc_politicas_url',    '' );
+    $gmaps_key     = get_option( 'fc_gmaps_key',        '' );
     ?>
     <div class="wrap">
         <h1>Configuración del Catálogo</h1>
@@ -49,6 +51,14 @@ function fc_render_settings_page() {
                     <td>
                         <input type="url" name="fc_politicas_url" id="fc_politicas_url" value="<?php echo esc_attr( $politicas_url ); ?>" class="regular-text" placeholder="https://tufloreria.com/politicas" />
                         <p class="description">URL de la página con el shortcode <code>[floreria_politicas]</code>. Se usa en el link "Leí las políticas" al hacer un pedido.</p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th><label for="fc_gmaps_key">API Key — Google Maps</label></th>
+                    <td>
+                        <input type="text" name="fc_gmaps_key" id="fc_gmaps_key" value="<?php echo esc_attr( $gmaps_key ); ?>" class="regular-text" placeholder="AIzaSy..." />
+                        <p class="description">Necesaria para el autocompletado de direcciones en el formulario de pedidos. Requiere <strong>Places API</strong> habilitada en Google Cloud Console.</p>
                     </td>
                 </tr>
 

@@ -112,7 +112,7 @@ get_header();
         </div>
 
         <div class="fc-modal-body">
-            <form id="fc-new-pedido-form">
+            <form id="fc-new-pedido-form" novalidate>
 
                 <!-- Canal de contacto (obligatorio) -->
                 <div class="fc-form-group">

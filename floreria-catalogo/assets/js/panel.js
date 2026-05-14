@@ -18,7 +18,12 @@
     let currentEditId    = null;   // null = crear, número = editar
     let pedidoDataMap    = {};     // id → datos completos del pedido
     let isPapeleraView   = false;
+    let isPendienteMode  = false;
     let modalItemCounter = 0;      // unique index per item block
+
+    // Lightbox carousel state
+    let lbPhotos = [];
+    let lbIndex  = 0;
 
     // ── DOM helpers ──
     const $ = (sel, ctx = document) => ctx.querySelector(sel);
@@ -115,29 +120,49 @@
 
         const CANAL_LABELS = { whatsapp: 'WhatsApp', instagram: 'Instagram', facebook: 'Facebook', otro: 'Otro' };
         const canalLabel = p.canal ? CANAL_LABELS[p.canal] || p.canal : '';
-        const canalInfo  = [p.canal_nombre, p.canal_contacto].filter(Boolean).map(escHtml).join(' · ');
+        const canalContactoHtml = p.canal === 'whatsapp' && p.canal_contacto
+            ? telLink(p.canal_contacto)
+            : escHtml(p.canal_contacto || '');
+        const canalInfoParts = [p.canal_nombre ? escHtml(p.canal_nombre) : '', canalContactoHtml].filter(Boolean);
         const canalHtml  = canalLabel
-            ? `<div class="fc-card-row"><span class="fc-label">Canal</span><span class="fc-value">${escHtml(canalLabel)}${canalInfo ? ' · ' + canalInfo : ''}</span></div>`
+            ? `<div class="fc-card-row"><span class="fc-label">Canal</span><span class="fc-value">${escHtml(canalLabel)}${canalInfoParts.length ? ' · ' + canalInfoParts.join(' · ') : ''}</span></div>`
             : '';
 
         // ── Items (multi-arreglo) ──
         const items = p.items || [];
         const itemsHtml = items.map((item, i) => {
-            const thumb = item.imagen_url
-                ? `<div class="fc-card-item-thumb-wrap" data-lightbox="${escAttr(item.imagen_url)}" title="Ver foto">
-                     <img class="fc-card-item-thumb" src="${escAttr(item.imagen_url)}" alt="" loading="lazy" />
-                   </div>`
-                : `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
+            const allPhotos = [item.imagen_url, ...(item.fotos_extra || [])].filter(Boolean);
+            const hasExtra  = allPhotos.length > 1;
+            const photosAttr = escAttr(JSON.stringify(allPhotos));
+
+            let thumb;
+            if (allPhotos.length > 0) {
+                thumb = `<div class="fc-card-item-thumb-wrap${hasExtra ? ' fc-photo-stack' : ''}"
+                              data-photos="${photosAttr}" title="${hasExtra ? 'Ver ' + allPhotos.length + ' fotos' : 'Ver foto'}">
+                           <img class="fc-card-item-thumb" src="${escAttr(allPhotos[0])}" alt="" loading="lazy"
+                                onerror="this.closest('.fc-card-item-thumb-wrap').classList.add('fc-photo-error');this.style.display='none'" />
+                           ${hasExtra ? `<span class="fc-photo-stack-count">${allPhotos.length}</span>` : ''}
+                         </div>`;
+            } else {
+                thumb = `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
+            }
+
             const sub = [item.tamano, (item.color && !item.color.startsWith('--')) ? item.color : ''].filter(Boolean).join(' · ');
             const destLine = item.destinatario
-                ? `<span class="fc-card-item-dest">Para: ${escHtml(item.destinatario)}${item.destinatario_telefono ? ' · ' + escHtml(item.destinatario_telefono) : ''}</span>`
+                ? `<span class="fc-card-item-dest">Para: ${escHtml(item.destinatario)}${item.destinatario_telefono ? ' · ' + telLink(item.destinatario_telefono) : ''}${item.destinatario_telefono2 ? ' · ' + telLink(item.destinatario_telefono2) : ''}</span>`
                 : '';
             const tarjetaLine = item.mensaje_tarjeta
                 ? `<span class="fc-card-item-tarjeta">"${escHtml(item.mensaje_tarjeta)}"</span>`
                 : '';
             return `
             <div class="fc-card-item">
-                ${thumb}
+                <div class="fc-card-item-media">
+                    ${thumb}
+                    <button class="fc-btn-add-foto" type="button"
+                            data-pedido-id="${p.id}" data-item-idx="${i}" title="Añadir foto">
+                        📷 Añadir foto
+                    </button>
+                </div>
                 <div class="fc-card-item-info">
                     <strong class="fc-card-item-nombre">${escHtml(item.arreglo_nombre)}</strong>
                     ${sub ? `<span class="fc-card-item-sub">${escHtml(sub)}</span>` : ''}
@@ -171,7 +196,7 @@
                 <span class="fc-label">Entrega</span>
                 <span class="fc-value">${escHtml(tipoLabel)} · ${escHtml(p.fecha)}${horarioLabel ? ' · ' + escHtml(horarioLabel) : ''}</span>
             </div>
-            ${p.tipo === 'envio' && p.direccion ? `<div class="fc-card-row"><span class="fc-label">Dirección</span><span class="fc-value">${escHtml(p.direccion)}</span></div>` : ''}
+            ${p.tipo === 'envio' && p.direccion ? `<div class="fc-card-row"><span class="fc-label">Dirección</span><span class="fc-value"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.direccion)}" target="_blank" rel="noopener" class="fc-maps-link">${escHtml(p.direccion)}</a></span></div>` : ''}
             ${p.nota ? `<div class="fc-card-row"><span class="fc-label">Nota</span><span class="fc-value">${escHtml(p.nota)}</span></div>` : ''}
 
             <!-- Arreglos -->
@@ -224,6 +249,12 @@
         return escHtml(str);
     }
 
+    function telLink(num) {
+        if (!num) return '';
+        var digits = String(num).replace(/\D/g, '');
+        return `<a href="tel:${digits}" class="fc-tel-link">${escHtml(num)}</a>`;
+    }
+
     // ── Load & render orders ──
     async function loadPedidos(status = 'all', fecha = '') {
         const grid = $('#fc-orders-grid');
@@ -250,33 +281,57 @@
         }
     }
 
-    // ── Lightbox ──
+    // ── Lightbox (carousel) ──
     function initLightbox() {
-        if (document.getElementById('fc-lightbox')) return; // already created
+        if (document.getElementById('fc-lightbox')) return;
         const lb = document.createElement('div');
         lb.id = 'fc-lightbox';
         lb.className = 'fc-lightbox';
         lb.innerHTML = `
             <button class="fc-lightbox-close" aria-label="Cerrar">&times;</button>
-            <img class="fc-lightbox-img" src="" alt="Arreglo" />
+            <button class="fc-lightbox-prev" aria-label="Anterior">&#8249;</button>
+            <img class="fc-lightbox-img" src="" alt="Foto" />
+            <button class="fc-lightbox-next" aria-label="Siguiente">&#8250;</button>
+            <div class="fc-lightbox-counter"></div>
         `;
         document.body.appendChild(lb);
 
         lb.addEventListener('click', (e) => {
-            if (e.target === lb || e.target.matches('.fc-lightbox-close')) {
-                lb.classList.remove('open');
-            }
+            if (e.target === lb || e.target.matches('.fc-lightbox-close')) lb.classList.remove('open');
+            if (e.target.matches('.fc-lightbox-prev')) lbStep(-1);
+            if (e.target.matches('.fc-lightbox-next')) lbStep(1);
         });
-
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') lb.classList.remove('open');
+            if (!lb.classList.contains('open')) return;
+            if (e.key === 'Escape')      lb.classList.remove('open');
+            if (e.key === 'ArrowLeft')   lbStep(-1);
+            if (e.key === 'ArrowRight')  lbStep(1);
         });
     }
 
-    function openLightbox(src) {
+    function lbStep(dir) {
+        if (lbPhotos.length <= 1) return;
+        lbIndex = (lbIndex + dir + lbPhotos.length) % lbPhotos.length;
+        lbRender();
+    }
+
+    function lbRender() {
         const lb = document.getElementById('fc-lightbox');
         if (!lb) return;
-        lb.querySelector('.fc-lightbox-img').src = src;
+        lb.querySelector('.fc-lightbox-img').src = lbPhotos[lbIndex] || '';
+        const counter  = lb.querySelector('.fc-lightbox-counter');
+        const showNav  = lbPhotos.length > 1;
+        lb.querySelector('.fc-lightbox-prev').style.display = showNav ? '' : 'none';
+        lb.querySelector('.fc-lightbox-next').style.display = showNav ? '' : 'none';
+        if (counter) counter.textContent = showNav ? `${lbIndex + 1} / ${lbPhotos.length}` : '';
+    }
+
+    function openLightbox(photos, startIndex = 0) {
+        const lb = document.getElementById('fc-lightbox');
+        if (!lb) return;
+        lbPhotos = Array.isArray(photos) ? photos.filter(Boolean) : [photos].filter(Boolean);
+        lbIndex  = Math.max(0, Math.min(startIndex, lbPhotos.length - 1));
+        lbRender();
         lb.classList.add('open');
     }
 
@@ -339,9 +394,75 @@
             });
         });
 
-        // Thumbnail lightbox (items)
+        // Thumbnail lightbox carousel (items)
         $$('.fc-card-item-thumb-wrap', grid).forEach(wrap => {
-            wrap.addEventListener('click', () => openLightbox(wrap.dataset.lightbox));
+            wrap.addEventListener('click', () => {
+                try {
+                    const photos = JSON.parse(wrap.dataset.photos || '[]');
+                    openLightbox(photos, 0);
+                } catch { openLightbox([wrap.dataset.photos], 0); }
+            });
+        });
+
+        // Añadir foto
+        if (!document.getElementById('fc-foto-file-input')) {
+            const fi = document.createElement('input');
+            fi.type = 'file';
+            fi.accept = 'image/*';
+            fi.id = 'fc-foto-file-input';
+            fi.style.display = 'none';
+            document.body.appendChild(fi);
+
+            fi.addEventListener('change', async () => {
+                if (!fi.files[0] || !fi._activeBtn) return;
+                const btn      = fi._activeBtn;
+                const pedidoId = parseInt(btn.dataset.pedidoId, 10);
+                const itemIdx  = parseInt(btn.dataset.itemIdx,  10);
+                const origText = btn.textContent;
+                btn.textContent = '⏳';
+                btn.disabled    = true;
+
+                const fd = new FormData();
+                fd.append('action', 'fc_panel_upload_foto');
+                fd.append('nonce',     nonce);
+                fd.append('pedido_id', pedidoId);
+                fd.append('item_idx',  itemIdx);
+                fd.append('foto', fi.files[0]);
+
+                try {
+                    const res  = await fetch(ajaxurl, { method: 'POST', body: fd });
+                    const data = await res.json();
+                    if (data.success) {
+                        const url = data.data.url;
+                        // Update in-memory map
+                        const pedido = pedidoDataMap[pedidoId];
+                        if (pedido && pedido.items[itemIdx]) {
+                            if (!pedido.items[itemIdx].fotos_extra) pedido.items[itemIdx].fotos_extra = [];
+                            pedido.items[itemIdx].fotos_extra.push(url);
+                            // Refresh media area
+                            refreshCardItemMedia(btn.closest('.fc-order-card'), itemIdx, pedido.items[itemIdx], pedidoId);
+                        }
+                        showToast('Foto añadida', 'success');
+                    } else {
+                        showToast(data.data?.message || 'Error al subir', 'error');
+                    }
+                } catch { showToast('Error de conexión', 'error'); }
+                finally {
+                    btn.textContent = origText;
+                    btn.disabled    = false;
+                    fi.value        = '';
+                    fi._activeBtn   = null;
+                }
+            });
+        }
+
+        $$('.fc-btn-add-foto', grid).forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const fi = document.getElementById('fc-foto-file-input');
+                fi._activeBtn = btn;
+                fi.click();
+            });
         });
 
         // Ver link — abre en nueva pestaña
@@ -416,6 +537,47 @@
                     btn.disabled    = false;
                 }
             });
+        });
+    }
+
+    // ── Refresh media area of a single card item after photo upload ──
+    function refreshCardItemMedia(cardEl, itemIdx, item, pedidoId) {
+        const itemEls = $$('.fc-card-item', cardEl);
+        const itemEl  = itemEls[itemIdx];
+        if (!itemEl) return;
+        const mediaEl = itemEl.querySelector('.fc-card-item-media');
+        if (!mediaEl) return;
+
+        const allPhotos = [item.imagen_url, ...(item.fotos_extra || [])].filter(Boolean);
+        const hasExtra  = allPhotos.length > 1;
+        const photosAttr = escAttr(JSON.stringify(allPhotos));
+
+        let thumbHtml;
+        if (allPhotos.length > 0) {
+            thumbHtml = `<div class="fc-card-item-thumb-wrap${hasExtra ? ' fc-photo-stack' : ''}"
+                              data-photos="${photosAttr}" title="${hasExtra ? 'Ver ' + allPhotos.length + ' fotos' : 'Ver foto'}">
+                           <img class="fc-card-item-thumb" src="${escAttr(allPhotos[0])}" alt="" loading="lazy"
+                                onerror="this.closest('.fc-card-item-thumb-wrap').classList.add('fc-photo-error');this.style.display='none'" />
+                           ${hasExtra ? `<span class="fc-photo-stack-count">${allPhotos.length}</span>` : ''}
+                         </div>`;
+        } else {
+            thumbHtml = `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
+        }
+
+        mediaEl.innerHTML = thumbHtml +
+            `<button class="fc-btn-add-foto" type="button"
+                     data-pedido-id="${pedidoId}" data-item-idx="${itemIdx}" title="Añadir foto">
+                 📷 Añadir foto
+             </button>`;
+
+        mediaEl.querySelector('.fc-card-item-thumb-wrap')?.addEventListener('click', () => {
+            openLightbox(allPhotos, 0);
+        });
+        mediaEl.querySelector('.fc-btn-add-foto')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const fi = document.getElementById('fc-foto-file-input');
+            fi._activeBtn = mediaEl.querySelector('.fc-btn-add-foto');
+            fi.click();
         });
     }
 
@@ -717,8 +879,18 @@
                 <input type="tel" class="fc-item-dest-tel" placeholder="10 dígitos" inputmode="numeric" maxlength="15" value="${escHtml(prefill.destinatario_telefono || '')}" />
             </div>
             <div class="fc-form-group">
+                <label>Teléfono del destinatario 2 <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
+                <input type="tel" class="fc-item-dest-tel2" placeholder="Número alternativo" inputmode="numeric" maxlength="15" value="${escHtml(prefill.destinatario_telefono2 || '')}" />
+            </div>
+            <div class="fc-form-group">
                 <label>Mensaje de tarjeta</label>
                 <textarea class="fc-item-tarjeta" rows="2" placeholder="Mensaje para incluir en la tarjeta...">${escHtml(prefill.mensaje_tarjeta || '')}</textarea>
+            </div>
+            <div class="fc-form-group fc-item-fotos-section">
+                <label>Fotos adicionales</label>
+                <input type="hidden" class="fc-item-fotos-json" value="" />
+                <div class="fc-item-fotos-gallery"></div>
+                <button type="button" class="fc-item-upload-foto-btn">📷 Añadir foto</button>
             </div>
         </div>`;
     }
@@ -734,6 +906,20 @@
         const colSelect   = block.querySelector('.fc-item-color');
         const colGroup    = block.querySelector('.fc-item-color-group');
         const removeBtn   = block.querySelector('.fc-item-remove-btn');
+
+        // Solo números en teléfonos del destinatario
+        const telInput = block.querySelector('.fc-item-dest-tel');
+        if (telInput) {
+            telInput.addEventListener('input', () => {
+                telInput.value = telInput.value.replace(/\D/g, '');
+            });
+        }
+        const tel2Input = block.querySelector('.fc-item-dest-tel2');
+        if (tel2Input) {
+            tel2Input.addEventListener('input', () => {
+                tel2Input.value = tel2Input.value.replace(/\D/g, '');
+            });
+        }
 
         // Remove button
         removeBtn.addEventListener('click', () => {
@@ -840,6 +1026,76 @@
                 }
             } catch { /* falla silenciosa */ }
         }
+
+        // Fotos adicionales en modal
+        const fotosJsonInput = block.querySelector('.fc-item-fotos-json');
+        const fotosGallery   = block.querySelector('.fc-item-fotos-gallery');
+        const uploadFotoBtn  = block.querySelector('.fc-item-upload-foto-btn');
+
+        // Assign fotos JSON via JS (not via HTML attribute) to avoid HTML-entity encoding issues
+        if (fotosJsonInput) {
+            fotosJsonInput.value = JSON.stringify(Array.isArray(prefill.fotos_extra) ? prefill.fotos_extra : []);
+        }
+
+        function renderModalFotos() {
+            let urls = [];
+            try { urls = JSON.parse(fotosJsonInput.value || '[]'); } catch { urls = []; }
+            fotosGallery.innerHTML = urls.map((url, fi) =>
+                `<div class="fc-item-foto-thumb" style="position:relative;display:inline-block;margin:3px;">
+                    <img src="${escAttr(url)}" style="width:54px;height:54px;object-fit:cover;border-radius:6px;border:1.5px solid #f0c0d0;"
+                         onerror="this.style.opacity='.3';this.style.border='2px dashed #f87171'" />
+                    <button type="button" class="fc-item-foto-remove" data-idx="${fi}"
+                            style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:10px;cursor:pointer;line-height:1;padding:0;">✕</button>
+                </div>`
+            ).join('');
+            fotosGallery.querySelectorAll('.fc-item-foto-remove').forEach(rb => {
+                rb.addEventListener('click', () => {
+                    let urls2 = [];
+                    try { urls2 = JSON.parse(fotosJsonInput.value || '[]'); } catch { urls2 = []; }
+                    urls2.splice(parseInt(rb.dataset.idx, 10), 1);
+                    fotosJsonInput.value = JSON.stringify(urls2);
+                    renderModalFotos();
+                });
+            });
+        }
+        renderModalFotos();
+
+        if (uploadFotoBtn) {
+            uploadFotoBtn.addEventListener('click', () => {
+                const fi = document.createElement('input');
+                fi.type = 'file';
+                fi.accept = 'image/*';
+                fi.style.display = 'none';
+                document.body.appendChild(fi);
+                fi.addEventListener('change', async () => {
+                    if (!fi.files[0]) { fi.remove(); return; }
+                    uploadFotoBtn.textContent = '⏳ Subiendo...';
+                    uploadFotoBtn.disabled = true;
+                    const fd = new FormData();
+                    fd.append('action', 'fc_panel_upload_foto');
+                    fd.append('nonce', nonce);
+                    fd.append('pedido_id', '0'); // temp upload, no pedido yet
+                    fd.append('item_idx', '0');
+                    fd.append('foto', fi.files[0]);
+                    try {
+                        const res  = await fetch(ajaxurl, { method: 'POST', body: fd });
+                        const data = await res.json();
+                        if (data.success) {
+                            const urls = JSON.parse(fotosJsonInput.value || '[]');
+                            urls.push(data.data.url);
+                            fotosJsonInput.value = JSON.stringify(urls);
+                            renderModalFotos();
+                        } else { showToast(data.data?.message || 'Error al subir', 'error'); }
+                    } catch { showToast('Error de conexión', 'error'); }
+                    finally {
+                        uploadFotoBtn.textContent = '📷 Añadir foto';
+                        uploadFotoBtn.disabled = false;
+                        fi.remove();
+                    }
+                });
+                fi.click();
+            });
+        }
     }
 
     function itemPopulateTamanos(tamSelect, colSelect, colGroup, imgInput, tamanos) {
@@ -897,9 +1153,11 @@
                 imagen_url:            block.querySelector('.fc-item-imagen-url')?.value     || '',
                 tamano:                tamNombre,
                 color:                 colNombre,
-                destinatario:          block.querySelector('.fc-item-destinatario')?.value   || '',
-                destinatario_telefono: block.querySelector('.fc-item-dest-tel')?.value       || '',
-                mensaje_tarjeta:       block.querySelector('.fc-item-tarjeta')?.value        || '',
+                destinatario:           block.querySelector('.fc-item-destinatario')?.value  || '',
+                destinatario_telefono:  block.querySelector('.fc-item-dest-tel')?.value      || '',
+                destinatario_telefono2: block.querySelector('.fc-item-dest-tel2')?.value     || '',
+                mensaje_tarjeta:        block.querySelector('.fc-item-tarjeta')?.value       || '',
+                fotos_extra:            (() => { try { return JSON.parse(block.querySelector('.fc-item-fotos-json')?.value || '[]'); } catch { return []; } })(),
             };
         });
     }
@@ -910,12 +1168,27 @@
         const openBtn = $('#fc-btn-new-pedido');
         const closeBtn = $('#fc-modal-close');
 
-        if (!overlay || !openBtn) return;
+        if (!overlay) return;
 
-        openBtn.addEventListener('click', () => {
-            overlay.classList.add('open');
-            resetNewOrderForm();
-        });
+        if (openBtn) {
+            openBtn.addEventListener('click', () => {
+                overlay.classList.add('open');
+                resetNewOrderForm();
+            });
+        }
+
+        const pendienteBtn = $('#fc-btn-new-pendiente');
+        if (pendienteBtn) {
+            pendienteBtn.addEventListener('click', () => {
+                overlay.classList.add('open');
+                resetNewOrderForm();           // resetea isPendienteMode a false
+                isPendienteMode = true;        // luego lo activamos
+                const title = $('#fc-modal-title');
+                if (title) title.textContent = 'Nuevo pedido pendiente';
+                const submitBtn2 = $('#fc-submit-pedido');
+                if (submitBtn2) { submitBtn2.style.display = ''; submitBtn2.textContent = 'Guardar como pendiente'; }
+            });
+        }
 
         closeBtn && closeBtn.addEventListener('click', () => {
             overlay.classList.remove('open');
@@ -1071,7 +1344,12 @@
         }
 
         // Campos simples
-        const dirEl    = $('#fc-modal-direccion');      if (dirEl)    dirEl.value    = pedido.direccion      || '';
+        const dirVal = pedido.direccion || '';
+        if (window._fcSetDireccionPac) {
+            window._fcSetDireccionPac(dirVal);
+        } else {
+            const dirEl = $('#fc-modal-direccion'); if (dirEl) dirEl.value = dirVal;
+        }
         const horaEl   = $('#fc-modal-hora-recoleccion'); if (horaEl) horaEl.value   = pedido.hora_recoleccion || '';
         const notaEl   = $('#fc-modal-nota');           if (notaEl)   notaEl.value   = pedido.nota            || '';
 
@@ -1089,6 +1367,7 @@
     }
 
     function resetNewOrderForm() {
+        isPendienteMode = false;
         currentEditId = null;
         const form = $('#fc-new-pedido-form');
         if (form) form.reset();
@@ -1160,13 +1439,32 @@
             items_json:       JSON.stringify(items),
         };
 
+        if (isPendienteMode) payload.modo = 'pendiente';
+
         const action = currentEditId ? 'fc_panel_actualizar_pedido' : 'fc_panel_crear_pedido';
         if (currentEditId) payload.pedido_id = currentEditId;
 
         try {
             const data = await ajax(action, payload);
             if (data.success) {
-                if (currentEditId) {
+                if (isPendienteMode) {
+                    showToast('Pedido guardado como pendiente', 'success');
+                    const overlay2 = $('#fc-modal-overlay');
+                    if (overlay2) overlay2.classList.remove('open');
+                    isPendienteMode = false;
+                    btn.textContent = 'Guardar como pendiente';
+                    btn.disabled    = false;
+                    if (isAdmin) {
+                        setTimeout(() => {
+                            const url = new URL(window.location.href);
+                            url.searchParams.set('view', 'pendiente');
+                            url.searchParams.set('pendiente_created', '1');
+                            window.location.href = url.toString();
+                        }, 800);
+                    } else {
+                        setTimeout(() => loadPedidos(currentFilter, getCurrentFecha()), 600);
+                    }
+                } else if (currentEditId) {
                     // Modo edición — cerrar modal y recargar
                     showToast('Pedido actualizado', 'success');
                     const overlay = $('#fc-modal-overlay');
@@ -1252,7 +1550,7 @@
     </div>
     <div class="fc-card-collapsible">
         <div class="fc-card-info">
-            <div class="fc-card-row"><span class="fc-label">Cliente</span><span class="fc-value">${escHtml(p.cliente_nombre)}${p.cliente_telefono ? ' · ' + escHtml(p.cliente_telefono) : ''}</span></div>
+            <div class="fc-card-row"><span class="fc-label">Cliente</span><span class="fc-value">${escHtml(p.cliente_nombre)}${p.cliente_telefono ? ' · ' + telLink(p.cliente_telefono) : ''}</span></div>
             <div class="fc-card-row"><span class="fc-label">Arreglo</span><span class="fc-value">${escHtml(p.arreglo_nombre)}${p.tamano ? ' — ' + escHtml(p.tamano) : ''}</span></div>
             <div class="fc-card-row"><span class="fc-label">Fecha</span><span class="fc-value">${escHtml(p.fecha)} · ${escHtml(tipoLabel)}</span></div>
             ${p.destinatario ? `<div class="fc-card-row"><span class="fc-label">Para</span><span class="fc-value">${escHtml(p.destinatario)}</span></div>` : ''}
@@ -1340,11 +1638,73 @@
         });
     }
 
+    // ── Google Places Autocomplete en campo de dirección ──
+    // ── Google Places Autocomplete (PlaceAutocompleteElement — nueva API) ──
+    function initDireccionAutocomplete() {
+        if (
+            !window.google ||
+            !window.google.maps ||
+            !window.google.maps.places ||
+            typeof window.google.maps.places.PlaceAutocompleteElement === 'undefined'
+        ) return;
+
+        const inputEl = document.getElementById('fc-modal-direccion');
+        if (!inputEl) return;
+
+        try {
+            const pac = new google.maps.places.PlaceAutocompleteElement({
+                componentRestrictions: { country: 'mx' },
+            });
+            pac.id = 'fc-direccion-pac';
+
+            // Insertar el elemento antes del input original y ocultar el original
+            inputEl.parentNode.insertBefore(pac, inputEl);
+            inputEl.style.display = 'none';
+
+            // Al seleccionar una sugerencia, llenar el input oculto
+            pac.addEventListener('gmp-select', function(event) {
+                const pred = event.placePrediction;
+                if (!pred) return;
+                const place = pred.toPlace();
+                place.fetchFields({ fields: ['displayName', 'formattedAddress'] }).then(function() {
+                    const name = place.displayName || '';
+                    const addr = place.formattedAddress || '';
+                    inputEl.value = (name && !addr.startsWith(name)) ? name + ', ' + addr : addr;
+                });
+            });
+
+            // Sincronizar texto escrito manualmente al input oculto
+            const syncShadowInput = function() {
+                const si = pac.shadowRoot && pac.shadowRoot.querySelector('input');
+                if (si) {
+                    si.addEventListener('input', function() { inputEl.value = si.value; });
+                    if (inputEl.value) si.value = inputEl.value;
+                } else {
+                    setTimeout(syncShadowInput, 150);
+                }
+            };
+            syncShadowInput();
+
+            // Exponer función para pre-llenar desde modal de edición
+            window._fcSetDireccionPac = function(val) {
+                inputEl.value = val || '';
+                const si = pac.shadowRoot && pac.shadowRoot.querySelector('input');
+                if (si) si.value = val || '';
+            };
+
+        } catch (e) {
+            // Fallback: mostrar input original si Places falla
+            inputEl.style.display = '';
+            console.warn('Google Places no disponible:', e);
+        }
+    }
+
     // ── Init ──
     function init() {
         // Modal y copy link funcionan tanto en el panel como en admin
         initNewOrderModal();
         initCopySuccessLink();
+        initDireccionAutocomplete();
 
         const isPanel = document.body.classList.contains('fc-panel-body') ||
             document.querySelector('.fc-panel-body');
