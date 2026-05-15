@@ -62,17 +62,29 @@
         return new Date(str);
     }
 
-    /* Cuenta días hábiles estrictamente entre dos fechas (sin incluirlas) */
+    /* Cuenta días hábiles desde 'from' (inclusive) hasta 'to' (exclusive).
+       El día de inicio cuenta si el negocio aún está abierto (antes de 8pm Tijuana). */
     function countBusinessDays(from, to) {
         var count = 0;
         var d = new Date(from);
-        d.setDate(d.getDate() + 1);
         while (d < to) {
             var day = d.getDay();
             if (day !== 0 && day !== 6) count++;
             d.setDate(d.getDate() + 1);
         }
         return count;
+    }
+
+    /* Devuelve la fecha de inicio para contar días hábiles según la hora actual en Tijuana.
+       Si ya pasaron las 8pm, hoy ya no cuenta → empieza desde mañana. */
+    function getHoyParaAnticipacion() {
+        var ahora = getNowTijuana();
+        var hoy   = new Date(ahora);
+        hoy.setHours(0, 0, 0, 0);
+        if (ahora.getHours() >= 20) {
+            hoy.setDate(hoy.getDate() + 1);
+        }
+        return hoy;
     }
 
     function escHtml(str) {
@@ -288,10 +300,9 @@
         }
         if (!hasEspecial) { avisoEl.classList.remove('fc-aviso-visible'); return; }
 
-        var hoyE = new Date();
-        hoyE.setHours(0, 0, 0, 0);
-        var selE    = new Date(fecha + 'T00:00:00');
-        var diasE   = countBusinessDays(hoyE, selE);
+        var hoyE  = getHoyParaAnticipacion();
+        var selE  = new Date(fecha + 'T00:00:00');
+        var diasE = countBusinessDays(hoyE, selE);
 
         if (diasE < 2) {
             avisoEl.textContent = '⚠ Uno o más arreglos son sobre pedido y necesitan al menos 2 días hábiles de anticipación. Sábado y domingo no cuentan.';
@@ -603,8 +614,7 @@
         }
 
         /* ── Validar anticipación para arreglos especiales (sobre pedido) ── */
-        var hoyVal = new Date();
-        hoyVal.setHours(0, 0, 0, 0);
+        var hoyVal  = getHoyParaAnticipacion();
         var selDate = new Date(fecha + 'T00:00:00');
         for (var si = 0; si < cart.length; si++) {
             if (cart[si].especial) {

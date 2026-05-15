@@ -66,11 +66,10 @@
 
     var direccionTocada = false; // solo mostrar hint si el usuario ya escribió algo
 
-    // Cuenta días hábiles estrictamente entre dos fechas (sin incluir ninguna de las dos)
+    // Cuenta días hábiles desde 'from' (inclusive) hasta 'to' (exclusive)
     function countBusinessDays(from, to) {
         var count = 0;
         var d = new Date(from);
-        d.setDate(d.getDate() + 1);
         while (d < to) {
             var day = d.getDay();
             if (day !== 0 && day !== 6) count++;
@@ -284,10 +283,15 @@
 
         // Validación de anticipación para arreglos especiales
         if (especial) {
-            var hoy = new Date();
+            var ahoraEsp = getNowTijuana();
+            var hoy      = new Date(ahoraEsp);
             hoy.setHours(0, 0, 0, 0);
+            // Si ya pasaron las 8pm en Tijuana, hoy ya no cuenta como día hábil
+            if (ahoraEsp.getHours() >= 20) {
+                hoy.setDate(hoy.getDate() + 1);
+            }
             var seleccionada = new Date(val + 'T00:00:00');
-            var diasHabiles = countBusinessDays(hoy, seleccionada);
+            var diasHabiles  = countBusinessDays(hoy, seleccionada);
             if (diasHabiles < 2) {
                 fechaValida = false;
                 if (anticipacionEl) {

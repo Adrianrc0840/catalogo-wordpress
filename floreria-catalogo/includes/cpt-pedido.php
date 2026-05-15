@@ -251,6 +251,122 @@ function fc_register_florista_role() {
 }
 
 // ─────────────────────────────────────────────
+// Helper: contar pedidos pendientes
+// ─────────────────────────────────────────────
+function fc_count_pedidos_pendientes() {
+    $q = new WP_Query( [
+        'post_type'      => 'pedido',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'meta_query'     => [ [
+            'key'   => '_fc_pedido_status',
+            'value' => 'pendiente',
+        ] ],
+    ] );
+    return (int) $q->found_posts;
+}
+
+// ─────────────────────────────────────────────
+// Badge de pendientes en el menú lateral
+// ─────────────────────────────────────────────
+add_action( 'admin_menu', 'fc_pedidos_menu_badge', 999 );
+function fc_pedidos_menu_badge() {
+    global $menu, $submenu;
+    if ( ! current_user_can( 'manage_options' ) ) return;
+
+    $count = fc_count_pedidos_pendientes();
+    if ( $count === 0 ) return;
+
+    $badge = ' <span class="awaiting-mod" style="background:#d63638;margin-left:4px;">'
+           . '<span class="pending-count">' . $count . '</span></span>';
+
+    $parent = 'edit.php?post_type=arreglo';
+
+    /* Badge en el ítem padre "Arreglos" del menú lateral */
+    foreach ( $menu as $key => $item ) {
+        if ( isset( $item[2] ) && $item[2] === $parent ) {
+            $menu[ $key ][0] .= $badge;
+            break;
+        }
+    }
+
+    /* Badge también en el subítem "Pedidos" */
+    if ( ! empty( $submenu[ $parent ] ) ) {
+        foreach ( $submenu[ $parent ] as $key => $item ) {
+            if ( isset( $item[2] ) && $item[2] === 'fc-pedidos' ) {
+                $submenu[ $parent ][ $key ][0] = 'Pedidos' . $badge;
+                break;
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────
+// Widget en el Dashboard de WordPress
+// ─────────────────────────────────────────────
+add_action( 'wp_dashboard_setup', 'fc_add_dashboard_widget' );
+function fc_add_dashboard_widget() {
+    if ( ! current_user_can( 'manage_options' ) ) return;
+    wp_add_dashboard_widget(
+        'fc_pedidos_pendientes',
+        '🌸 Florería Monarca — Pedidos',
+        'fc_render_dashboard_widget'
+    );
+}
+
+function fc_render_dashboard_widget() {
+    $count = fc_count_pedidos_pendientes();
+    $url   = admin_url( 'admin.php?page=fc-pedidos&view=pendiente' );
+
+    if ( $count > 0 ) {
+        $texto = $count === 1
+            ? '1 pedido pendiente de revisar.'
+            : $count . ' pedidos pendientes de revisar.';
+        echo '<div style="display:flex;align-items:center;gap:12px;padding:6px 0;">'
+           .   '<span style="font-size:28px;">⏳</span>'
+           .   '<div>'
+           .     '<p style="margin:0;font-size:15px;font-weight:600;color:#b91c1c;">' . esc_html( $texto ) . '</p>'
+           .     '<p style="margin:4px 0 0;font-size:12px;color:#6b7280;">Llegaron por WhatsApp y están esperando confirmación.</p>'
+           .   '</div>'
+           . '</div>'
+           . '<a href="' . esc_url( $url ) . '" class="button button-primary" style="margin-top:10px;display:inline-block;">Ver pedidos pendientes →</a>';
+    } else {
+        echo '<div style="display:flex;align-items:center;gap:12px;padding:6px 0;">'
+           .   '<span style="font-size:28px;">✅</span>'
+           .   '<p style="margin:0;font-size:14px;color:#374151;">No hay pedidos pendientes.</p>'
+           . '</div>';
+    }
+}
+
+// ─────────────────────────────────────────────
+// Aviso de pendientes en la página de Arreglos
+// ─────────────────────────────────────────────
+add_action( 'admin_notices', 'fc_aviso_pendientes_en_arreglos' );
+function fc_aviso_pendientes_en_arreglos() {
+    if ( ! current_user_can( 'manage_options' ) ) return;
+
+    $screen = get_current_screen();
+    if ( ! $screen || $screen->id !== 'edit-arreglo' ) return;
+
+    $count = fc_count_pedidos_pendientes();
+    if ( $count === 0 ) return;
+
+    $url   = admin_url( 'admin.php?page=fc-pedidos&view=pendiente' );
+    $texto = $count === 1
+        ? '1 pedido pendiente llegó por WhatsApp y está esperando confirmación.'
+        : $count . ' pedidos pendientes llegaron por WhatsApp y están esperando confirmación.';
+
+    echo '<div class="notice notice-warning" style="display:flex;align-items:center;gap:12px;padding:10px 14px;">'
+       .   '<span style="font-size:22px;">⏳</span>'
+       .   '<p style="margin:0;font-size:13px;">'
+       .     '<strong>' . esc_html( $texto ) . '</strong> '
+       .     '<a href="' . esc_url( $url ) . '">Ver pedidos pendientes →</a>'
+       .   '</p>'
+       . '</div>';
+}
+
+// ─────────────────────────────────────────────
 // Admin submenu: Pedidos list under Arreglos CPT
 // ─────────────────────────────────────────────
 add_action( 'admin_menu', 'fc_add_pedidos_submenu' );
