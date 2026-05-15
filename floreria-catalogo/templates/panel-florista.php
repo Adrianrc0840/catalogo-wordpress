@@ -1,9 +1,12 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-$is_logged_in    = is_user_logged_in();
-$has_cap         = $is_logged_in && ( current_user_can( 'fc_ver_pedidos' ) || current_user_can( 'manage_options' ) );
-$current_user    = $is_logged_in ? wp_get_current_user() : null;
+// Evitar que proxies o el navegador cacheen el panel (puede servir versión sin sesión)
+nocache_headers();
+
+$is_logged_in = is_user_logged_in();
+$current_user = $is_logged_in ? wp_get_current_user() : null;
+$has_cap      = $is_logged_in && fc_user_can_access_panel( $current_user );
 $shop_name     = 'Florería Monarca';
 $status_labels = fc_pedido_status_labels();
 
@@ -112,7 +115,7 @@ get_header();
         </div>
 
         <div class="fc-modal-body">
-            <form id="fc-new-pedido-form" novalidate>
+            <form id="fc-new-pedido-form" novalidate autocomplete="off">
 
                 <!-- Canal de contacto (obligatorio) -->
                 <div class="fc-form-group">

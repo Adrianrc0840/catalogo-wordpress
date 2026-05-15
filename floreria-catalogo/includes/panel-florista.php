@@ -2,8 +2,97 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 // ─────────────────────────────────────────────
+// Deshabilitar caché para /panel-florista/ (lo más temprano posible)
+// ─────────────────────────────────────────────
+add_action( 'plugins_loaded', 'fc_panel_disable_cache', 1 );
+function fc_panel_disable_cache() {
+    $uri = isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '';
+    if ( strpos( $uri, '/panel-florista' ) === false ) return;
+
+    // Constantes que respetan la mayoría de plugins de caché (WP Super Cache, W3TC, WP Rocket…)
+    defined( 'DONOTCACHEPAGE' )   || define( 'DONOTCACHEPAGE',   true );
+    defined( 'DONOTCACHEDB' )     || define( 'DONOTCACHEDB',     true );
+    defined( 'DONOTMINIFY' )      || define( 'DONOTMINIFY',      true );
+    defined( 'DONOTCACHEOBJECT' ) || define( 'DONOTCACHEOBJECT', true );
+
+    // Cabeceras HTTP de no-caché (para LiteSpeed, Nginx FastCGI cache, etc.)
+    if ( ! headers_sent() ) {
+        header( 'Cache-Control: no-store, no-cache, must-revalidate, max-age=0' );
+        header( 'Pragma: no-cache' );
+        header( 'X-LiteSpeed-Cache-Control: no-cache' );
+    }
+}
+
+// ─────────────────────────────────────────────
 // Virtual page for florist panel
 // ─────────────────────────────────────────────
+// Token de autologin firmado (sin almacenamiento en servidor)
+// Formato: base64url( user_id : expiry : hmac )
+// ─────────────────────────────────────────────
+function fc_generate_autologin_token( $user_id ) {
+    $expiry  = time() + 90; // válido 90 segundos
+    $payload = (int) $user_id . ':' . $expiry;
+    $sig     = hash_hmac( 'sha256', $payload, wp_salt( 'secure_auth' ) );
+    // base64url (sin +, /, =) para que sea seguro en URL
+    return rtrim( strtr( base64_encode( $payload . ':' . $sig ), '+/', '-_' ), '=' );
+}
+
+function fc_verify_autologin_token( $token ) {
+    if ( ! $token ) return false;
+    $decoded = base64_decode( strtr( $token, '-_', '+/' ) );
+    if ( ! $decoded ) return false;
+    $parts = explode( ':', $decoded, 3 );
+    if ( count( $parts ) !== 3 ) return false;
+    [ $user_id, $expiry, $sig ] = $parts;
+    if ( (int) $expiry < time() ) return false; // expirado
+    $payload  = (int) $user_id . ':' . (int) $expiry;
+    $expected = hash_hmac( 'sha256', $payload, wp_salt( 'secure_auth' ) );
+    if ( ! hash_equals( $expected, $sig ) ) return false;
+    return (int) $user_id;
+}
+
+// ─────────────────────────────────────────────
+// Autologin via admin-ajax.php (nunca cacheado por plugins de caché)
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_nopriv_fc_autologin', 'fc_ajax_autologin' );
+add_action( 'wp_ajax_fc_autologin',        'fc_ajax_autologin' );
+function fc_ajax_autologin() {
+    $raw_token = isset( $_GET['token'] ) ? wp_unslash( $_GET['token'] ) : '';
+    $panel_url = home_url( '/panel-florista/' );
+
+    // El token está firmado con HMAC-SHA256 + wp_salt(): si es válido, el permiso ya
+    // fue verificado en fc_ajax_panel_login(). Aquí solo ponemos el cookie.
+    $user_id = fc_verify_autologin_token( $raw_token );
+    if ( $user_id ) {
+        $user = get_user_by( 'id', $user_id );
+        if ( $user ) {
+            wp_set_current_user( $user->ID );
+            wp_set_auth_cookie( $user->ID, true );
+        }
+    }
+
+    wp_safe_redirect( $panel_url );
+    exit;
+}
+
+// ─────────────────────────────────────────────
+// AJAX: Devolver nonce fresco (sin login requerido)
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_nopriv_fc_get_nonce', 'fc_ajax_get_nonce' );
+add_action( 'wp_ajax_fc_get_nonce',        'fc_ajax_get_nonce' );
+function fc_ajax_get_nonce() {
+    wp_send_json_success( [ 'nonce' => wp_create_nonce( 'fc_panel_nonce' ) ] );
+}
+
+// Reforzar no-caché en la capa de cabeceras HTTP de WordPress
+add_action( 'send_headers', 'fc_panel_send_nocache_headers' );
+function fc_panel_send_nocache_headers() {
+    if ( get_query_var( 'fc_panel_florista' ) ) {
+        nocache_headers();
+        header( 'X-LiteSpeed-Cache-Control: no-cache' );
+    }
+}
+
 add_action( 'init', 'fc_panel_rewrite' );
 function fc_panel_rewrite() {
     add_rewrite_rule( '^panel-florista/?$', 'index.php?fc_panel_florista=1', 'top' );
@@ -47,7 +136,11 @@ function fc_enqueue_panel() {
         $panel_deps[] = 'google-places';
     }
 
-    wp_enqueue_media(); // carga el gestor de medios de WordPress en el panel
+    // Solo cargar el gestor de medios para usuarios con acceso al panel
+    if ( is_user_logged_in() && fc_user_can_access_panel( wp_get_current_user() ) ) {
+        wp_enqueue_media();
+    }
+
     wp_enqueue_style( 'fc-panel', FC_URL . 'assets/css/panel.css', [], FC_VERSION );
     wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js', $panel_deps, FC_VERSION, true );
 
@@ -67,6 +160,34 @@ function fc_enqueue_panel() {
 }
 
 // ─────────────────────────────────────────────
+// Verificar si un usuario tiene el rol florista leyendo directamente de wp_usermeta
+// (evita depender de $wp_roles que puede inicializarse antes del hook init)
+// ─────────────────────────────────────────────
+function fc_user_is_florista( $user ) {
+    if ( ! $user || ! $user->exists() ) return false;
+    global $wpdb;
+    // Leer capabilities directamente de la meta del usuario (más confiable que $user->roles)
+    $caps = get_user_meta( $user->ID, $wpdb->prefix . 'capabilities', true );
+    return is_array( $caps ) && ! empty( $caps['florista'] );
+}
+
+// Helper: función central para saber si un usuario puede acceder al panel
+function fc_user_can_access_panel( $user ) {
+    if ( ! $user || ! $user->exists() ) return false;
+    return fc_user_is_florista( $user ) || user_can( $user, 'manage_options' );
+}
+
+// Garantizar caps de panel para floristas en cualquier current_user_can() check
+add_filter( 'user_has_cap', 'fc_florista_force_caps', 10, 4 );
+function fc_florista_force_caps( $allcaps, $caps, $args, $user ) {
+    if ( fc_user_is_florista( $user ) ) {
+        $allcaps['fc_ver_pedidos']        = true;
+        $allcaps['fc_actualizar_pedidos'] = true;
+    }
+    return $allcaps;
+}
+
+// ─────────────────────────────────────────────
 // Helper: verify panel nonce
 // ─────────────────────────────────────────────
 function fc_panel_verify_nonce() {
@@ -80,7 +201,7 @@ function fc_panel_require_cap() {
     if ( ! is_user_logged_in() ) {
         wp_send_json_error( [ 'message' => 'Sin permiso.' ], 403 );
     }
-    if ( ! current_user_can( 'fc_ver_pedidos' ) && ! current_user_can( 'manage_options' ) ) {
+    if ( ! fc_user_can_access_panel( wp_get_current_user() ) ) {
         wp_send_json_error( [ 'message' => 'Sin permiso.' ], 403 );
     }
 }
@@ -91,8 +212,7 @@ function fc_panel_require_cap() {
 add_action( 'wp_ajax_nopriv_fc_panel_login', 'fc_ajax_panel_login' );
 add_action( 'wp_ajax_fc_panel_login',        'fc_ajax_panel_login' );
 function fc_ajax_panel_login() {
-    fc_panel_verify_nonce();
-
+    // No se verifica nonce aquí: las credenciales son el mecanismo de autenticación.
     $username = isset( $_POST['username'] ) ? sanitize_user( wp_unslash( $_POST['username'] ) ) : '';
     $password = isset( $_POST['password'] ) ? wp_unslash( $_POST['password'] ) : '';
 
@@ -106,14 +226,20 @@ function fc_ajax_panel_login() {
         wp_send_json_error( [ 'message' => 'Credenciales incorrectas.' ] );
     }
 
-    if ( ! user_can( $user, 'fc_ver_pedidos' ) && ! user_can( $user, 'manage_options' ) ) {
+    // Verificar acceso usando lectura directa de usermeta (más confiable que $user->roles)
+    if ( ! fc_user_can_access_panel( $user ) ) {
         wp_send_json_error( [ 'message' => 'No tienes permiso para acceder al panel.' ] );
     }
 
-    wp_set_current_user( $user->ID );
-    wp_set_auth_cookie( $user->ID, true );
+    // Token firmado criptográficamente (no necesita BD ni caché compartida)
+    // El JS hará POST directamente a /panel-florista/ con este token.
+    // POST nunca es cacheado → wp_set_auth_cookie() siempre funciona.
+    $token = fc_generate_autologin_token( $user->ID );
 
-    wp_send_json_success( [ 'message' => 'Sesión iniciada.', 'reload' => true ] );
+    wp_send_json_success( [
+        'message' => 'Sesión iniciada.',
+        'token'   => $token,
+    ] );
 }
 
 // ─────────────────────────────────────────────
@@ -152,7 +278,28 @@ function fc_ajax_get_pedidos() {
 
     $meta_conditions = [];
 
-    if ( $status !== 'all' && in_array( $status, $valid, true ) ) {
+    if ( $status === 'pendiente' ) {
+        // Solo admins pueden ver pedidos pendientes
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => 'Sin permiso.' ], 403 );
+        }
+        $meta_conditions[] = [
+            'key'   => '_fc_pedido_status',
+            'value' => 'pendiente',
+        ];
+        // Filtro de fecha opcional para pendientes
+        if ( $fecha ) {
+            $meta_conditions[] = [
+                'key'     => '_fc_pedido_fecha',
+                'value'   => $fecha,
+                'compare' => '=',
+            ];
+        }
+        // Sin fecha → mostrar TODOS los pendientes (sin restricción de fecha)
+        unset( $args['meta_key'] );
+        $args['orderby'] = 'date';
+        $args['order']   = 'DESC';
+    } elseif ( $status !== 'all' && in_array( $status, $valid, true ) ) {
         $meta_conditions[] = [
             'key'   => '_fc_pedido_status',
             'value' => $status,
@@ -166,20 +313,22 @@ function fc_ajax_get_pedidos() {
         ];
     }
 
-    if ( $fecha ) {
-        // Fecha específica seleccionada → solo ese día (incluyendo días pasados)
-        $meta_conditions[] = [
-            'key'     => '_fc_pedido_fecha',
-            'value'   => $fecha,
-            'compare' => '=',
-        ];
-    } else {
-        // Sin fecha → mostrar desde hoy en adelante
-        $meta_conditions[] = [
-            'key'     => '_fc_pedido_fecha',
-            'value'   => $today,
-            'compare' => '>=',
-        ];
+    if ( $status !== 'pendiente' ) {
+        if ( $fecha ) {
+            // Fecha específica seleccionada → solo ese día (incluyendo días pasados)
+            $meta_conditions[] = [
+                'key'     => '_fc_pedido_fecha',
+                'value'   => $fecha,
+                'compare' => '=',
+            ];
+        } else {
+            // Sin fecha → mostrar desde hoy en adelante
+            $meta_conditions[] = [
+                'key'     => '_fc_pedido_fecha',
+                'value'   => $today,
+                'compare' => '>=',
+            ];
+        }
     }
 
     $args['meta_query'] = array_merge( [ 'relation' => 'AND' ], $meta_conditions );
@@ -918,6 +1067,35 @@ function fc_ajax_eliminar_permanente() {
 
     wp_delete_post( $pedido_id, true );
     wp_send_json_success( [ 'message' => 'Pedido eliminado permanentemente.' ] );
+}
+
+// ─────────────────────────────────────────────
+// POST login handler — /panel-florista/ con fc_al_token en el body
+// Nunca cacheado (es un POST). Establece la cookie y redirige a GET /panel-florista/
+// ─────────────────────────────────────────────
+add_action( 'template_redirect', 'fc_handle_panel_post_login', 1 );
+function fc_handle_panel_post_login() {
+    if ( ! get_query_var( 'fc_panel_florista' ) ) return;
+    if ( 'POST' !== $_SERVER['REQUEST_METHOD'] ) return;
+    if ( empty( $_POST['fc_al_token'] ) ) return;
+
+    $token   = sanitize_text_field( wp_unslash( $_POST['fc_al_token'] ) );
+    $user_id = fc_verify_autologin_token( $token );
+
+    if ( $user_id ) {
+        $user = get_user_by( 'id', $user_id );
+        if ( $user ) {
+            wp_set_current_user( $user->ID );
+            wp_set_auth_cookie( $user->ID, true );
+        }
+    }
+
+    // Redirigir a GET con parámetro de cache-busting.
+    // La mayoría de plugins de caché (WP Super Cache, W3TC, LiteSpeed…) no cachean
+    // URLs con query strings, así que esto garantiza que PHP procese la petición
+    // y evalúe la cookie recién establecida.
+    wp_safe_redirect( home_url( '/panel-florista/?nc=' . time() ) );
+    exit;
 }
 
 // ─────────────────────────────────────────────

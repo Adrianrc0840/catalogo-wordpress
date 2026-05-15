@@ -311,6 +311,7 @@
 .fc-status-badge.en_camino         { background: var(--fc-s-en_camino); }
 .fc-status-badge.listo_recoleccion { background: var(--fc-s-listo_recoleccion); }
 .fc-status-badge.entregado         { background: var(--fc-s-entregado); }
+.fc-status-badge.pendiente         { background: #92400e; }
 
 /* ── Card body ── */
 .fc-card-info {
@@ -742,6 +743,19 @@
     color: #a0aec0;
     padding: 40px;
     font-size: 15px;
+}
+
+/* ── Pendientes tab ── */
+.fc-filter-tab-pendiente {
+    border-color: #fcd34d !important;
+    color: #92400e !important;
+}
+
+.fc-filter-tab-pendiente:hover,
+.fc-filter-tab-pendiente.active {
+    background: #92400e !important;
+    border-color: #92400e !important;
+    color: #fff !important;
 }
 
 /* ── Trash tab ── */

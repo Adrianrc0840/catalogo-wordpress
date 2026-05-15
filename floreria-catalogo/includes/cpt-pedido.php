@@ -392,10 +392,12 @@ function fc_add_pedidos_submenu() {
 }
 
 // Redirigir al hacer clic en "Panel Floristas ↗"
+// El usuario ya tiene sesión activa en wp-admin, así que basta con ir directamente
+// al panel con ?nc= para evitar que el plugin de caché sirva una página cacheada.
 add_action( 'admin_init', 'fc_redirect_panel_link' );
 function fc_redirect_panel_link() {
     if ( isset( $_GET['page'] ) && $_GET['page'] === 'fc-panel-florista-link' ) {
-        wp_safe_redirect( home_url( '/panel-florista/' ) );
+        wp_safe_redirect( home_url( '/panel-florista/?nc=' . time() ) );
         exit;
     }
 }
@@ -437,6 +439,7 @@ function fc_enqueue_pedidos_admin( $hook ) {
             width: 100% !important;
         }
     ' );
+    wp_enqueue_media();
     wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js', $panel_deps, FC_VERSION, true );
     wp_localize_script( 'fc-panel', 'fcPanel', [
         'ajaxurl'          => admin_url( 'admin-ajax.php' ),
@@ -1247,7 +1250,7 @@ $pendientes_q = get_posts( [
                 <button class="fc-modal-close" id="fc-modal-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#666;">&times;</button>
             </div>
             <div class="fc-modal-body" style="padding:24px;">
-                <form id="fc-new-pedido-form">
+                <form id="fc-new-pedido-form" autocomplete="off">
 
                     <!-- Canal de contacto -->
                     <div class="fc-form-group"><label for="fc-modal-canal">Canal de contacto <span style="color:#b91c1c;">*</span></label>
@@ -1308,6 +1311,19 @@ $pendientes_q = get_posts( [
                         <div class="fc-items-section-title">Arreglos</div>
                         <div id="fc-items-container"></div>
                         <button type="button" class="fc-btn-add-item" id="fc-add-item-btn">&#43; Agregar arreglo</button>
+                    </div>
+
+                    <!-- PDF del pedido -->
+                    <div class="fc-form-group fc-pdf-section" style="margin-top:16px;">
+                        <label>Documento PDF</label>
+                        <div id="fc-modal-pdf-status" style="display:none;">
+                            <a id="fc-modal-pdf-link" href="#" target="_blank" rel="noopener" class="fc-pdf-link">
+                                &#128196; <span id="fc-modal-pdf-name"></span>
+                            </a>
+                            <button type="button" id="fc-modal-pdf-quitar" class="button" style="margin-left:8px;color:#b91c1c;">&#10005; Quitar PDF</button>
+                        </div>
+                        <input type="hidden" id="fc-modal-pdf-url" name="pdf_url" value="" />
+                        <button type="button" id="fc-modal-upload-pdf-btn" class="button">&#128196; Añadir PDF</button>
                     </div>
 
                 </form>

@@ -608,8 +608,14 @@
     function initFilterTabs() {
         const tabContainer = $('.fc-filter-tabs');
 
-        // Agregar pestaña papelera (solo admins) antes de construir el select
+        // Agregar pestañas exclusivas de admin antes de construir el select
         if (isAdmin && tabContainer) {
+            const pendienteBtn = document.createElement('button');
+            pendienteBtn.className = 'fc-filter-tab fc-filter-tab-pendiente';
+            pendienteBtn.dataset.status = 'pendiente';
+            pendienteBtn.textContent = '⏳ Pendientes';
+            tabContainer.appendChild(pendienteBtn);
+
             const trashBtn = document.createElement('button');
             trashBtn.className = 'fc-filter-tab fc-filter-tab-trash';
             trashBtn.dataset.status = '__trash__';
@@ -769,8 +775,28 @@
             btn.disabled      = true;
 
             try {
-                const data = await ajax('fc_panel_login', { username, password });
-                if (data.success) {
+                const body = new FormData();
+                body.append('action', 'fc_panel_login');
+                body.append('username', username);
+                body.append('password', password);
+                const res  = await fetch(ajaxurl, { method: 'POST', body });
+                const data = await res.json();
+
+                if (data.success && data.data?.token) {
+                    // POST a /panel-florista/ con el token firmado.
+                    // Un POST nunca es cacheado → el servidor siempre ejecuta PHP,
+                    // establece la cookie de sesión y redirige al GET del panel.
+                    const f   = document.createElement('form');
+                    f.method  = 'POST';
+                    f.action  = siteurl + '/panel-florista/';
+                    const inp = document.createElement('input');
+                    inp.type  = 'hidden';
+                    inp.name  = 'fc_al_token';
+                    inp.value = data.data.token;
+                    f.appendChild(inp);
+                    document.body.appendChild(f);
+                    f.submit();
+                } else if (data.success) {
                     window.location.reload();
                 } else {
                     errEl.textContent = data.data?.message || 'Error al iniciar sesión.';
@@ -1237,38 +1263,78 @@
             addItemBtn.addEventListener('click', () => addItemBlock());
         }
 
-        // PDF upload button — abre el gestor de medios de WordPress
+        // PDF upload button — usa wp.media si está disponible (admin), si no sube directo
         const pdfUploadBtn = $('#fc-modal-upload-pdf-btn');
         if (pdfUploadBtn) {
             let pdfMediaFrame = null;
+
+            function setPdfResult(url, fname) {
+                const pdfInput  = $('#fc-modal-pdf-url');
+                const pdfStatus = $('#fc-modal-pdf-status');
+                const pdfLink   = $('#fc-modal-pdf-link');
+                const pdfName   = $('#fc-modal-pdf-name');
+                if (pdfInput)  pdfInput.value          = url;
+                if (pdfName)   pdfName.textContent     = decodeURIComponent(fname);
+                if (pdfLink)   pdfLink.href            = url;
+                if (pdfStatus) pdfStatus.style.display = '';
+                pdfUploadBtn.style.display = 'none';
+            }
+
             pdfUploadBtn.addEventListener('click', () => {
-                if (typeof window.wp === 'undefined' || !window.wp.media) {
-                    showToast('El gestor de medios no está disponible', 'error');
+                // Si wp.media está disponible (contexto admin), úsarlo
+                if (typeof window.wp !== 'undefined' && window.wp.media) {
+                    if (!pdfMediaFrame) {
+                        pdfMediaFrame = window.wp.media({
+                            title:    'Seleccionar PDF del pedido',
+                            button:   { text: 'Usar este PDF' },
+                            multiple: false,
+                            library:  { type: 'application/pdf' },
+                        });
+                        pdfMediaFrame.on('select', () => {
+                            const att   = pdfMediaFrame.state().get('selection').first().toJSON();
+                            const url   = att.url;
+                            const fname = att.filename || url.split('/').pop().split('?')[0];
+                            setPdfResult(url, fname);
+                        });
+                    }
+                    pdfMediaFrame.open();
                     return;
                 }
-                if (!pdfMediaFrame) {
-                    pdfMediaFrame = window.wp.media({
-                        title:    'Seleccionar PDF del pedido',
-                        button:   { text: 'Usar este PDF' },
-                        multiple: false,
-                        library:  { type: 'application/pdf' },
-                    });
-                    pdfMediaFrame.on('select', () => {
-                        const attachment = pdfMediaFrame.state().get('selection').first().toJSON();
-                        const url   = attachment.url;
-                        const fname = attachment.filename || url.split('/').pop().split('?')[0];
-                        const pdfInput  = $('#fc-modal-pdf-url');
-                        const pdfStatus = $('#fc-modal-pdf-status');
-                        const pdfLink   = $('#fc-modal-pdf-link');
-                        const pdfName   = $('#fc-modal-pdf-name');
-                        if (pdfInput)  pdfInput.value          = url;
-                        if (pdfName)   pdfName.textContent     = decodeURIComponent(fname);
-                        if (pdfLink)   pdfLink.href            = url;
-                        if (pdfStatus) pdfStatus.style.display = '';
-                        pdfUploadBtn.style.display = 'none';
-                    });
-                }
-                pdfMediaFrame.open();
+
+                // Fallback: file input + subida directa por AJAX
+                const fi = document.createElement('input');
+                fi.type   = 'file';
+                fi.accept = 'application/pdf';
+                fi.style.display = 'none';
+                document.body.appendChild(fi);
+                fi.addEventListener('change', async () => {
+                    if (!fi.files[0]) { fi.remove(); return; }
+                    const origText           = pdfUploadBtn.textContent;
+                    pdfUploadBtn.textContent = '⏳ Subiendo...';
+                    pdfUploadBtn.disabled    = true;
+                    const fd = new FormData();
+                    fd.append('action', 'fc_panel_upload_pdf');
+                    fd.append('nonce', nonce);
+                    fd.append('pdf', fi.files[0]);
+                    try {
+                        const res  = await fetch(ajaxurl, { method: 'POST', body: fd });
+                        const data = await res.json();
+                        if (data.success) {
+                            const url   = data.data.url;
+                            const fname = url.split('/').pop().split('?')[0];
+                            setPdfResult(url, fname);
+                            showToast('PDF subido correctamente', 'success');
+                        } else {
+                            showToast(data.data?.message || 'Error al subir PDF', 'error');
+                        }
+                    } catch { showToast('Error de conexión', 'error'); }
+                    finally {
+                        pdfUploadBtn.textContent = origText;
+                        pdfUploadBtn.disabled    = false;
+                        fi.remove();
+                    }
+                });
+                fi.click();
             });
         }
 
@@ -1352,7 +1418,7 @@
         if (title) title.textContent = `Editar pedido ${pedido.numero}`;
 
         const submitBtn = $('#fc-submit-pedido');
-        if (submitBtn) { submitBtn.style.display = ''; submitBtn.textContent = 'Guardar cambios'; }
+        if (submitBtn) { submitBtn.style.display = ''; submitBtn.textContent = 'Guardar cambios'; submitBtn.disabled = false; }
 
         const successBox = $('#fc-pedido-success');
         if (successBox) { successBox.classList.remove('show'); successBox.style.display = 'none'; }
@@ -1447,7 +1513,7 @@
         if (successBox) { successBox.classList.remove('show'); successBox.style.display = 'none'; }
 
         const submitBtn = $('#fc-submit-pedido');
-        if (submitBtn) { submitBtn.style.display = ''; submitBtn.textContent = 'Registrar pedido'; }
+        if (submitBtn) { submitBtn.style.display = ''; submitBtn.textContent = 'Registrar pedido'; submitBtn.disabled = false; }
 
         // Clear items container and start with one blank block
         const container = $('#fc-items-container');
@@ -1544,6 +1610,8 @@
                 } else if (currentEditId) {
                     // Modo edición — cerrar modal y recargar
                     showToast('Pedido actualizado', 'success');
+                    btn.textContent = 'Guardar cambios';
+                    btn.disabled    = false;
                     const overlay = $('#fc-modal-overlay');
                     if (overlay) overlay.classList.remove('open');
                     setTimeout(() => loadPedidos(currentFilter, getCurrentFecha()), 600);
@@ -1560,6 +1628,7 @@
                         successBox.dataset.url   = data.data.client_url;
                     }
                     btn.style.display = 'none';
+                    btn.disabled      = false;
                     showToast('Pedido registrado', 'success');
                     setTimeout(() => loadPedidos(currentFilter, getCurrentFecha()), 1500);
                 }
@@ -1775,6 +1844,15 @@
             console.warn('Google Places no disponible:', e);
         }
     }
+
+    // ── Limpiar parámetro nc= (cache-buster) de la URL sin recargar ──
+    (function cleanNcParam() {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('nc')) {
+            url.searchParams.delete('nc');
+            window.history.replaceState(null, '', url.pathname + (url.search === '?' ? '' : url.search));
+        }
+    })();
 
     // ── Init ──
     function init() {
