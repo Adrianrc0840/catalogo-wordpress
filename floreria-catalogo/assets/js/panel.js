@@ -227,6 +227,7 @@
 
             <div class="fc-card-extra-actions">
                 <button class="fc-btn-sm fc-btn-imprimir" data-id="${p.id}" style="background:#2d6a4f;">&#128424; Imprimir</button>
+                ${p.pdf_url ? `<a class="fc-btn-sm fc-btn-ver-pdf" href="${escAttr(p.pdf_url)}" target="_blank" rel="noopener" style="background:#7c3aed;text-decoration:none;">&#128196; Ver PDF</a>` : ''}
                 <button class="fc-btn-sm fc-btn-editar-pedido" style="background:#4a5568;">&#9998; Editar</button>
                 ${isAdmin ? `<button class="fc-btn-sm fc-btn-eliminar-pedido" style="background:#ef4444;">&#10005; Eliminar</button>` : ''}
             </div>
@@ -1236,6 +1237,54 @@
             addItemBtn.addEventListener('click', () => addItemBlock());
         }
 
+        // PDF upload button — abre el gestor de medios de WordPress
+        const pdfUploadBtn = $('#fc-modal-upload-pdf-btn');
+        if (pdfUploadBtn) {
+            let pdfMediaFrame = null;
+            pdfUploadBtn.addEventListener('click', () => {
+                if (typeof window.wp === 'undefined' || !window.wp.media) {
+                    showToast('El gestor de medios no está disponible', 'error');
+                    return;
+                }
+                if (!pdfMediaFrame) {
+                    pdfMediaFrame = window.wp.media({
+                        title:    'Seleccionar PDF del pedido',
+                        button:   { text: 'Usar este PDF' },
+                        multiple: false,
+                        library:  { type: 'application/pdf' },
+                    });
+                    pdfMediaFrame.on('select', () => {
+                        const attachment = pdfMediaFrame.state().get('selection').first().toJSON();
+                        const url   = attachment.url;
+                        const fname = attachment.filename || url.split('/').pop().split('?')[0];
+                        const pdfInput  = $('#fc-modal-pdf-url');
+                        const pdfStatus = $('#fc-modal-pdf-status');
+                        const pdfLink   = $('#fc-modal-pdf-link');
+                        const pdfName   = $('#fc-modal-pdf-name');
+                        if (pdfInput)  pdfInput.value          = url;
+                        if (pdfName)   pdfName.textContent     = decodeURIComponent(fname);
+                        if (pdfLink)   pdfLink.href            = url;
+                        if (pdfStatus) pdfStatus.style.display = '';
+                        pdfUploadBtn.style.display = 'none';
+                    });
+                }
+                pdfMediaFrame.open();
+            });
+        }
+
+        // PDF quitar button
+        const pdfQuitarBtn = $('#fc-modal-pdf-quitar');
+        if (pdfQuitarBtn) {
+            pdfQuitarBtn.addEventListener('click', () => {
+                const pdfInput  = $('#fc-modal-pdf-url');
+                const pdfStatus = $('#fc-modal-pdf-status');
+                const pdfAddBtn = $('#fc-modal-upload-pdf-btn');
+                if (pdfInput)  pdfInput.value          = '';
+                if (pdfStatus) pdfStatus.style.display  = 'none';
+                if (pdfAddBtn) pdfAddBtn.style.display  = '';
+            });
+        }
+
         // Submit
         const form = $('#fc-new-pedido-form');
         if (form) {
@@ -1353,6 +1402,25 @@
         const horaEl   = $('#fc-modal-hora-recoleccion'); if (horaEl) horaEl.value   = pedido.hora_recoleccion || '';
         const notaEl   = $('#fc-modal-nota');           if (notaEl)   notaEl.value   = pedido.nota            || '';
 
+        // PDF
+        const pdfUrl    = pedido.pdf_url || '';
+        const pdfStatus = $('#fc-modal-pdf-status');
+        const pdfLink   = $('#fc-modal-pdf-link');
+        const pdfName   = $('#fc-modal-pdf-name');
+        const pdfInput  = $('#fc-modal-pdf-url');
+        const pdfAddBtn = $('#fc-modal-upload-pdf-btn');
+        if (pdfInput) pdfInput.value = pdfUrl;
+        if (pdfUrl) {
+            const fname = pdfUrl.split('/').pop().split('?')[0];
+            if (pdfName)   pdfName.textContent = decodeURIComponent(fname);
+            if (pdfLink)   pdfLink.href        = pdfUrl;
+            if (pdfStatus) pdfStatus.style.display = '';
+            if (pdfAddBtn) pdfAddBtn.style.display  = 'none';
+        } else {
+            if (pdfStatus) pdfStatus.style.display = 'none';
+            if (pdfAddBtn) pdfAddBtn.style.display  = '';
+        }
+
         // Items — clear container and populate from pedido.items
         const container = $('#fc-items-container');
         if (container) container.innerHTML = '';
@@ -1391,6 +1459,14 @@
 
         const canalSel = $('#fc-modal-canal');
         if (canalSel) { canalSel.value = ''; updateCanalField(''); }
+
+        // Reset PDF
+        const pdfInput2  = $('#fc-modal-pdf-url');
+        const pdfStatus2 = $('#fc-modal-pdf-status');
+        const pdfAddBtn2 = $('#fc-modal-upload-pdf-btn');
+        if (pdfInput2)  pdfInput2.value         = '';
+        if (pdfStatus2) pdfStatus2.style.display = 'none';
+        if (pdfAddBtn2) pdfAddBtn2.style.display = '';
 
         // Reset tipo
         $$('.fc-tipo-option').forEach(o => o.classList.remove('active'));
@@ -1436,6 +1512,7 @@
             canal_nombre:     $('#fc-modal-canal-nombre')?.value     || '',
             canal_contacto:   $('#fc-modal-canal-contacto')?.value   || '',
             nota:             $('#fc-modal-nota')?.value             || '',
+            pdf_url:          $('#fc-modal-pdf-url')?.value          || '',
             items_json:       JSON.stringify(items),
         };
 

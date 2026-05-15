@@ -188,6 +188,19 @@ get_header();
                     </button>
                 </div>
 
+                <!-- ── PDF del pedido ── -->
+                <div class="fc-form-group fc-pdf-section">
+                    <label>Documento PDF</label>
+                    <div id="fc-modal-pdf-status" style="display:none;">
+                        <a id="fc-modal-pdf-link" href="#" target="_blank" rel="noopener" class="fc-pdf-link">
+                            &#128196; <span id="fc-modal-pdf-name"></span>
+                        </a>
+                        <button type="button" id="fc-modal-pdf-quitar" class="fc-btn-sm fc-btn-pdf-quitar">&#10005; Quitar PDF</button>
+                    </div>
+                    <input type="hidden" id="fc-modal-pdf-url" name="pdf_url" value="" />
+                    <button type="button" id="fc-modal-upload-pdf-btn" class="fc-btn-sm fc-btn-pdf-upload">&#128196; Añadir PDF</button>
+                </div>
+
             </form>
         </div>
 

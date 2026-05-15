@@ -463,6 +463,58 @@
     background: var(--fc-dark);
 }
 
+/* PDF buttons — override hover so custom bg-color isn't clobbered */
+.fc-btn-pdf-upload { background: #7c3aed !important; }
+.fc-btn-pdf-upload:hover { background: #5b21b6 !important; }
+.fc-btn-pdf-quitar { background: #ef4444 !important; margin-left: 8px; }
+.fc-btn-pdf-quitar:hover { background: #b91c1c !important; }
+
+/* ── PDF section inside modal ── */
+.fc-pdf-section {
+    border: 1.5px dashed #e2e8f0;
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: #f8fafc;
+}
+
+.fc-pdf-section label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.fc-pdf-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #7c3aed;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.fc-pdf-link:hover {
+    text-decoration: underline;
+}
+
+/* ── PDF "Ver PDF" button on card ── */
+.fc-btn-ver-pdf {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    line-height: 1.4;
+    font-family: inherit;
+    border: none;
+}
+
 .fc-btn-link {
     background: transparent;
     color: var(--fc-primary);

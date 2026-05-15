@@ -47,6 +47,7 @@ function fc_enqueue_panel() {
         $panel_deps[] = 'google-places';
     }
 
+    wp_enqueue_media(); // carga el gestor de medios de WordPress en el panel
     wp_enqueue_style( 'fc-panel', FC_URL . 'assets/css/panel.css', [], FC_VERSION );
     wp_enqueue_script( 'fc-panel', FC_URL . 'assets/js/panel.js', $panel_deps, FC_VERSION, true );
 
@@ -310,6 +311,7 @@ function fc_build_pedido_data( $p ) {
         'mensaje_tarjeta'   => get_post_meta( $p->ID, '_fc_pedido_mensaje_tarjeta',  true ),
         'cliente_nombre'    => get_post_meta( $p->ID, '_fc_pedido_cliente_nombre',   true ),
         'cliente_telefono'  => get_post_meta( $p->ID, '_fc_pedido_cliente_telefono', true ),
+        'pdf_url'           => get_post_meta( $p->ID, '_fc_pedido_pdf_url',          true ),
         'historial'         => $historial,
         'last_change'       => $last,
         'fecha_registro'    => (function( $p ) {
@@ -560,6 +562,7 @@ function fc_ajax_crear_pedido() {
         '_fc_pedido_canal_contacto'   => sanitize_text_field( $_POST['canal_contacto']  ?? '' ),
         '_fc_pedido_nota'             => sanitize_textarea_field( $_POST['nota'] ?? '' ),
         '_fc_pedido_registrado_por'   => get_current_user_id(),
+        '_fc_pedido_pdf_url'          => esc_url_raw( $_POST['pdf_url'] ?? '' ),
         // Legacy single-item (first item) for backward compat
         '_fc_pedido_arreglo_id'              => $first['arreglo_id']            ?? 0,
         '_fc_pedido_arreglo_nombre'          => $first['arreglo_nombre']        ?? '',
@@ -737,6 +740,7 @@ function fc_ajax_actualizar_pedido_datos() {
         '_fc_pedido_canal_nombre'     => sanitize_text_field( $_POST['canal_nombre']    ?? '' ),
         '_fc_pedido_canal_contacto'   => sanitize_text_field( $_POST['canal_contacto']  ?? '' ),
         '_fc_pedido_nota'             => sanitize_textarea_field( $_POST['nota'] ?? '' ),
+        '_fc_pedido_pdf_url'          => esc_url_raw( $_POST['pdf_url'] ?? '' ),
         // Legacy single-item for backward compat
         '_fc_pedido_arreglo_id'              => $first['arreglo_id']            ?? 0,
         '_fc_pedido_arreglo_nombre'          => $first['arreglo_nombre']        ?? '',
@@ -867,6 +871,40 @@ function fc_ajax_restaurar_pedido() {
 // ─────────────────────────────────────────────
 add_action( 'wp_ajax_fc_panel_eliminar_permanente', 'fc_ajax_eliminar_permanente' );
 add_action( 'wp_ajax_fc_panel_upload_foto', 'fc_ajax_upload_foto' );
+add_action( 'wp_ajax_fc_panel_upload_pdf',  'fc_ajax_upload_pdf'  );
+
+// ─────────────────────────────────────────────
+// AJAX: Upload PDF for a pedido
+// ─────────────────────────────────────────────
+function fc_ajax_upload_pdf() {
+    fc_panel_verify_nonce();
+    fc_panel_require_cap();
+
+    if ( empty( $_FILES['pdf'] ) || $_FILES['pdf']['error'] !== UPLOAD_ERR_OK ) {
+        wp_send_json_error( [ 'message' => 'No se recibió el archivo.' ] );
+    }
+
+    // Only allow PDF
+    $ftype = wp_check_filetype( $_FILES['pdf']['name'] );
+    if ( $ftype['ext'] !== 'pdf' ) {
+        wp_send_json_error( [ 'message' => 'Solo se permiten archivos PDF.' ] );
+    }
+
+    require_once ABSPATH . 'wp-admin/includes/file.php';
+    require_once ABSPATH . 'wp-admin/includes/media.php';
+    require_once ABSPATH . 'wp-admin/includes/image.php';
+
+    $_FILES['pdf']['name'] = sanitize_file_name( $_FILES['pdf']['name'] );
+    $attachment_id = media_handle_upload( 'pdf', 0 );
+
+    if ( is_wp_error( $attachment_id ) ) {
+        wp_send_json_error( [ 'message' => $attachment_id->get_error_message() ] );
+    }
+
+    $url = wp_get_attachment_url( $attachment_id );
+    wp_send_json_success( [ 'url' => $url, 'attachment_id' => $attachment_id ] );
+}
+
 function fc_ajax_eliminar_permanente() {
     fc_panel_verify_nonce();
     if ( ! current_user_can( 'manage_options' ) ) {
