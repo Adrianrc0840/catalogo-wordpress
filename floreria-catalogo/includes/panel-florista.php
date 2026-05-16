@@ -398,6 +398,40 @@ function fc_ajax_upload_foto() {
 }
 
 // ─────────────────────────────────────────────
+// Guardar URL de foto (ya en la librería de medios) en fotos_extra de un item
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_fc_panel_save_foto_url', 'fc_ajax_save_foto_url' );
+function fc_ajax_save_foto_url() {
+    fc_panel_verify_nonce();
+    fc_panel_require_cap();
+
+    $pedido_id = intval( $_POST['pedido_id'] ?? 0 );
+    $item_idx  = intval( $_POST['item_idx']  ?? 0 );
+    $url       = esc_url_raw( wp_unslash( $_POST['url'] ?? '' ) );
+
+    if ( ! $pedido_id || ! $url ) {
+        wp_send_json_error( [ 'message' => 'Datos inválidos.' ] );
+    }
+
+    $post = get_post( $pedido_id );
+    if ( ! $post || $post->post_type !== 'pedido' ) {
+        wp_send_json_error( [ 'message' => 'Pedido no encontrado.' ] );
+    }
+
+    $items_raw = get_post_meta( $pedido_id, '_fc_pedido_items', true );
+    $items     = $items_raw ? json_decode( $items_raw, true ) : [];
+    if ( is_array( $items ) && isset( $items[ $item_idx ] ) ) {
+        if ( ! isset( $items[ $item_idx ]['fotos_extra'] ) || ! is_array( $items[ $item_idx ]['fotos_extra'] ) ) {
+            $items[ $item_idx ]['fotos_extra'] = [];
+        }
+        $items[ $item_idx ]['fotos_extra'][] = $url;
+        update_post_meta( $pedido_id, '_fc_pedido_items', wp_json_encode( $items ) );
+    }
+
+    wp_send_json_success( [ 'url' => $url ] );
+}
+
+// ─────────────────────────────────────────────
 // Helper: build pedido data array from WP_Post
 // ─────────────────────────────────────────────
 function fc_build_pedido_data( $p ) {
@@ -769,7 +803,7 @@ function fc_ajax_crear_pedido() {
             'pendiente' => true,
         ] );
     } else {
-        $client_url = home_url( '/pedido/' . $numero );
+        $client_url = home_url( '/pedido/' . $token );
         wp_send_json_success( [
             'message'    => 'Pedido creado correctamente.',
             'numero'     => $numero,
@@ -811,7 +845,7 @@ function fc_ajax_actualizar_status() {
         $fecha_entrega = get_post_meta( $pedido_id, '_fc_pedido_fecha', true );
         $nuevo_numero  = fc_generar_numero_pedido( $fecha_entrega );
         $nuevo_token   = fc_generar_token();
-        $nuevo_link    = home_url( '/pedido/' . $nuevo_numero );
+        $nuevo_link    = home_url( '/pedido/' . $nuevo_token );
 
         update_post_meta( $pedido_id, '_fc_pedido_numero', $nuevo_numero );
         update_post_meta( $pedido_id, '_fc_pedido_token',  $nuevo_token  );
@@ -837,6 +871,7 @@ function fc_ajax_actualizar_status() {
         'label'       => fc_pedido_status_label( $new_status ),
         'last_change' => $entry,
         'nuevo_numero' => $nuevo_numero,
+        'nuevo_token'  => $nuevo_token,
         'nuevo_link'   => $nuevo_link,
     ] );
 }

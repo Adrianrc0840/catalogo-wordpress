@@ -1118,7 +1118,8 @@ $pendientes_q = get_posts( [
                     $p_canal_str = $p_canal ? ( $p_canal_labels[ $p_canal ] ?? ucfirst( $p_canal ) ) : '—';
                     $p_canal_det = implode( ' · ', array_filter( [ $p_cnom, $p_ccon ] ) );
                     $color_badge = $status_colors[ $status ] ?? '#999';
-                    $client_url  = home_url( '/pedido/' . $num );
+                    $p_token     = get_post_meta( $pedido->ID, '_fc_pedido_token', true );
+                    $client_url  = $p_token ? home_url( '/pedido/' . $p_token ) : home_url( '/pedido/' . $num );
 
                     // Multi-item data
                     $p_items_raw  = get_post_meta( $pedido->ID, '_fc_pedido_items', true );

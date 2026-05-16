@@ -110,7 +110,7 @@
 
     // ── Render order card ──
     function renderCard(p) {
-        const clientUrl = `${siteurl}/pedido/${p.numero}`;
+        const clientUrl = `${siteurl}/pedido/${p.token}`;
         const last = p.last_change;
         const lastInfo = last
             ? `Último cambio: ${fmtDatetime(last.timestamp)} por ${escHtml(last.user_name)}`
@@ -259,6 +259,40 @@
         if (!num) return '';
         var digits = String(num).replace(/\D/g, '');
         return `<a href="tel:${digits}" class="fc-tel-link">${escHtml(num)}</a>`;
+    }
+
+    // ── WordPress Media Picker helper ──
+    let _mediaFrame = null;
+    function openImagePicker(onSelect) {
+        if (window.wp && window.wp.media) {
+            if (_mediaFrame) {
+                _mediaFrame.off('select');
+            } else {
+                _mediaFrame = window.wp.media({
+                    title    : 'Seleccionar foto',
+                    button   : { text: 'Usar esta foto' },
+                    multiple : false,
+                    library  : { type: 'image' },
+                });
+            }
+            _mediaFrame.on('select', () => {
+                const att = _mediaFrame.state().get('selection').first().toJSON();
+                onSelect(att.url);
+            });
+            _mediaFrame.open();
+        } else {
+            // Fallback: explorador de archivos nativo (no debería ocurrir en el panel)
+            const fi = document.createElement('input');
+            fi.type = 'file';
+            fi.accept = 'image/*';
+            fi.style.display = 'none';
+            document.body.appendChild(fi);
+            fi.addEventListener('change', () => {
+                if (fi.files[0]) onSelect(URL.createObjectURL(fi.files[0]));
+                fi.remove();
+            });
+            fi.click();
+        }
     }
 
     // ── Sort helpers ──
@@ -418,6 +452,7 @@
                             }
                             if (pedidoDataMap[cardId]) {
                                 pedidoDataMap[cardId].numero = data.data.nuevo_numero;
+                                pedidoDataMap[cardId].token  = data.data.nuevo_token;
                                 pedidoDataMap[cardId].status = 'aceptado';
                             }
                         }
@@ -504,64 +539,36 @@
             });
         });
 
-        // Añadir foto
-        if (!document.getElementById('fc-foto-file-input')) {
-            const fi = document.createElement('input');
-            fi.type = 'file';
-            fi.accept = 'image/*';
-            fi.id = 'fc-foto-file-input';
-            fi.style.display = 'none';
-            document.body.appendChild(fi);
-
-            fi.addEventListener('change', async () => {
-                if (!fi.files[0] || !fi._activeBtn) return;
-                const btn      = fi._activeBtn;
-                const pedidoId = parseInt(btn.dataset.pedidoId, 10);
-                const itemIdx  = parseInt(btn.dataset.itemIdx,  10);
-                const origText = btn.textContent;
-                btn.textContent = '⏳';
-                btn.disabled    = true;
-
-                const fd = new FormData();
-                fd.append('action', 'fc_panel_upload_foto');
-                fd.append('nonce',     nonce);
-                fd.append('pedido_id', pedidoId);
-                fd.append('item_idx',  itemIdx);
-                fd.append('foto', fi.files[0]);
-
-                try {
-                    const res  = await fetch(ajaxurl, { method: 'POST', body: fd });
-                    const data = await res.json();
-                    if (data.success) {
-                        const url = data.data.url;
-                        // Update in-memory map
-                        const pedido = pedidoDataMap[pedidoId];
-                        if (pedido && pedido.items[itemIdx]) {
-                            if (!pedido.items[itemIdx].fotos_extra) pedido.items[itemIdx].fotos_extra = [];
-                            pedido.items[itemIdx].fotos_extra.push(url);
-                            // Refresh media area
-                            refreshCardItemMedia(btn.closest('.fc-order-card'), itemIdx, pedido.items[itemIdx], pedidoId);
-                        }
-                        showToast('Foto añadida', 'success');
-                    } else {
-                        showToast(data.data?.message || 'Error al subir', 'error');
-                    }
-                } catch { showToast('Error de conexión', 'error'); }
-                finally {
-                    btn.textContent = origText;
-                    btn.disabled    = false;
-                    fi.value        = '';
-                    fi._activeBtn   = null;
-                }
-            });
-        }
-
+        // Añadir foto — abre la librería de medios de WordPress
         $$('.fc-btn-add-foto', grid).forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const fi = document.getElementById('fc-foto-file-input');
-                fi._activeBtn = btn;
-                fi.click();
+                const pedidoId = parseInt(btn.dataset.pedidoId, 10);
+                const itemIdx  = parseInt(btn.dataset.itemIdx,  10);
+
+                openImagePicker(async (url) => {
+                    const origText  = btn.textContent;
+                    btn.textContent = '⏳ Guardando...';
+                    btn.disabled    = true;
+                    try {
+                        const data = await ajax('fc_panel_save_foto_url', { pedido_id: pedidoId, item_idx: itemIdx, url });
+                        if (data.success) {
+                            const pedido = pedidoDataMap[pedidoId];
+                            if (pedido && pedido.items[itemIdx]) {
+                                if (!pedido.items[itemIdx].fotos_extra) pedido.items[itemIdx].fotos_extra = [];
+                                pedido.items[itemIdx].fotos_extra.push(url);
+                                refreshCardItemMedia(btn.closest('.fc-order-card'), itemIdx, pedido.items[itemIdx], pedidoId);
+                            }
+                            showToast('Foto añadida', 'success');
+                        } else {
+                            showToast(data.data?.message || 'Error al guardar foto', 'error');
+                        }
+                    } catch { showToast('Error de conexión', 'error'); }
+                    finally {
+                        btn.textContent = origText;
+                        btn.disabled    = false;
+                    }
+                });
             });
         });
 
@@ -682,11 +689,29 @@
         mediaEl.querySelector('.fc-card-item-thumb-wrap')?.addEventListener('click', () => {
             openLightbox(allPhotos, 0);
         });
-        mediaEl.querySelector('.fc-btn-add-foto')?.addEventListener('click', (e) => {
+        const addFotoBtn = mediaEl.querySelector('.fc-btn-add-foto');
+        addFotoBtn?.addEventListener('click', (e) => {
             e.stopPropagation();
-            const fi = document.getElementById('fc-foto-file-input');
-            fi._activeBtn = mediaEl.querySelector('.fc-btn-add-foto');
-            fi.click();
+            openImagePicker(async (url) => {
+                const origText       = addFotoBtn.textContent;
+                addFotoBtn.textContent = '⏳ Guardando...';
+                addFotoBtn.disabled    = true;
+                try {
+                    const data = await ajax('fc_panel_save_foto_url', { pedido_id: pedidoId, item_idx: itemIdx, url });
+                    if (data.success) {
+                        if (!item.fotos_extra) item.fotos_extra = [];
+                        item.fotos_extra.push(url);
+                        refreshCardItemMedia(cardEl, itemIdx, item, pedidoId);
+                        showToast('Foto añadida', 'success');
+                    } else {
+                        showToast(data.data?.message || 'Error al guardar foto', 'error');
+                    }
+                } catch { showToast('Error de conexión', 'error'); }
+                finally {
+                    addFotoBtn.textContent = origText;
+                    addFotoBtn.disabled    = false;
+                }
+            });
         });
     }
 
@@ -1250,38 +1275,13 @@
 
         if (uploadFotoBtn) {
             uploadFotoBtn.addEventListener('click', () => {
-                const fi = document.createElement('input');
-                fi.type = 'file';
-                fi.accept = 'image/*';
-                fi.style.display = 'none';
-                document.body.appendChild(fi);
-                fi.addEventListener('change', async () => {
-                    if (!fi.files[0]) { fi.remove(); return; }
-                    uploadFotoBtn.textContent = '⏳ Subiendo...';
-                    uploadFotoBtn.disabled = true;
-                    const fd = new FormData();
-                    fd.append('action', 'fc_panel_upload_foto');
-                    fd.append('nonce', nonce);
-                    fd.append('pedido_id', '0'); // temp upload, no pedido yet
-                    fd.append('item_idx', '0');
-                    fd.append('foto', fi.files[0]);
-                    try {
-                        const res  = await fetch(ajaxurl, { method: 'POST', body: fd });
-                        const data = await res.json();
-                        if (data.success) {
-                            const urls = JSON.parse(fotosJsonInput.value || '[]');
-                            urls.push(data.data.url);
-                            fotosJsonInput.value = JSON.stringify(urls);
-                            renderModalFotos();
-                        } else { showToast(data.data?.message || 'Error al subir', 'error'); }
-                    } catch { showToast('Error de conexión', 'error'); }
-                    finally {
-                        uploadFotoBtn.textContent = '📷 Añadir foto';
-                        uploadFotoBtn.disabled = false;
-                        fi.remove();
-                    }
+                openImagePicker((url) => {
+                    const urls = [];
+                    try { urls.push(...JSON.parse(fotosJsonInput.value || '[]')); } catch { }
+                    urls.push(url);
+                    fotosJsonInput.value = JSON.stringify(urls);
+                    renderModalFotos();
                 });
-                fi.click();
             });
         }
     }
