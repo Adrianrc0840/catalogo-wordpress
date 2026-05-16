@@ -803,7 +803,7 @@ function fc_ajax_crear_pedido() {
             'pendiente' => true,
         ] );
     } else {
-        $client_url = home_url( '/pedido/' . $numero );
+        $client_url = home_url( '/pedido/' . $token );
         wp_send_json_success( [
             'message'    => 'Pedido creado correctamente.',
             'numero'     => $numero,
@@ -845,7 +845,7 @@ function fc_ajax_actualizar_status() {
         $fecha_entrega = get_post_meta( $pedido_id, '_fc_pedido_fecha', true );
         $nuevo_numero  = fc_generar_numero_pedido( $fecha_entrega );
         $nuevo_token   = fc_generar_token();
-        $nuevo_link    = home_url( '/pedido/' . $nuevo_numero );
+        $nuevo_link    = home_url( '/pedido/' . $nuevo_token );
 
         update_post_meta( $pedido_id, '_fc_pedido_numero', $nuevo_numero );
         update_post_meta( $pedido_id, '_fc_pedido_token',  $nuevo_token  );
@@ -871,6 +871,7 @@ function fc_ajax_actualizar_status() {
         'label'       => fc_pedido_status_label( $new_status ),
         'last_change' => $entry,
         'nuevo_numero' => $nuevo_numero,
+        'nuevo_token'  => $nuevo_token,
         'nuevo_link'   => $nuevo_link,
     ] );
 }

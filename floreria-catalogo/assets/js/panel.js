@@ -110,7 +110,7 @@
 
     // ── Render order card ──
     function renderCard(p) {
-        const clientUrl = `${siteurl}/pedido/${p.numero}`;
+        const clientUrl = `${siteurl}/pedido/${p.token}`;
         const last = p.last_change;
         const lastInfo = last
             ? `Último cambio: ${fmtDatetime(last.timestamp)} por ${escHtml(last.user_name)}`
@@ -452,6 +452,7 @@
                             }
                             if (pedidoDataMap[cardId]) {
                                 pedidoDataMap[cardId].numero = data.data.nuevo_numero;
+                                pedidoDataMap[cardId].token  = data.data.nuevo_token;
                                 pedidoDataMap[cardId].status = 'aceptado';
                             }
                         }

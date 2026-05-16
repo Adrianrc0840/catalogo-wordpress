@@ -1,39 +1,23 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-// ── Find the pedido by order number or token ──
+// ── Find the pedido by token only (number-based access is intentionally disabled) ──
 $ref = sanitize_text_field( get_query_var( 'fc_pedido_ref' ) );
 
 $pedido = null;
 
 if ( $ref ) {
-    // Try by order number first
-    $by_num = new WP_Query( [
+    $by_token = new WP_Query( [
         'post_type'      => 'pedido',
         'post_status'    => 'publish',
         'posts_per_page' => 1,
         'meta_query'     => [ [
-            'key'   => '_fc_pedido_numero',
+            'key'   => '_fc_pedido_token',
             'value' => $ref,
         ] ],
     ] );
-
-    if ( $by_num->have_posts() ) {
-        $pedido = $by_num->posts[0];
-    } else {
-        // Try by token
-        $by_token = new WP_Query( [
-            'post_type'      => 'pedido',
-            'post_status'    => 'publish',
-            'posts_per_page' => 1,
-            'meta_query'     => [ [
-                'key'   => '_fc_pedido_token',
-                'value' => $ref,
-            ] ],
-        ] );
-        if ( $by_token->have_posts() ) {
-            $pedido = $by_token->posts[0];
-        }
+    if ( $by_token->have_posts() ) {
+        $pedido = $by_token->posts[0];
     }
     wp_reset_postdata();
 }
