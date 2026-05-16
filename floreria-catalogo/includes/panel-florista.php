@@ -974,6 +974,18 @@ function fc_ajax_buscar_arreglos() {
 }
 
 // ─────────────────────────────────────────────
+// AJAX: Contar pedidos pendientes (solo admin, para badge del tab)
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_fc_panel_count_pendientes', 'fc_ajax_count_pendientes' );
+function fc_ajax_count_pendientes() {
+    fc_panel_verify_nonce();
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( [ 'message' => 'Sin permiso.' ], 403 );
+    }
+    wp_send_json_success( [ 'count' => fc_count_pedidos_pendientes() ] );
+}
+
+// ─────────────────────────────────────────────
 // AJAX: Obtener pedidos en papelera (solo admin)
 // ─────────────────────────────────────────────
 add_action( 'wp_ajax_fc_panel_get_papelera', 'fc_ajax_get_papelera' );

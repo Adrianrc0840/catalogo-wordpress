@@ -749,6 +749,9 @@
 .fc-filter-tab-pendiente {
     border-color: #fcd34d !important;
     color: #92400e !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .fc-filter-tab-pendiente:hover,
@@ -756,6 +759,26 @@
     background: #92400e !important;
     border-color: #92400e !important;
     color: #fff !important;
+}
+
+.fc-tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #dc2626;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+}
+
+.fc-filter-tab-pendiente.active .fc-tab-badge {
+    background: #fff;
+    color: #92400e;
 }
 
 /* ── Trash tab ── */

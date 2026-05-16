@@ -177,13 +177,19 @@ while ( have_posts() ) : the_post();
                 <p class="fc-cerrado-msg" id="fc-cerrado" style="display:none;"></p>
                 <p class="fc-cerrado-msg" id="fc-anticipacion" style="display:none;"></p>
 
-                <!-- Envío: bloques horarios + dirección -->
+                <!-- Envío: horario → destinatario → dirección -->
                 <div id="fc-envio-section">
                     <div class="fc-horario-wrap" id="fc-horario-wrap">
                         <label for="fc-horario">Horario de entrega</label>
                         <select id="fc-horario" name="fc_horario">
                             <option value="">-- Selecciona un horario --</option>
                         </select>
+                    </div>
+                    <div>
+                        <label for="fc-destinatario">Destinatario</label>
+                        <div class="fc-text-input-wrap">
+                            <input type="text" id="fc-destinatario" name="fc_destinatario" placeholder="¿A quién va dirigido el arreglo?" autocomplete="off" required />
+                        </div>
                     </div>
                     <div>
                         <label for="fc-direccion">Dirección de entrega</label>
@@ -195,8 +201,14 @@ while ( have_posts() ) : the_post();
                     </div>
                 </div>
 
-                <!-- Recolección: hora libre dentro del horario -->
+                <!-- Recolección: nombre → hora -->
                 <div id="fc-recoleccion-section" style="display:none;">
+                    <div>
+                        <label for="fc-nombre-recoleccion">Nombre para el pedido</label>
+                        <div class="fc-text-input-wrap">
+                            <input type="text" id="fc-nombre-recoleccion" name="fc_nombre_recoleccion" placeholder="¿A nombre de quién está el pedido?" autocomplete="off" required />
+                        </div>
+                    </div>
                     <div>
                         <label for="fc-hora-recoleccion">Hora de recolección</label>
                         <div class="fc-fecha-wrap" id="fc-hora-wrap">

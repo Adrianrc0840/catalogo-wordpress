@@ -740,13 +740,34 @@
                     new MutationObserver(function() {
                         var open = drawer.classList.contains('fc-cart-drawer--open');
                         if (open) {
-                            pac.style.display = '';
-                            // Esperar a que termine la animación slide-in (220ms)
-                            setTimeout(positionPac, 250);
+                            // Solo mostrar si la sección de envío está visible
+                            var envioFlds2 = document.getElementById('fc-cart-envio-fields');
+                            var envioVisible = !envioFlds2 || envioFlds2.style.display !== 'none';
+                            if (envioVisible) {
+                                pac.style.display = '';
+                                setTimeout(positionPac, 250);
+                            }
                         } else {
                             pac.style.display = 'none';
                         }
                     }).observe(drawer, { attributes: true, attributeFilter: ['class'] });
+                }
+
+                // Mostrar/ocultar según tipo envío/recolección
+                var envioFldsEl = document.getElementById('fc-cart-envio-fields');
+                if (envioFldsEl) {
+                    new MutationObserver(function() {
+                        var hidden = envioFldsEl.style.display === 'none';
+                        if (hidden) {
+                            pac.style.display = 'none';
+                        } else {
+                            var drawerOpen = drawer && drawer.classList.contains('fc-cart-drawer--open');
+                            if (drawerOpen) {
+                                pac.style.display = '';
+                                positionPac();
+                            }
+                        }
+                    }).observe(envioFldsEl, { attributes: true, attributeFilter: ['style'] });
                 }
 
                 window.addEventListener('resize', function() {

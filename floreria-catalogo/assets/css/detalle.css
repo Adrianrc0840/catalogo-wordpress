@@ -520,6 +520,28 @@
     line-height: 1.5;
 }
 
+/* ── Inputs de texto genéricos (destinatario, nombre recolección) ── */
+.fc-text-input-wrap input[type="text"] {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #333;
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+    outline: none;
+}
+
+.fc-text-input-wrap input[type="text"]:focus {
+    border-color: var(--fc-primary);
+}
+
+.fc-text-input-wrap input[type="text"].fc-input-error {
+    border-color: #c44;
+}
+
 /* ── Dirección ── */
 .fc-direccion-wrap {
     position: relative;

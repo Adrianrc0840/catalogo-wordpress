@@ -613,8 +613,18 @@
             const pendienteBtn = document.createElement('button');
             pendienteBtn.className = 'fc-filter-tab fc-filter-tab-pendiente';
             pendienteBtn.dataset.status = 'pendiente';
-            pendienteBtn.textContent = '⏳ Pendientes';
+            pendienteBtn.innerHTML = '⏳ Pendientes';
             tabContainer.appendChild(pendienteBtn);
+
+            // Badge de conteo de pendientes
+            ajax('fc_panel_count_pendientes').then(data => {
+                if (data.success && data.data?.count > 0) {
+                    const badge = document.createElement('span');
+                    badge.className = 'fc-tab-badge';
+                    badge.textContent = data.data.count;
+                    pendienteBtn.appendChild(badge);
+                }
+            });
 
             const trashBtn = document.createElement('button');
             trashBtn.className = 'fc-filter-tab fc-filter-tab-trash';
@@ -648,7 +658,8 @@
                 } else {
                     exitTrashMode();
                     currentFilter = mSel.value;
-                    loadPedidos(currentFilter, getCurrentFecha());
+                    // Pendientes: siempre todos (sin filtro de fecha)
+                    loadPedidos(currentFilter, currentFilter === 'pendiente' ? '' : getCurrentFecha());
                 }
             });
         }
@@ -666,7 +677,8 @@
                 } else {
                     exitTrashMode();
                     currentFilter = tab.dataset.status;
-                    loadPedidos(currentFilter, getCurrentFecha());
+                    // Pendientes: siempre todos (sin filtro de fecha)
+                    loadPedidos(currentFilter, currentFilter === 'pendiente' ? '' : getCurrentFecha());
                 }
             });
         });

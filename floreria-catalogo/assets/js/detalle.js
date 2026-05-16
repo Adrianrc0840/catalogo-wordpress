@@ -88,6 +88,8 @@
     var waBtn              = document.getElementById('fc-wa-btn');
     var cerradoEl          = document.getElementById('fc-cerrado');
     var direccionEl        = document.getElementById('fc-direccion');
+    var destinatarioEl     = document.getElementById('fc-destinatario');
+    var nombreRecoleccionEl= document.getElementById('fc-nombre-recoleccion');
     var envioSection       = document.getElementById('fc-envio-section');
     var recoleccionSection = document.getElementById('fc-recoleccion-section');
     var horaRecoleccionEl  = document.getElementById('fc-hora-recoleccion');
@@ -135,9 +137,10 @@
         var listo      = false;
 
         if (modoTipo === 'envio') {
-            var horario   = horarioEl   ? horarioEl.value.trim()  : '';
-            var direccion = direccionEl ? direccionEl.value.trim() : '';
-            var dirValida = esDireccionValida(direccion);
+            var horario      = horarioEl      ? horarioEl.value.trim()      : '';
+            var direccion    = direccionEl    ? direccionEl.value.trim()    : '';
+            var destinatario = destinatarioEl ? destinatarioEl.value.trim() : '';
+            var dirValida    = esDireccionValida(direccion);
 
             // Mostrar/ocultar hint y borde de error solo si el usuario ya escribió algo
             if (direccionTocada && direccion !== '') {
@@ -148,10 +151,11 @@
                 if (direccionEl)   direccionEl.classList.remove('fc-input-error');
             }
 
-            listo = fecha !== '' && horario !== '' && dirValida && diaDisponible && fechaValida && politicas;
+            listo = fecha !== '' && horario !== '' && dirValida && destinatario !== '' && diaDisponible && fechaValida && politicas;
         } else {
-            var hora = horaRecoleccionEl ? horaRecoleccionEl.value.trim() : '';
-            listo = fecha !== '' && hora !== '' && diaDisponible && fechaValida && politicas;
+            var hora    = horaRecoleccionEl    ? horaRecoleccionEl.value.trim()    : '';
+            var nombre  = nombreRecoleccionEl  ? nombreRecoleccionEl.value.trim()  : '';
+            listo = fecha !== '' && hora !== '' && nombre !== '' && diaDisponible && fechaValida && politicas;
         }
 
         if (waBtn) waBtn.classList.toggle('fc-btn-disabled', !listo);
@@ -490,8 +494,10 @@
         checkFormReady();
     }
 
-    if (horaRecoleccionEl) horaRecoleccionEl.addEventListener('change', onHoraRecoleccionChange);
-    if (horaRecoleccionEl) horaRecoleccionEl.addEventListener('input',  onHoraRecoleccionChange);
+    if (horaRecoleccionEl)     horaRecoleccionEl.addEventListener('change', onHoraRecoleccionChange);
+    if (horaRecoleccionEl)     horaRecoleccionEl.addEventListener('input',  onHoraRecoleccionChange);
+    if (destinatarioEl)        destinatarioEl.addEventListener('input',     checkFormReady);
+    if (nombreRecoleccionEl)   nombreRecoleccionEl.addEventListener('input', checkFormReady);
 
     // ── Botón WhatsApp ──
     if (waBtn) {
@@ -501,6 +507,33 @@
 
             var fecha = fechaEl ? fechaEl.value.trim() : '';
             if (!fecha) return;
+
+            // Validar campo obligatorio según tipo
+            if (modoTipo === 'envio') {
+                var destVal = destinatarioEl ? destinatarioEl.value.trim() : '';
+                if (!destVal) {
+                    if (destinatarioEl) {
+                        destinatarioEl.classList.add('fc-input-error');
+                        destinatarioEl.focus();
+                        destinatarioEl.addEventListener('input', function () {
+                            destinatarioEl.classList.remove('fc-input-error');
+                        }, { once: true });
+                    }
+                    return;
+                }
+            } else {
+                var nombreVal = nombreRecoleccionEl ? nombreRecoleccionEl.value.trim() : '';
+                if (!nombreVal) {
+                    if (nombreRecoleccionEl) {
+                        nombreRecoleccionEl.classList.add('fc-input-error');
+                        nombreRecoleccionEl.focus();
+                        nombreRecoleccionEl.addEventListener('input', function () {
+                            nombreRecoleccionEl.classList.remove('fc-input-error');
+                        }, { once: true });
+                    }
+                    return;
+                }
+            }
 
             var tamanoNombre = selectedTamano ? selectedTamano.nombre : '';
             var colorNombre  = selectedColor  ? selectedColor.nombre  : '';
@@ -514,21 +547,24 @@
             var mensaje;
 
             if (modoTipo === 'envio') {
-                var horario   = horarioEl   ? horarioEl.value.trim()  : '';
-                var direccion = direccionEl ? direccionEl.value.trim() : '';
+                var horario      = horarioEl      ? horarioEl.value.trim()      : '';
+                var direccion    = direccionEl    ? direccionEl.value.trim()    : '';
+                var destinatario = destinatarioEl ? destinatarioEl.value.trim() : '';
                 mensaje =
                     'Hola! Me interesa ordenar un arreglo.\n\n' +
-                    '*Arreglo:* '   + titulo       + '\n' +
-                    '*Tamano:* '    + tamanoNombre + ' (' + precio + ')\n' +
-                    (colorNombre ? '*Color:* '    + colorNombre  + '\n' : '') +
+                    '*Arreglo:* '      + titulo       + '\n' +
+                    '*Tamano:* '       + tamanoNombre + ' (' + precio + ')\n' +
+                    (colorNombre ? '*Color:* '       + colorNombre  + '\n' : '') +
                     '*Tipo:* Envio a domicilio\n' +
-                    '*Fecha:* '     + fechaStr     + '\n' +
-                    '*Horario:* '   + horario      + '\n' +
-                    '*Direccion:* ' + direccion    + '\n' +
-                    '*Link:* '      + permalink    + '\n\n' +
+                    '*Fecha:* '        + fechaStr     + '\n' +
+                    '*Horario:* '      + horario      + '\n' +
+                    '*Direccion:* '    + direccion    + '\n' +
+                    (destinatario ? '*Destinatario:* ' + destinatario + '\n' : '') +
+                    '*Link:* '         + permalink    + '\n\n' +
                     'Esta disponible?';
             } else {
-                var horaRaw = horaRecoleccionEl ? horaRecoleccionEl.value : '';
+                var horaRaw          = horaRecoleccionEl   ? horaRecoleccionEl.value        : '';
+                var nombreRecoleccion= nombreRecoleccionEl ? nombreRecoleccionEl.value.trim(): '';
                 var horaStr = horaRaw;
                 if (horaRaw) {
                     var parts = horaRaw.split(':');
@@ -545,6 +581,7 @@
                     '*Tipo:* Recoleccion en tienda\n' +
                     '*Fecha:* '    + fechaStr     + '\n' +
                     '*Hora:* '     + horaStr      + '\n' +
+                    (nombreRecoleccion ? '*Nombre:* ' + nombreRecoleccion + '\n' : '') +
                     '*Link:* '     + permalink    + '\n\n' +
                     'Esta disponible?';
             }
@@ -565,7 +602,9 @@
                     imagen_url:             imagenUrl,
                     tamano:                 tamanoStr,
                     color:                  selectedColor ? selectedColor.nombre : '',
-                    destinatario:           '',
+                    destinatario:           modoTipo === 'envio'
+                                                ? (destinatarioEl    ? destinatarioEl.value.trim()     : '')
+                                                : (nombreRecoleccionEl ? nombreRecoleccionEl.value.trim() : ''),
                     destinatario_telefono:  '',
                     destinatario_telefono2: '',
                     mensaje_tarjeta:        '',
