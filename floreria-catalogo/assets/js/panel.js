@@ -15,6 +15,7 @@
 
     // ── State ──
     let currentFilter    = 'all';
+    let currentSort      = 'hora-asc';     // 'numero-asc' | 'numero-desc' | 'hora-asc' | 'hora-desc'
     let currentEditId    = null;   // null = crear, número = editar
     let pedidoDataMap    = {};     // id → datos completos del pedido
     let isPapeleraView   = false;
@@ -178,7 +179,7 @@
 <div class="fc-order-card${isMobile ? ' collapsed' : ''}" data-status="${escAttr(p.status)}" data-id="${p.id}">
     <div class="fc-card-header">
         <div style="display:flex;flex-direction:column;gap:2px;">
-            <span class="fc-order-num">${escHtml(p.numero)}</span>
+            <span class="fc-order-num fc-card-numero${p.numero?.startsWith('P-') ? ' fc-num-pendiente' : ''}">${escHtml(p.numero)}</span>
             ${items.length > 1 ? `<span class="fc-card-item-count">${items.length} arreglos</span>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -225,6 +226,10 @@
                 </div>
             </div>
 
+            ${isAdmin && p.status === 'pendiente' ? `
+            <div class="fc-aceptar-row">
+                <button class="fc-btn-aceptar-pendiente">✔ Aceptar pedido</button>
+            </div>` : ''}
             <div class="fc-card-extra-actions">
                 <button class="fc-btn-sm fc-btn-imprimir" data-id="${p.id}" style="background:#2d6a4f;">&#128424; Imprimir</button>
                 ${p.pdf_url ? `<a class="fc-btn-sm fc-btn-ver-pdf" href="${escAttr(p.pdf_url)}" target="_blank" rel="noopener" style="background:#7c3aed;text-decoration:none;">&#128196; Ver PDF</a>` : ''}
@@ -256,6 +261,46 @@
         return `<a href="tel:${digits}" class="fc-tel-link">${escHtml(num)}</a>`;
     }
 
+    // ── Sort helpers ──
+    function getPedidoMinutes(p) {
+        if (p.tipo === 'recoleccion') {
+            // hora_recoleccion ya está en 24h: "17:07"
+            const timeStr = p.hora_recoleccion || '';
+            if (!timeStr) return 9999;
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + (m || 0);
+        } else {
+            // horario puede ser "10:00am – 12:00pm" o "10:00 - 12:00"
+            const match = (p.horario || '').match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+            if (!match) return 9999;
+            let h = parseInt(match[1], 10);
+            const m = parseInt(match[2], 10);
+            const ampm = (match[3] || '').toLowerCase();
+            if (ampm === 'pm' && h !== 12) h += 12;
+            if (ampm === 'am' && h === 12) h = 0;
+            return h * 60 + m;
+        }
+    }
+
+    function sortPedidos(pedidos) {
+        const sorted = [...pedidos];
+        switch (currentSort) {
+            case 'numero-asc':
+                sorted.sort((a, b) => (a.numero || '').localeCompare(b.numero || ''));
+                break;
+            case 'numero-desc':
+                sorted.sort((a, b) => (b.numero || '').localeCompare(a.numero || ''));
+                break;
+            case 'hora-asc':
+                sorted.sort((a, b) => getPedidoMinutes(a) - getPedidoMinutes(b));
+                break;
+            case 'hora-desc':
+                sorted.sort((a, b) => getPedidoMinutes(b) - getPedidoMinutes(a));
+                break;
+        }
+        return sorted;
+    }
+
     // ── Load & render orders ──
     async function loadPedidos(status = 'all', fecha = '') {
         const grid = $('#fc-orders-grid');
@@ -275,7 +320,8 @@
             }
             pedidoDataMap = {};
             pedidos.forEach(p => { pedidoDataMap[p.id] = p; });
-            grid.innerHTML = pedidos.map(renderCard).join('');
+            const sorted = sortPedidos(pedidos);
+            grid.innerHTML = sorted.map(renderCard).join('');
             attachCardEvents(grid);
         } catch (e) {
             grid.innerHTML = '<div class="fc-no-pedidos">Error de conexión.</div>';
@@ -345,6 +391,59 @@
                 const cardId = parseInt(btn.closest('.fc-order-card').dataset.id, 10);
                 const pedido = pedidoDataMap[cardId];
                 if (pedido) openEditModal(pedido);
+            });
+        });
+
+        // Aceptar pedido pendiente
+        $$('.fc-btn-aceptar-pendiente', grid).forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const card    = btn.closest('.fc-order-card');
+                const cardId  = parseInt(card.dataset.id, 10);
+                const pedido  = pedidoDataMap[cardId];
+                if (!window.confirm(`¿Aceptar el pedido ${pedido?.numero || cardId}?\nSe le asignará un número FL- definitivo.`)) return;
+
+                btn.textContent = '...';
+                btn.disabled    = true;
+
+                try {
+                    const data = await ajax('fc_panel_actualizar_status', { pedido_id: cardId, status: 'aceptado' });
+                    if (data.success) {
+                        // Actualizar número en la tarjeta si se generó FL-
+                        if (data.data?.nuevo_numero) {
+                            const numEl = $('.fc-card-numero', card);
+                            if (numEl) {
+                                numEl.textContent = data.data.nuevo_numero;
+                                numEl.classList.remove('fc-num-pendiente');
+                            }
+                            if (pedidoDataMap[cardId]) {
+                                pedidoDataMap[cardId].numero = data.data.nuevo_numero;
+                                pedidoDataMap[cardId].status = 'aceptado';
+                            }
+                        }
+                        // Actualizar badge
+                        card.dataset.status = 'aceptado';
+                        const badge = $('.fc-status-badge', card);
+                        if (badge) {
+                            badge.className = 'fc-status-badge aceptado';
+                            badge.textContent = STATUS_LABELS['aceptado'];
+                        }
+                        // Quitar el botón de aceptar
+                        btn.remove();
+                        // Actualizar select de status
+                        const select = $('.fc-select-status', card);
+                        if (select) select.value = 'aceptado';
+                        showToast('Pedido aceptado ✔', 'success');
+                    } else {
+                        showToast(data.data?.message || 'Error al aceptar', 'error');
+                        btn.textContent = '✔ Aceptar pedido';
+                        btn.disabled    = false;
+                    }
+                } catch {
+                    showToast('Error de conexión', 'error');
+                    btn.textContent = '✔ Aceptar pedido';
+                    btn.disabled    = false;
+                }
             });
         });
 
@@ -493,6 +592,15 @@
                         if (badge) {
                             badge.className = `fc-status-badge ${status}`;
                             badge.textContent = STATUS_LABELS[status] || status;
+                        }
+                        // Si era pendiente y se aceptó, actualizar número FL- en la tarjeta
+                        if (data.data?.nuevo_numero) {
+                            const numEl = $('.fc-card-numero', card);
+                            if (numEl) numEl.textContent = data.data.nuevo_numero;
+                            // Actualizar el mapa de datos local
+                            if (pedidoDataMap[pedidoId]) {
+                                pedidoDataMap[pedidoId].numero = data.data.nuevo_numero;
+                            }
                         }
                         const lastChange = data.data.last_change;
                         let lc = $('.fc-last-change', card);
@@ -756,9 +864,15 @@
 
     // ── Date filter ──
     function initDateFilter() {
-        const fechaInput = $('#fc-fecha-filter');
-        const clearBtn   = $('#fc-clear-fecha');
+        const fechaInput  = $('#fc-fecha-filter');
+        const clearBtn    = $('#fc-clear-fecha');
+        const sortSelect  = $('#fc-sort-select');
         if (!fechaInput) return;
+
+        // Sync select UI with currentSort state
+        function syncSortSelect() {
+            if (sortSelect) sortSelect.value = currentSort;
+        }
 
         fechaInput.addEventListener('change', () => {
             loadPedidos(currentFilter, fechaInput.value);
@@ -767,6 +881,12 @@
         clearBtn && clearBtn.addEventListener('click', () => {
             fechaInput.value = '';
             loadPedidos(currentFilter, '');
+        });
+
+        // Sort select change
+        sortSelect && sortSelect.addEventListener('change', () => {
+            currentSort = sortSelect.value;
+            loadPedidos(currentFilter, fechaInput.value);
         });
     }
 

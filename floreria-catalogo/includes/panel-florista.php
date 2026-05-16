@@ -350,6 +350,13 @@ function fc_ajax_get_pedidos() {
     $pedidos_query = get_posts( $args );
     $pedidos       = array_map( 'fc_build_pedido_data', $pedidos_query );
 
+    // Ordenar por número de pedido (FL-YYYYMMDD-NNN): orden alfabético = orden cronológico + secuencial
+    if ( $status !== 'pendiente' ) {
+        usort( $pedidos, function( $a, $b ) {
+            return strcmp( $a['numero'] ?? '', $b['numero'] ?? '' );
+        } );
+    }
+
     wp_send_json_success( [ 'pedidos' => $pedidos ] );
 }
 
@@ -590,7 +597,7 @@ function fc_ajax_crear_pedido_whatsapp() {
     }
 
     $fecha_entrega = sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) );
-    $numero        = fc_generar_numero_pedido( $fecha_entrega );
+    $numero        = fc_generar_numero_pendiente( $fecha_entrega ); // Número temporal P-
 
     $post_id = wp_insert_post( [
         'post_type'   => 'pedido',
@@ -672,7 +679,8 @@ function fc_ajax_crear_pedido() {
     $es_pendiente = ( $modo === 'pendiente' );
 
     $fecha_entrega = sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) );
-    $numero        = fc_generar_numero_pedido( $fecha_entrega );
+    // Pendientes reciben número temporal P-; los aceptados reciben FL- de inmediato
+    $numero        = $es_pendiente ? fc_generar_numero_pendiente( $fecha_entrega ) : fc_generar_numero_pedido( $fecha_entrega );
     $token         = $es_pendiente ? '' : fc_generar_token();
 
     $current_user = wp_get_current_user();
@@ -792,7 +800,24 @@ function fc_ajax_actualizar_status() {
         wp_send_json_error( [ 'message' => 'Pedido no encontrado.' ] );
     }
 
-    $current_user = wp_get_current_user();
+    $current_user   = wp_get_current_user();
+    $old_status     = get_post_meta( $pedido_id, '_fc_pedido_status', true );
+    $nuevo_numero   = null;
+    $nuevo_token    = null;
+    $nuevo_link     = null;
+
+    // Si era pendiente (P-) y se está aceptando → asignar FL- y token definitivos
+    if ( $old_status === 'pendiente' && $new_status === 'aceptado' ) {
+        $fecha_entrega = get_post_meta( $pedido_id, '_fc_pedido_fecha', true );
+        $nuevo_numero  = fc_generar_numero_pedido( $fecha_entrega );
+        $nuevo_token   = fc_generar_token();
+        $nuevo_link    = home_url( '/pedido/' . $nuevo_numero );
+
+        update_post_meta( $pedido_id, '_fc_pedido_numero', $nuevo_numero );
+        update_post_meta( $pedido_id, '_fc_pedido_token',  $nuevo_token  );
+        wp_update_post( [ 'ID' => $pedido_id, 'post_title' => $nuevo_numero ] );
+    }
+
     update_post_meta( $pedido_id, '_fc_pedido_status', $new_status );
 
     $historial   = maybe_unserialize( get_post_meta( $pedido_id, '_fc_pedido_historial', true ) );
@@ -807,10 +832,12 @@ function fc_ajax_actualizar_status() {
     update_post_meta( $pedido_id, '_fc_pedido_historial', maybe_serialize( $historial ) );
 
     wp_send_json_success( [
-        'message'    => 'Estado actualizado.',
-        'new_status' => $new_status,
-        'label'      => fc_pedido_status_label( $new_status ),
+        'message'     => 'Estado actualizado.',
+        'new_status'  => $new_status,
+        'label'       => fc_pedido_status_label( $new_status ),
         'last_change' => $entry,
+        'nuevo_numero' => $nuevo_numero,
+        'nuevo_link'   => $nuevo_link,
     ] );
 }
 

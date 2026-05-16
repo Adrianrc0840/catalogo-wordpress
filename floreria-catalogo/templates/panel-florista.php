@@ -92,11 +92,21 @@ get_header();
         <?php endforeach; ?>
     </div>
 
-    <!-- Date filter -->
+    <!-- Date filter + sort -->
     <div class="fc-date-filter">
         <label for="fc-fecha-filter">Fecha de entrega:</label>
         <input type="date" id="fc-fecha-filter" />
         <button class="fc-btn-outline" id="fc-clear-fecha">Todos los días</button>
+
+        <div class="fc-sort-wrap">
+            <label for="fc-sort-select">Ordenar:</label>
+            <select id="fc-sort-select">
+                <option value="numero-asc">Número ↑ (001 primero)</option>
+                <option value="numero-desc">Número ↓ (último primero)</option>
+                <option value="hora-asc" selected>Hora ↑ (primero temprano)</option>
+                <option value="hora-desc">Hora ↓ (primero tarde)</option>
+            </select>
+        </div>
     </div>
 
     <!-- Orders grid -->
