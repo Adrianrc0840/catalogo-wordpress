@@ -129,6 +129,22 @@ function fc_generar_numero_pedido( $fecha = '' ) {
     return 'FL-' . $date_key . '-' . str_pad( $counter, 3, '0', STR_PAD_LEFT );
 }
 
+// Número temporal para pedidos pendientes (P- en lugar de FL-)
+// Usa la fecha de entrega del pedido, igual que fc_generar_numero_pedido.
+// Al aceptarse se reemplaza por el número FL- real.
+function fc_generar_numero_pendiente( $fecha = '' ) {
+    if ( $fecha && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $fecha ) ) {
+        $date_key = str_replace( '-', '', $fecha );
+    } else {
+        $tz       = new DateTimeZone( 'America/Tijuana' );
+        $date_key = ( new DateTime( 'now', $tz ) )->format( 'Ymd' );
+    }
+    $option  = 'fc_pendiente_counter_' . $date_key;
+    $counter = (int) get_option( $option, 0 ) + 1;
+    update_option( $option, $counter, false );
+    return 'P-' . $date_key . '-' . str_pad( $counter, 3, '0', STR_PAD_LEFT );
+}
+
 function fc_generar_token() {
     $chars  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     $token  = '';

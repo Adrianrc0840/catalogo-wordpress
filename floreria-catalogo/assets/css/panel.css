@@ -294,6 +294,13 @@
     color: #2d3748;
 }
 
+.fc-num-pendiente {
+    color: #92400e;
+    font-style: italic;
+    opacity: 0.75;
+    font-size: 13px;
+}
+
 /* ── Status badge ── */
 .fc-status-badge {
     display: inline-block;
@@ -806,13 +813,46 @@
     text-decoration: line-through;
 }
 
-/* ── Card extra actions (edit / delete) ── */
-.fc-card-extra-actions {
-    display: flex;
-    gap: 8px;
+/* ── Aceptar pedido pendiente ── */
+.fc-aceptar-row {
     padding-top: 10px;
     margin-top: 4px;
     border-top: 1px dashed #e2e8f0;
+}
+
+.fc-btn-aceptar-pendiente {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: #16a34a;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+    letter-spacing: 0.3px;
+}
+
+.fc-btn-aceptar-pendiente:hover {
+    background: #15803d;
+}
+
+/* ── Card extra actions (edit / delete) ── */
+.fc-card-extra-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 8px;
+    margin-top: 4px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+/* Si hay botón de aceptar arriba, ya tiene su propio separador */
+.fc-aceptar-row + .fc-card-extra-actions {
+    border-top: none;
+    padding-top: 6px;
 }
 
 /* ── Mobile filter select ── */
@@ -955,6 +995,38 @@
 .fc-date-filter .fc-btn-outline {
     font-size: 12px;
     padding: 7px 12px;
+}
+
+/* ── Sort wrap (dentro de fc-date-filter) ── */
+.fc-sort-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.fc-sort-wrap label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #4a5568;
+    white-space: nowrap;
+}
+
+.fc-sort-wrap select {
+    padding: 7px 10px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #2d3748;
+    background: #fff;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.fc-sort-wrap select:focus {
+    border-color: var(--fc-primary);
+    box-shadow: 0 0 0 3px rgba(200,24,90,0.1);
 }
 
 /* ── Card thumbnail ── */
@@ -1181,9 +1253,8 @@
     font-size: 13px;
     font-weight: 700;
     color: #2d3748;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .fc-card-item-sub {
