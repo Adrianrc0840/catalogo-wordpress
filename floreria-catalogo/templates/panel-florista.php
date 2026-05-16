@@ -117,6 +117,15 @@ get_header();
         <div class="fc-modal-body">
             <form id="fc-new-pedido-form" novalidate autocomplete="off">
 
+                <!-- Tipo de pedido -->
+                <div class="fc-form-group">
+                    <label>Tipo de pedido</label>
+                    <div class="fc-tipo-toggle">
+                        <button type="button" class="fc-tipo-option active" data-pedido-tipo="normal">Pedido normal</button>
+                        <button type="button" class="fc-tipo-option" data-pedido-tipo="personalizado">Pedido personalizado</button>
+                    </div>
+                </div>
+
                 <!-- Canal de contacto (obligatorio) -->
                 <div class="fc-form-group">
                     <label for="fc-modal-canal">Canal de contacto <span style="color:#b91c1c;">*</span></label>

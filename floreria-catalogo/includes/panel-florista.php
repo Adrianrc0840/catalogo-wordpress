@@ -76,6 +76,20 @@ function fc_ajax_autologin() {
 }
 
 // ─────────────────────────────────────────────
+// AJAX: Verificar si el usuario ya tiene sesión activa con acceso al panel
+// Se llama desde JS cuando el caché sirve el login pero el usuario ya inició sesión
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_nopriv_fc_panel_check_auth', 'fc_ajax_panel_check_auth' );
+add_action( 'wp_ajax_fc_panel_check_auth',        'fc_ajax_panel_check_auth' );
+function fc_ajax_panel_check_auth() {
+    $user = wp_get_current_user();
+    wp_send_json_success( [
+        'logged_in'  => is_user_logged_in(),
+        'has_access' => fc_user_can_access_panel( $user ),
+    ] );
+}
+
+// ─────────────────────────────────────────────
 // AJAX: Devolver nonce fresco (sin login requerido)
 // ─────────────────────────────────────────────
 add_action( 'wp_ajax_nopriv_fc_get_nonce', 'fc_ajax_get_nonce' );

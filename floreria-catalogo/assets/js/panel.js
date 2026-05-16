@@ -775,6 +775,20 @@
         const form = $('#fc-login-form');
         if (!form) return;
 
+        // Si el caché sirvió el login pero el usuario ya tiene sesión activa,
+        // redirigir con ?nc= para saltarse el caché y mostrar el panel.
+        (async () => {
+            try {
+                const body = new FormData();
+                body.append('action', 'fc_panel_check_auth');
+                const res  = await fetch(ajaxurl, { method: 'POST', body });
+                const data = await res.json();
+                if (data.success && data.data?.has_access) {
+                    window.location.replace(siteurl + '/panel-florista/?nc=' + Date.now());
+                }
+            } catch (_) { /* silencioso — si falla, se queda en el login */ }
+        })();
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = $('#fc-login-username').value.trim();
@@ -878,16 +892,16 @@
         (canal === 'whatsapp' ? nombreInp : input)?.focus();
     }
 
+    // ── Tipo de pedido activo ('normal' | 'personalizado') ──
+    let tipoPedidoActual = 'normal';
+
     // ── Item block: build HTML ──
     function buildItemBlockHTML(idx, prefill = {}) {
-        const num = idx + 1;
-        return `
-        <div class="fc-item-block" data-item-idx="${idx}">
-            <div class="fc-item-block-header">
-                <span class="fc-item-block-label">Arreglo ${num}</span>
-                <button type="button" class="fc-item-remove-btn" title="Quitar arreglo">&#10005;</button>
-            </div>
-            <div class="fc-form-group">
+        const num  = idx + 1;
+        const modo = tipoPedidoActual;
+
+        const campoArregloNormal = `
+            <div class="fc-form-group fc-item-campo-normal">
                 <label>Arreglo</label>
                 <div class="fc-autocomplete-wrap">
                     <input type="text" class="fc-item-arreglo-search" placeholder="Buscar por nombre..." autocomplete="off" value="${escHtml(prefill.arreglo_nombre || '')}" />
@@ -897,18 +911,33 @@
                     <div class="fc-autocomplete-dropdown fc-item-arreglo-dropdown"></div>
                 </div>
             </div>
-            <div class="fc-form-group">
+            <div class="fc-form-group fc-item-campo-normal">
                 <label>Tamaño</label>
                 <select class="fc-item-tamano">
                     <option value="">-- Selecciona tamaño --</option>
                 </select>
             </div>
-            <div class="fc-form-group fc-item-color-group" style="display:none;">
+            <div class="fc-form-group fc-item-color-group fc-item-campo-normal" style="display:none;">
                 <label>Color</label>
                 <select class="fc-item-color">
                     <option value="">-- Selecciona color --</option>
                 </select>
+            </div>`;
+
+        const campoArregloPersonalizado = `
+            <div class="fc-form-group fc-item-campo-personalizado" ${modo === 'normal' ? 'style="display:none;"' : ''}>
+                <label>Descripción del pedido</label>
+                <textarea class="fc-item-descripcion" rows="3" placeholder="Describe el arreglo personalizado...">${escHtml(prefill.arreglo_nombre || '')}</textarea>
+            </div>`;
+
+        return `
+        <div class="fc-item-block" data-item-idx="${idx}" data-modo="${modo}">
+            <div class="fc-item-block-header">
+                <span class="fc-item-block-label">Arreglo ${num}</span>
+                <button type="button" class="fc-item-remove-btn" title="Quitar arreglo">&#10005;</button>
             </div>
+            ${modo === 'normal' ? campoArregloNormal : ''}
+            ${campoArregloPersonalizado}
             <div class="fc-form-group">
                 <label>Nombre del destinatario</label>
                 <input type="text" class="fc-item-destinatario" placeholder="¿A quién va dirigido?" value="${escHtml(prefill.destinatario || '')}" />
@@ -1178,6 +1207,7 @@
     // ── Collect items from modal ──
     function collectItems() {
         return $$('.fc-item-block').map(block => {
+            const modo      = block.dataset.modo || 'normal';
             const tamSelect = block.querySelector('.fc-item-tamano');
             const colSelect = block.querySelector('.fc-item-color');
             const tamNombre = tamSelect?.selectedIndex > 0
@@ -1186,12 +1216,16 @@
             const colNombre = colSelect?.selectedIndex > 0
                 ? colSelect.options[colSelect.selectedIndex].text
                 : '';
+            // En modo personalizado, la descripción va como arreglo_nombre
+            const arregloNombre = modo === 'personalizado'
+                ? (block.querySelector('.fc-item-descripcion')?.value || '')
+                : (block.querySelector('.fc-item-arreglo-nombre')?.value || '');
             return {
-                arreglo_id:            block.querySelector('.fc-item-arreglo-id')?.value     || '',
-                arreglo_nombre:        block.querySelector('.fc-item-arreglo-nombre')?.value || '',
+                arreglo_id:            modo === 'personalizado' ? '' : (block.querySelector('.fc-item-arreglo-id')?.value || ''),
+                arreglo_nombre:        arregloNombre,
                 imagen_url:            block.querySelector('.fc-item-imagen-url')?.value     || '',
-                tamano:                tamNombre,
-                color:                 colNombre,
+                tamano:                modo === 'personalizado' ? '' : tamNombre,
+                color:                 modo === 'personalizado' ? '' : colNombre,
                 destinatario:           block.querySelector('.fc-item-destinatario')?.value  || '',
                 destinatario_telefono:  block.querySelector('.fc-item-dest-tel')?.value      || '',
                 destinatario_telefono2: block.querySelector('.fc-item-dest-tel2')?.value     || '',
@@ -1208,6 +1242,21 @@
         const closeBtn = $('#fc-modal-close');
 
         if (!overlay) return;
+
+        // Toggle tipo de pedido (normal / personalizado)
+        $$('[data-pedido-tipo]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                $$('[data-pedido-tipo]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                tipoPedidoActual = btn.dataset.pedidoTipo;
+                // Reconstruir bloques de arreglos con el nuevo modo
+                const container = $('#fc-items-container');
+                if (container) {
+                    container.innerHTML = '';
+                    addItemBlock();
+                }
+            });
+        });
 
         if (openBtn) {
             openBtn.addEventListener('click', () => {
@@ -1237,10 +1286,11 @@
             if (e.target === overlay) overlay.classList.remove('open');
         });
 
-        // Tipo toggle
-        $$('.fc-tipo-option').forEach(opt => {
+        // Tipo de entrega toggle (envío / recolección)
+        $$('.fc-tipo-option[data-tipo]').forEach(opt => {
             opt.addEventListener('click', () => {
-                $$('.fc-tipo-option').forEach(o => o.classList.remove('active'));
+                // Solo quitar active a los del mismo toggle (data-tipo), no a data-pedido-tipo
+                opt.closest('.fc-tipo-toggle').querySelectorAll('.fc-tipo-option').forEach(o => o.classList.remove('active'));
                 opt.classList.add('active');
                 const tipo = opt.dataset.tipo;
                 const envioSection       = $('#fc-modal-envio-section');
@@ -1435,8 +1485,8 @@
         const successBox = $('#fc-pedido-success');
         if (successBox) { successBox.classList.remove('show'); successBox.style.display = 'none'; }
 
-        // Tipo
-        $$('.fc-tipo-option').forEach(o => o.classList.remove('active'));
+        // Tipo de entrega
+        $$('.fc-tipo-option[data-tipo]').forEach(o => o.classList.remove('active'));
         const tipoBtn = $(`.fc-tipo-option[data-tipo="${pedido.tipo || 'envio'}"]`);
         if (tipoBtn) tipoBtn.classList.add('active');
         const envioSec = $('#fc-modal-envio-section');
@@ -1513,8 +1563,15 @@
     }
 
     function resetNewOrderForm() {
-        isPendienteMode = false;
-        currentEditId = null;
+        isPendienteMode  = false;
+        currentEditId    = null;
+        tipoPedidoActual = 'normal';
+
+        // Resetear botones del toggle tipo pedido
+        $$('[data-pedido-tipo]').forEach(b => {
+            b.classList.toggle('active', b.dataset.pedidoTipo === 'normal');
+        });
+
         const form = $('#fc-new-pedido-form');
         if (form) form.reset();
 
@@ -1546,8 +1603,8 @@
         if (pdfStatus2) pdfStatus2.style.display = 'none';
         if (pdfAddBtn2) pdfAddBtn2.style.display = '';
 
-        // Reset tipo
-        $$('.fc-tipo-option').forEach(o => o.classList.remove('active'));
+        // Reset tipo de entrega
+        $$('.fc-tipo-option[data-tipo]').forEach(o => o.classList.remove('active'));
         const firstTipo = $('.fc-tipo-option[data-tipo="envio"]');
         if (firstTipo) firstTipo.classList.add('active');
 
@@ -1568,17 +1625,22 @@
             return;
         }
 
-        // Validar al menos un arreglo con nombre
+        // Validar al menos un arreglo/descripción con nombre
         const items = collectItems();
         if (!items.length || !items[0].arreglo_nombre) {
-            showToast('Agrega al menos un arreglo al pedido', 'error');
+            showToast(
+                tipoPedidoActual === 'personalizado'
+                    ? 'Agrega la descripción del pedido personalizado'
+                    : 'Agrega al menos un arreglo al pedido',
+                'error'
+            );
             return;
         }
 
         btn.textContent = currentEditId ? 'Guardando...' : 'Registrando...';
         btn.disabled    = true;
 
-        const tipo = ($('.fc-tipo-option.active') || {}).dataset?.tipo || 'envio';
+        const tipo = ($('.fc-tipo-option[data-tipo].active') || {}).dataset?.tipo || 'envio';
 
         const payload = {
             tipo,

@@ -1181,9 +1181,8 @@
     font-size: 13px;
     font-weight: 700;
     color: #2d3748;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .fc-card-item-sub {
