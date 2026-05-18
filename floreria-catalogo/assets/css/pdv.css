@@ -62,9 +62,9 @@
 .fc-pdv-form-group { margin-bottom: 16px; }
 
 /* Quitar flechas de inputs numéricos en el PDV */
-.fc-pdv-body input[type="number"]::-webkit-inner-spin-button,
-.fc-pdv-body input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.fc-pdv-body input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+body.fc-pdv-page input[type="number"]::-webkit-inner-spin-button,
+body.fc-pdv-page input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+body.fc-pdv-page input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .fc-pdv-form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
 .fc-pdv-form-group input,
 .fc-pdv-form-group select,
