@@ -60,6 +60,11 @@
 .fc-pdv-login-card h2 { font-size: 18px; font-weight: 700; margin: 0 0 20px; }
 
 .fc-pdv-form-group { margin-bottom: 16px; }
+
+/* Quitar flechas de inputs numéricos en el PDV */
+.fc-pdv-body input[type="number"]::-webkit-inner-spin-button,
+.fc-pdv-body input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.fc-pdv-body input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .fc-pdv-form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
 .fc-pdv-form-group input,
 .fc-pdv-form-group select,
