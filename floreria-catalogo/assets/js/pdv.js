@@ -1127,12 +1127,33 @@
     const statusColor = { aceptado: '#3b82f6', en_proceso: '#f59e0b', listo: '#10b981', entregado: '#64748b', cancelado: '#ef4444' };
 
     async function loadTransacciones() {
-        const desde = $('#fc-pdv-tx-desde')?.value || '';
-        const hasta = $('#fc-pdv-tx-hasta')?.value || '';
-        const data  = await ajax('fc_pdv_get_transacciones', { desde, hasta });
-        if (!data.success) return;
+        const desde    = $('#fc-pdv-tx-desde')?.value || '';
+        const hasta    = $('#fc-pdv-tx-hasta')?.value || '';
+        const buscarBtn = $('#fc-pdv-tx-buscar');
+        const wrap      = $('#fc-pdv-transacciones-result');
+        const resumenEl = $('#fc-pdv-tx-resumen');
 
-        const wrap = $('#fc-pdv-transacciones-result');
+        // Estado de carga
+        if (buscarBtn) { buscarBtn.disabled = true; buscarBtn.textContent = 'Buscando…'; }
+        if (wrap) wrap.innerHTML = '<p style="color:#94a3b8;font-size:13px;padding:20px;">Cargando…</p>';
+
+        let data;
+        try {
+            data = await ajax('fc_pdv_get_transacciones', { desde, hasta });
+        } catch {
+            showToast('Error de conexión', 'error');
+            if (buscarBtn) { buscarBtn.disabled = false; buscarBtn.textContent = 'Buscar'; }
+            return;
+        } finally {
+            if (buscarBtn) { buscarBtn.disabled = false; buscarBtn.textContent = 'Buscar'; }
+        }
+
+        if (!data.success) {
+            showToast(data.data?.message || 'Error al cargar transacciones', 'error');
+            if (wrap) wrap.innerHTML = '';
+            return;
+        }
+
         if (!wrap) return;
         const { dias } = data.data;
 
