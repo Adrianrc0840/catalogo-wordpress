@@ -1158,7 +1158,6 @@
         const { dias } = data.data;
 
         // ── Resumen del período ──
-        const resumenEl = $('#fc-pdv-tx-resumen');
         if (resumenEl) {
             if (!dias.length) {
                 resumenEl.style.display = 'none';
