@@ -614,6 +614,57 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
     outline-offset: 2px;
 }
 
+/* ── Transacciones: sidebar izquierda + cards derecha ── */
+#fc-pdv-view-transacciones { flex-direction: row; overflow: hidden; }
+
+#fc-pdv-view-transacciones .fc-pdv-informes-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    width: 190px;
+    flex-shrink: 0;
+    padding: 20px 16px;
+    border-right: 1px solid var(--pdv-border);
+    border-bottom: none;
+    overflow-y: auto;
+    gap: 0;
+}
+
+#fc-pdv-view-transacciones .fc-pdv-informes-toolbar .fc-pdv-form-group {
+    margin-bottom: 12px;
+    margin-top: 0;
+}
+
+/* Resumen del período */
+.fc-pdv-tx-resumen {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--pdv-border);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.fc-pdv-tx-res-chip {
+    background: var(--pdv-bg);
+    border: 1.5px solid var(--pdv-border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--pdv-text);
+}
+.fc-pdv-tx-res-chip span {
+    display: block;
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--pdv-muted);
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.fc-pdv-tx-res-chip.total    { border-color: var(--pdv-primary); background: #fdf5f7; }
+.fc-pdv-tx-res-chip.envios   { border-color: #3b82f6; background: #eff6ff; }
+.fc-pdv-tx-res-chip.recol    { border-color: var(--pdv-accent);  background: #f0fdf4; }
+
 /* ── Informes view full-height ── */
 .fc-pdv-informes-toolbar {
     display: flex;

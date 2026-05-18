@@ -1136,6 +1136,35 @@
         if (!wrap) return;
         const { dias } = data.data;
 
+        // ── Resumen del período ──
+        const resumenEl = $('#fc-pdv-tx-resumen');
+        if (resumenEl) {
+            if (!dias.length) {
+                resumenEl.style.display = 'none';
+            } else {
+                let totalCount = 0, totalMonto = 0, totalEnvio = 0, totalRecol = 0;
+                dias.forEach(d => d.transacciones.forEach(tx => {
+                    totalCount++;
+                    totalMonto += tx.monto || 0;
+                    if (tx.tipo === 'envio') totalEnvio++; else totalRecol++;
+                }));
+                resumenEl.style.display = '';
+                resumenEl.innerHTML = `
+                    <div class="fc-pdv-tx-res-chip">
+                        <span>Ventas</span>${totalCount}
+                    </div>
+                    <div class="fc-pdv-tx-res-chip total">
+                        <span>Total</span>${fmt(totalMonto)}
+                    </div>
+                    <div class="fc-pdv-tx-res-chip envios">
+                        <span>🚗 Envíos</span>${totalEnvio}
+                    </div>
+                    <div class="fc-pdv-tx-res-chip recol">
+                        <span>🏪 Recolección</span>${totalRecol}
+                    </div>`;
+            }
+        }
+
         if (!dias.length) {
             wrap.innerHTML = '<p style="color:#94a3b8;font-size:14px;padding:20px 0;">Sin ventas en el período seleccionado.</p>';
             return;

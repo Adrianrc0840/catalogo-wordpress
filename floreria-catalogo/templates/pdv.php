@@ -115,15 +115,16 @@ $today        = current_time( 'Y-m-d' );
     <!-- ── VIEW: Transacciones ── -->
     <div id="fc-pdv-view-transacciones" class="fc-pdv-view">
         <div class="fc-pdv-informes-toolbar">
-            <div class="fc-pdv-form-group" style="margin:0">
+            <div class="fc-pdv-form-group">
                 <label>Desde</label>
                 <input type="date" id="fc-pdv-tx-desde" />
             </div>
-            <div class="fc-pdv-form-group" style="margin:0">
+            <div class="fc-pdv-form-group">
                 <label>Hasta</label>
                 <input type="date" id="fc-pdv-tx-hasta" />
             </div>
             <button id="fc-pdv-tx-buscar" class="fc-pdv-btn-sm outline">Buscar</button>
+            <div id="fc-pdv-tx-resumen" class="fc-pdv-tx-resumen" style="display:none"></div>
         </div>
         <div id="fc-pdv-transacciones-result" class="fc-pdv-informes-result"></div>
     </div>
