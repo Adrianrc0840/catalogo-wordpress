@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    const { ajaxurl, nonce: initialNonce, siteurl, today = '', schedules = {} } = window.fcPdv || {};
+    const { ajaxurl, nonce: initialNonce, siteurl, today = '', schedules = {}, fechasEspeciales = [], fechasCerradas = [] } = window.fcPdv || {};
     let nonce = initialNonce;
 
     // ── DOM helpers ──
@@ -40,6 +40,84 @@
     function fmtDatetime(ts) {
         if (!ts) return '';
         return ts.replace('T', ' ').substring(0, 16);
+    }
+
+    // ── Horarios helpers ──
+
+    /** Hora actual en la zona de Tijuana (America/Tijuana). */
+    function getNowTijuana() {
+        return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Tijuana' }));
+    }
+
+    /** Extrae los minutos desde medianoche del inicio de un slot "HH:MM - HH:MM". */
+    function parseSlotStartMinutes(slot) {
+        const m = slot.match(/^(\d{1,2}):(\d{2})/);
+        if (!m) return 0;
+        return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    }
+
+    /**
+     * Devuelve los slots disponibles para una fecha YYYY-MM-DD.
+     *  null  → fecha cerrada (no se aceptan pedidos)
+     *  []    → sin horarios definidos (domingo sin excepción, etc.)
+     *  [...] → array de strings de slots
+     */
+    function getSlotsForDate(dateStr) {
+        if (!dateStr) return [];
+        if (fechasCerradas.includes(dateStr)) return null;
+
+        const [y, mo, d] = dateStr.split('-').map(Number);
+        const date       = new Date(y, mo - 1, d);
+        const dow        = date.getDay(); // 0=Dom … 6=Sáb
+
+        // Domingo: solo si es fecha especial
+        if (dow === 0) {
+            const ddmm = String(d).padStart(2, '0') + '/' + String(mo).padStart(2, '0');
+            if (!fechasEspeciales.includes(ddmm)) return [];
+        }
+
+        const slots = (schedules[String(dow)] || []).slice(); // copia
+
+        // Si es hoy, filtrar slots que ya pasaron (zona Tijuana)
+        if (dateStr === today) {
+            const now        = getNowTijuana();
+            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+            return slots.filter(s => parseSlotStartMinutes(s) > nowMinutes);
+        }
+
+        return slots;
+    }
+
+    /**
+     * Actualiza ambos selects de horario (envío y recolección) en el modal de cobro
+     * según la fecha y tipo de pedido seleccionados.
+     */
+    function updateHorariosModal(backdrop) {
+        const fecha    = $('#pdv-co-fecha', backdrop)?.value || '';
+        const selEnvio = $('#pdv-co-horario', backdrop);
+        const warnEl   = $('#pdv-co-fecha-warn', backdrop);
+
+        if (!fecha) {
+            if (selEnvio) selEnvio.innerHTML = '<option value="">— Selecciona fecha primero —</option>';
+            if (warnEl)   warnEl.style.display = 'none';
+            return;
+        }
+
+        const slots = getSlotsForDate(fecha);
+
+        // Aviso fecha cerrada (aplica a ambos tipos)
+        if (warnEl) warnEl.style.display = slots === null ? '' : 'none';
+
+        // Solo el select de envío usa los rangos del admin
+        if (!selEnvio) return;
+        if (slots === null) {
+            selEnvio.innerHTML = '<option value="">— Fecha cerrada —</option>';
+        } else if (!slots.length) {
+            selEnvio.innerHTML = '<option value="">— Sin horarios disponibles —</option>';
+        } else {
+            selEnvio.innerHTML = '<option value="">— Selecciona horario —</option>'
+                + slots.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('');
+        }
     }
 
     async function ajax(action, data = {}) {
@@ -253,12 +331,16 @@
 
             container.innerHTML = `
                 <div class="fc-pdv-detail-panel">
+                  <div class="fc-pdv-detail-inner">
 
                     ${/* ── Columna izquierda: foto ── */ ''}
                     ${!isPersonalizado && photo
-                        ? `<div class="fc-pdv-detail-photo-col" id="pdv-photo-col">
-                               <img id="pdv-detail-img" src="${escHtml(photo)}" alt="${escHtml(arreglo.nombre)}" />
-                               <div class="fc-pdv-photo-zoom-hint">🔍 Toca para ver completa</div>
+                        ? `<div class="fc-pdv-detail-photo-col">
+                               <div class="fc-pdv-img-wrap" id="pdv-img-wrap">
+                                   <img id="pdv-detail-img" src="${escHtml(photo)}" alt="${escHtml(arreglo.nombre)}" />
+                                   <button class="fc-pdv-lightbox-trigger" title="Ver imagen completa">⛶</button>
+                                   <span class="fc-pdv-img-hint">🔍 Toca para ver completa</span>
+                               </div>
                            </div>`
                         : `<div class="fc-pdv-detail-photo-empty-col">🌸</div>`}
 
@@ -325,6 +407,7 @@
                         </button>
                     </div>
 
+                  </div>
                 </div>`;
 
             bindPanelEvents();
@@ -334,10 +417,10 @@
             // Volver al grid
             $('.fc-pdv-detail-back', container)?.addEventListener('click', renderCatalog);
 
-            // Lightbox al hacer click en la foto
-            const photoCol = $('#pdv-photo-col', container);
-            if (photoCol) {
-                photoCol.addEventListener('click', () => {
+            // Lightbox al hacer click en la foto o en el botón ⛶
+            const imgWrap = $('#pdv-img-wrap', container);
+            if (imgWrap) {
+                const openLightbox = () => {
                     const img = $('#pdv-detail-img', container);
                     if (!img) return;
                     const lb = document.createElement('div');
@@ -347,10 +430,9 @@
                         <img src="${escHtml(img.src)}" alt="${escHtml(arreglo.nombre)}" />`;
                     document.body.appendChild(lb);
                     const close = () => lb.remove();
-                    lb.addEventListener('click', e => {
-                        if (!e.target.closest('img')) close();
-                    });
-                });
+                    lb.addEventListener('click', e => { if (!e.target.closest('img')) close(); });
+                };
+                imgWrap.addEventListener('click', openLightbox);
             }
 
             // Chips de tamaño
@@ -461,16 +543,32 @@
         const backdrop = document.createElement('div');
         backdrop.className = 'fc-pdv-modal-backdrop';
 
+        const req = tipoPedido === 'envio';
         const itemsCheckoutHtml = cart.map((it, i) => `
             <div class="fc-pdv-checkout-item">
                 <div class="fc-pdv-checkout-item-title">${escHtml(it.arreglo_nombre)}${it.tamano ? ' — ' + escHtml(it.tamano) : ''} · ${fmt(it.precio)}</div>
                 <div class="fc-pdv-form-group">
-                    <label>Para (destinatario)</label>
-                    <input type="text" class="pdv-co-dest" data-idx="${i}" placeholder="Nombre de quien recibe (opcional)" value="${escHtml(it.destinatario)}" />
+                    <label>Nombre del destinatario <span class="pdv-envio-req" style="color:#ef4444;${req ? '' : 'display:none'}">*</span></label>
+                    <input type="text" class="pdv-co-dest" data-idx="${i}"
+                           placeholder="${req ? 'Nombre de quien recibe' : 'Nombre de quien recibe (opcional)'}"
+                           value="${escHtml(it.destinatario || '')}" />
+                </div>
+                <div class="fc-pdv-form-group">
+                    <label>Teléfono del destinatario <span class="pdv-envio-req" style="color:#ef4444;${req ? '' : 'display:none'}">*</span></label>
+                    <input type="tel" class="pdv-co-dest-tel" data-idx="${i}"
+                           inputmode="numeric" placeholder="10 dígitos"
+                           value="${escHtml(it.destinatario_telefono || '')}" />
+                </div>
+                <div class="fc-pdv-form-group">
+                    <label>Teléfono 2 <small style="color:var(--pdv-muted)">(opcional)</small></label>
+                    <input type="tel" class="pdv-co-dest-tel2" data-idx="${i}"
+                           inputmode="numeric" placeholder="Número alternativo"
+                           value="${escHtml(it.destinatario_telefono2 || '')}" />
                 </div>
                 <div class="fc-pdv-form-group">
                     <label>Mensaje de tarjeta</label>
-                    <input type="text" class="pdv-co-tarjeta" data-idx="${i}" placeholder="Opcional" value="${escHtml(it.mensaje_tarjeta)}" />
+                    <textarea class="pdv-co-tarjeta" data-idx="${i}" rows="2"
+                              placeholder="Mensaje para incluir en la tarjeta...">${escHtml(it.mensaje_tarjeta || '')}</textarea>
                 </div>
             </div>`).join('');
 
@@ -490,6 +588,7 @@
                     <div class="fc-pdv-form-group">
                         <label>Fecha de entrega <span style="color:#ef4444">*</span></label>
                         <input type="date" id="pdv-co-fecha" value="${today}" min="${today}" />
+                        <div id="pdv-co-fecha-warn" class="fc-pdv-fecha-warn" style="display:none">⚠️ Esta fecha está cerrada — no se aceptan pedidos.</div>
                     </div>
 
                     <div id="pdv-co-horario-wrap" class="fc-pdv-form-group" style="${tipoPedido === 'recoleccion' ? '' : 'display:none'}">
@@ -499,30 +598,18 @@
                     <div id="pdv-co-envio-wrap" style="${tipoPedido === 'envio' ? '' : 'display:none'}">
                         <div class="fc-pdv-form-group">
                             <label>Horario de entrega</label>
-                            <input type="text" id="pdv-co-horario" placeholder="Ej: 12:00 - 14:00" />
+                            <select id="pdv-co-horario">
+                                <option value="">— Selecciona fecha primero —</option>
+                            </select>
                         </div>
                         <div class="fc-pdv-form-group">
                             <label>Dirección de entrega <span style="color:#ef4444">*</span></label>
-                            <input type="text" id="pdv-co-direccion" placeholder="Calle, número, colonia" />
+                            <input type="text" id="pdv-co-direccion" placeholder="Busca la dirección…" autocomplete="off" />
                         </div>
                     </div>
 
                     <div class="fc-pdv-section-title">Detalles por arreglo</div>
                     ${itemsCheckoutHtml}
-
-                    <div class="fc-pdv-section-title">Contacto (opcional)</div>
-                    <div class="fc-pdv-form-group">
-                        <label>Nombre del cliente</label>
-                        <input type="text" id="pdv-co-canal-nombre" placeholder="Nombre de quien compra" />
-                    </div>
-                    <div class="fc-pdv-form-group">
-                        <label>Teléfono</label>
-                        <input type="tel" id="pdv-co-canal-contacto" placeholder="10 dígitos" inputmode="numeric" />
-                    </div>
-                    <div class="fc-pdv-form-group">
-                        <label>Nota del pedido</label>
-                        <textarea id="pdv-co-nota" rows="2" placeholder="Indicaciones especiales..."></textarea>
-                    </div>
 
                     <div class="fc-pdv-section-title">Forma de pago</div>
                     <div class="fc-pdv-pago-btns">
@@ -549,14 +636,30 @@
 
         document.body.appendChild(backdrop);
 
+        // Populate horarios on open (fecha defaults to today)
+        updateHorariosModal(backdrop);
+
+        // Fecha change → rebuild slots
+        $('#pdv-co-fecha', backdrop)?.addEventListener('change', () => updateHorariosModal(backdrop));
+
         // Tipo toggle
         $$('.fc-pdv-tipo-btn', backdrop).forEach(btn => {
             btn.addEventListener('click', () => {
                 $$('.fc-pdv-tipo-btn', backdrop).forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 tipoPedido = btn.dataset.tipo;
-                $('#pdv-co-horario-wrap', backdrop).style.display = tipoPedido === 'recoleccion' ? '' : 'none';
-                $('#pdv-co-envio-wrap',   backdrop).style.display = tipoPedido === 'envio'       ? '' : 'none';
+                const isEnvio = tipoPedido === 'envio';
+                $('#pdv-co-horario-wrap', backdrop).style.display = isEnvio ? 'none' : '';
+                $('#pdv-co-envio-wrap',   backdrop).style.display = isEnvio ? '' : 'none';
+                // Mostrar/ocultar marcadores de obligatorio
+                $$('.pdv-envio-req', backdrop).forEach(el => el.style.display = isEnvio ? '' : 'none');
+                // Actualizar placeholders
+                $$('.pdv-co-dest', backdrop).forEach(inp => {
+                    inp.placeholder = isEnvio ? 'Nombre de quien recibe' : 'Nombre de quien recibe (opcional)';
+                });
+                $$('.pdv-co-dest-tel', backdrop).forEach(inp => { inp.style.borderColor = ''; });
+                // Rebuild horarios for new tipo
+                updateHorariosModal(backdrop);
             });
         });
 
@@ -569,6 +672,61 @@
                 $('#pdv-co-efectivo-wrap', backdrop).style.display = formaPago === 'efectivo' ? '' : 'none';
             });
         });
+
+        // Teléfonos: solo números
+        $$('.pdv-co-dest-tel, .pdv-co-dest-tel2', backdrop).forEach(inp => {
+            inp.addEventListener('input', () => {
+                inp.value = inp.value.replace(/\D/g, '');
+                inp.style.borderColor = '';
+            });
+        });
+        $$('.pdv-co-dest', backdrop).forEach(inp => {
+            inp.addEventListener('input', () => { inp.style.borderColor = ''; });
+        });
+
+        // Google Places — PlaceAutocompleteElement (nuevo API, igual que detalle.js)
+        if (
+            window.google && window.google.maps && window.google.maps.places &&
+            typeof window.google.maps.places.PlaceAutocompleteElement !== 'undefined'
+        ) {
+            const dirInput = $('#pdv-co-direccion', backdrop);
+            if (dirInput) {
+                try {
+                    const pac = new window.google.maps.places.PlaceAutocompleteElement({
+                        componentRestrictions: { country: 'mx' },
+                    });
+                    // Estilos para que tome el espacio del input original
+                    pac.style.display = 'block';
+                    dirInput.parentNode.insertBefore(pac, dirInput);
+                    dirInput.style.display = 'none';
+
+                    pac.addEventListener('gmp-select', e => {
+                        const pred = e.placePrediction;
+                        if (!pred) return;
+                        const place = pred.toPlace();
+                        place.fetchFields({ fields: ['displayName', 'formattedAddress'] }).then(() => {
+                            const name = place.displayName || '';
+                            const addr = place.formattedAddress || '';
+                            dirInput.value = (name && !addr.startsWith(name)) ? name + ', ' + addr : addr;
+                            dirInput.style.borderColor = '';
+                        });
+                    });
+
+                    // Sincronizar texto mientras escribe (dentro del shadow DOM)
+                    const syncShadow = () => {
+                        const si = pac.shadowRoot && pac.shadowRoot.querySelector('input');
+                        if (si) {
+                            si.addEventListener('input', () => { dirInput.value = si.value; });
+                        } else {
+                            setTimeout(syncShadow, 150);
+                        }
+                    };
+                    syncShadow();
+                } catch (e) {
+                    $('#pdv-co-direccion', backdrop).style.display = '';
+                }
+            }
+        }
 
         // Cambio calculator
         const montoInput = $('#pdv-co-monto-recibido', backdrop);
@@ -594,19 +752,40 @@
         // Confirm
         const confirmBtn = $('#pdv-co-confirm', backdrop);
         confirmBtn.addEventListener('click', async () => {
-            const fecha = $('#pdv-co-fecha', backdrop)?.value || '';
+            const fecha    = $('#pdv-co-fecha', backdrop)?.value || '';
+            const isEnvio  = tipoPedido === 'envio';
             if (!fecha) { showToast('Selecciona la fecha de entrega', 'error'); return; }
-            if (tipoPedido === 'envio' && !($('#pdv-co-direccion', backdrop)?.value || '').trim()) {
-                showToast('Ingresa la dirección de entrega', 'error');
-                $('#pdv-co-direccion', backdrop)?.focus();
-                return;
+
+            if (isEnvio) {
+                // Dirección obligatoria
+                const dirInput = $('#pdv-co-direccion', backdrop);
+                if (!(dirInput?.value || '').trim()) {
+                    showToast('Ingresa la dirección de entrega', 'error');
+                    dirInput?.focus(); dirInput && (dirInput.style.borderColor = '#ef4444');
+                    return;
+                }
+                // Destinatario + teléfono obligatorios por arreglo
+                const emptyDest = $$('.pdv-co-dest', backdrop).find(inp => !inp.value.trim());
+                if (emptyDest) {
+                    showToast('Ingresa el nombre del destinatario de cada arreglo', 'error');
+                    emptyDest.focus(); emptyDest.style.borderColor = '#ef4444';
+                    return;
+                }
+                const emptyTel = $$('.pdv-co-dest-tel', backdrop).find(inp => !inp.value.trim());
+                if (emptyTel) {
+                    showToast('Ingresa el teléfono del destinatario', 'error');
+                    emptyTel.focus(); emptyTel.style.borderColor = '#ef4444';
+                    return;
+                }
             }
 
             // Collect item details from modal
             const itemsFinal = cart.map((it, i) => ({
                 ...it,
-                destinatario:    ($('.pdv-co-dest[data-idx="' + i + '"]', backdrop)?.value    || '').trim(),
-                mensaje_tarjeta: ($('.pdv-co-tarjeta[data-idx="' + i + '"]', backdrop)?.value || '').trim(),
+                destinatario:           ($('.pdv-co-dest[data-idx="'     + i + '"]', backdrop)?.value || '').trim(),
+                destinatario_telefono:  ($('.pdv-co-dest-tel[data-idx="' + i + '"]', backdrop)?.value || '').replace(/\D/g, ''),
+                destinatario_telefono2: ($('.pdv-co-dest-tel2[data-idx="'+ i + '"]', backdrop)?.value || '').replace(/\D/g, ''),
+                mensaje_tarjeta:        ($('.pdv-co-tarjeta[data-idx="'  + i + '"]', backdrop)?.value || '').trim(),
             }));
 
             const montoTotal = cartTotal();
@@ -620,12 +799,9 @@
                 const data = await ajax('fc_pdv_crear_venta', {
                     tipo:            tipoPedido,
                     fecha,
-                    horario:         $('#pdv-co-horario', backdrop)?.value           || '',
-                    hora_recoleccion:$('#pdv-co-hora-recoleccion', backdrop)?.value  || '',
-                    direccion:       $('#pdv-co-direccion', backdrop)?.value          || '',
-                    canal_nombre:    $('#pdv-co-canal-nombre', backdrop)?.value       || '',
-                    canal_contacto:  $('#pdv-co-canal-contacto', backdrop)?.value     || '',
-                    nota:            $('#pdv-co-nota', backdrop)?.value               || '',
+                    horario:         $('#pdv-co-horario', backdrop)?.value          || '',
+                    hora_recoleccion:$('#pdv-co-hora-recoleccion', backdrop)?.value || '',
+                    direccion:       $('#pdv-co-direccion', backdrop)?.value         || '',
                     forma_pago:      formaPago,
                     monto_total:     montoTotal,
                     items_json:      JSON.stringify(itemsFinal),
@@ -718,33 +894,49 @@
 
         // Historial cajas cerradas
         if (cajasData.cerradas.length) {
-            html += `
-                <div style="width:100%;margin-top:4px;">
-                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin-bottom:8px;">Cajas anteriores</div>
-                    <div class="fc-pdv-historial-list">
-                        ${cajasData.cerradas.map(c => `
-                            <div class="fc-pdv-hist-item">
-                                <span class="fc-pdv-hist-fecha">${fmtDatetime(c.fecha_apertura)} → ${fmtDatetime(c.fecha_cierre)}</span>
-                                <span>E:${fmt(c.total_efectivo)} T:${fmt(c.total_tarjeta)} O:${fmt(c.total_otro)}</span>
-                                <span class="fc-pdv-hist-total">${fmt(c.total_ventas)}</span>
-                            </div>`).join('')}
-                    </div>
-                </div>`;
+            html += `<div class="fc-pdv-cajas-anteriores-title">Cajas anteriores</div>`;
+            cajasData.cerradas.forEach(c => { html += renderCajaCard(c, false); });
         }
 
         wrap.innerHTML = html;
 
         $('#fc-pdv-btn-abrir-caja', wrap)?.addEventListener('click', () => showAbrirCajaModal());
 
-        // Botones por caja
+        // Botones por caja abierta
         cajasData.abiertas.forEach(caja => {
             $(`#fc-pdv-btn-entrada-${caja.id}`, wrap)?.addEventListener('click', () => showMovimientoModal(caja.id, 'entrada'));
             $(`#fc-pdv-btn-salida-${caja.id}`,  wrap)?.addEventListener('click', () => showMovimientoModal(caja.id, 'salida'));
             $(`#fc-pdv-btn-cerrar-${caja.id}`,  wrap)?.addEventListener('click', () => showCerrarCajaModal(caja));
         });
+
+        // Toggle expandir cajas cerradas
+        $$('.fc-pdv-caja-toggle', wrap).forEach(btn => {
+            btn.addEventListener('click', () => {
+                const body = btn.closest('.fc-pdv-caja-card').querySelector('.fc-pdv-caja-expandable');
+                if (!body) return;
+                const open = body.style.display !== 'none';
+                body.style.display = open ? 'none' : 'block';
+                btn.textContent = open ? '▼ Ver detalles' : '▲ Ocultar';
+            });
+        });
+    }
+
+    function renderMovimientos(movs) {
+        if (!movs || !movs.length) return '<p style="font-size:13px;color:#94a3b8;margin:6px 0;">Sin movimientos manuales.</p>';
+        return `<div class="fc-pdv-movs-list">
+            ${movs.map(m => `
+                <div class="fc-pdv-mov-row ${m.tipo}">
+                    <span class="fc-pdv-mov-tipo">${m.tipo === 'entrada' ? '▲ Entrada' : '▼ Salida'}</span>
+                    <span class="fc-pdv-mov-desc">${escHtml(m.descripcion)}</span>
+                    <span class="fc-pdv-mov-monto">${fmt(m.monto)}</span>
+                    <span class="fc-pdv-mov-ts">${fmtDatetime(m.timestamp)}</span>
+                </div>`).join('')}
+        </div>`;
     }
 
     function renderCajaCard(caja, isAbierta) {
+        const movHtml = renderMovimientos(caja.movimientos || []);
+        const expandible = !isAbierta;
         return `
             <div class="fc-pdv-caja-card ${isAbierta ? 'abierta' : 'cerrada'}">
                 <h4>${isAbierta ? '🟢 Caja abierta' : '🔴 Caja cerrada'} · ${fmtDatetime(caja.fecha_apertura)}</h4>
@@ -755,7 +947,7 @@
                     Efectivo: <strong>${fmt(caja.total_efectivo)}</strong> &nbsp;
                     Tarjeta: <strong>${fmt(caja.total_tarjeta)}</strong> &nbsp;
                     Otro: <strong>${fmt(caja.total_otro)}</strong><br>
-                    Entradas manuales: <strong>${fmt(caja.total_entradas)}</strong> &nbsp;
+                    Entradas: <strong>${fmt(caja.total_entradas)}</strong> &nbsp;
                     Salidas: <strong>${fmt(caja.total_salidas)}</strong>
                 </div>
                 ${isAbierta ? `
@@ -764,6 +956,10 @@
                     <button class="fc-pdv-btn-sm danger"  id="fc-pdv-btn-salida-${caja.id}">− Salida</button>
                     <button class="fc-pdv-btn-sm outline" id="fc-pdv-btn-cerrar-${caja.id}">Cerrar caja</button>
                 </div>` : ''}
+                ${expandible
+                    ? `<button class="fc-pdv-caja-toggle fc-pdv-btn-sm outline" style="margin-top:8px;align-self:flex-start">▼ Ver detalles</button>
+                       <div class="fc-pdv-caja-expandable" style="display:none">${movHtml}</div>`
+                    : `<div class="fc-pdv-caja-expandable">${movHtml}</div>`}
             </div>`;
     }
 
@@ -917,6 +1113,77 @@
         });
     }
 
+    // ── TRANSACCIONES ──
+    const pagoLabel = { efectivo: '💵 Efectivo', tarjeta: '💳 Tarjeta', otro: '🔄 Otro' };
+    const statusLabel = { aceptado: 'Aceptado', en_proceso: 'En proceso', listo: 'Listo', entregado: 'Entregado', cancelado: 'Cancelado' };
+    const statusColor = { aceptado: '#3b82f6', en_proceso: '#f59e0b', listo: '#10b981', entregado: '#64748b', cancelado: '#ef4444' };
+
+    async function loadTransacciones() {
+        const desde = $('#fc-pdv-tx-desde')?.value || '';
+        const hasta = $('#fc-pdv-tx-hasta')?.value || '';
+        const data  = await ajax('fc_pdv_get_transacciones', { desde, hasta });
+        if (!data.success) return;
+
+        const wrap = $('#fc-pdv-transacciones-result');
+        if (!wrap) return;
+        const { dias } = data.data;
+
+        if (!dias.length) {
+            wrap.innerHTML = '<p style="color:#94a3b8;font-size:14px;padding:20px 0;">Sin ventas en el período seleccionado.</p>';
+            return;
+        }
+
+        wrap.innerHTML = dias.map(grupo => `
+            <div class="fc-pdv-tx-grupo">
+                <div class="fc-pdv-tx-fecha-header">${fmtDate(grupo.fecha)}</div>
+                <div class="fc-pdv-tx-cards">
+                    ${grupo.transacciones.map(tx => renderTxCard(tx)).join('')}
+                </div>
+            </div>`).join('');
+    }
+
+    function renderTxCard(tx) {
+        const itemsHtml = (tx.items || []).map(it => {
+            const tel  = it.destinatario_telefono  ? `<a href="tel:${escHtml(it.destinatario_telefono)}"  class="fc-pdv-tx-link">📞 ${escHtml(it.destinatario_telefono)}</a>`  : '';
+            const tel2 = it.destinatario_telefono2 ? `<a href="tel:${escHtml(it.destinatario_telefono2)}" class="fc-pdv-tx-link">📞 ${escHtml(it.destinatario_telefono2)}</a>` : '';
+            return `
+                <div class="fc-pdv-tx-item">
+                    <div class="fc-pdv-tx-item-nombre">${escHtml(it.arreglo_nombre)}${it.tamano ? ' <span style="font-weight:400;color:var(--pdv-muted)">· ' + escHtml(it.tamano) + '</span>' : ''}</div>
+                    ${it.color ? `<div class="fc-pdv-tx-item-sub">Color: ${escHtml(it.color)}</div>` : ''}
+                    ${it.destinatario ? `<div class="fc-pdv-tx-item-sub">Para: <strong>${escHtml(it.destinatario)}</strong></div>` : ''}
+                    ${tel ? `<div class="fc-pdv-tx-item-sub">${tel}${tel2 ? ' · ' + tel2 : ''}</div>` : ''}
+                    ${it.mensaje_tarjeta ? `<div class="fc-pdv-tx-item-sub" style="font-style:italic">"${escHtml(it.mensaje_tarjeta)}"</div>` : ''}
+                </div>`;
+        }).join('');
+
+        const dirLink = tx.direccion
+            ? `<a href="https://maps.google.com/?q=${encodeURIComponent(tx.direccion)}" target="_blank" rel="noopener" class="fc-pdv-tx-link">📍 ${escHtml(tx.direccion)}</a>`
+            : '';
+        const tipoStr = tx.tipo === 'envio' ? '🚗 Envío' : '🏪 Recolección';
+        const st      = tx.status || 'aceptado';
+
+        return `
+            <div class="fc-pdv-tx-card">
+                <div class="fc-pdv-tx-card-header">
+                    <span class="fc-pdv-tx-numero">${escHtml(tx.numero)}</span>
+                    <span class="fc-pdv-tx-status" style="background:${statusColor[st] || '#64748b'}">${statusLabel[st] || st}</span>
+                    <span class="fc-pdv-tx-hora">${fmtDatetime(tx.fecha_venta).split(' ')[1] || ''}</span>
+                </div>
+                <div class="fc-pdv-tx-meta">
+                    ${tipoStr} · Entrega: ${fmtDate(tx.fecha_entrega)}
+                    ${tx.tipo === 'envio'
+                        ? (tx.horario          ? ' · ' + escHtml(tx.horario)          : '')
+                        : (tx.hora_recoleccion ? ' · ' + escHtml(tx.hora_recoleccion) : '')}
+                </div>
+                ${dirLink ? `<div class="fc-pdv-tx-meta">${dirLink}</div>` : ''}
+                <div class="fc-pdv-tx-items">${itemsHtml}</div>
+                <div class="fc-pdv-tx-footer">
+                    <span>${pagoLabel[tx.forma_pago] || tx.forma_pago}</span>
+                    <span class="fc-pdv-tx-monto">${fmt(tx.monto)}</span>
+                </div>
+            </div>`;
+    }
+
     // ── INFORMES ──
     async function loadInformes() {
         const desde = $('#fc-pdv-inf-desde')?.value || '';
@@ -1001,9 +1268,10 @@
             btn.addEventListener('click', () => {
                 const view = btn.dataset.view;
                 switchView(view);
-                if (view === 'caja')     loadCajas();
-                if (view === 'informes') loadInformes();
-                if (view === 'pdv')      renderCatalog(); // asegurar que el grid esté visible
+                if (view === 'caja')          loadCajas();
+                if (view === 'transacciones') loadTransacciones();
+                if (view === 'informes')      loadInformes();
+                if (view === 'pdv')           renderCatalog();
             });
         });
 
@@ -1034,6 +1302,9 @@
             });
         }
 
+        // Transacciones date filter
+        $('#fc-pdv-tx-buscar')?.addEventListener('click', loadTransacciones);
+
         // Informes date filter
         $('#fc-pdv-inf-buscar')?.addEventListener('click', loadInformes);
 
@@ -1046,6 +1317,11 @@
         const inf_hasta = $('#fc-pdv-inf-hasta');
         if (inf_desde && !inf_desde.value) inf_desde.value = `${y}-${m}-01`;
         if (inf_hasta && !inf_hasta.value) inf_hasta.value = `${y}-${m}-${d}`;
+
+        const tx_desde = $('#fc-pdv-tx-desde');
+        const tx_hasta = $('#fc-pdv-tx-hasta');
+        if (tx_desde && !tx_desde.value) tx_desde.value = `${y}-${m}-${d}`;
+        if (tx_hasta && !tx_hasta.value) tx_hasta.value = `${y}-${m}-${d}`;
 
         // Load catalog
         renderTicket();

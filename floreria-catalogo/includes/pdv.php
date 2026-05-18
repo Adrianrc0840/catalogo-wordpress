@@ -48,7 +48,7 @@ function fc_enqueue_pdv() {
     if ( $gmaps_key ) {
         wp_enqueue_script(
             'google-places',
-            'https://maps.googleapis.com/maps/api/js?key=' . urlencode( $gmaps_key ) . '&libraries=places',
+            'https://maps.googleapis.com/maps/api/js?key=' . urlencode( $gmaps_key ) . '&libraries=places&loading=async',
             [], null, true
         );
         $deps[] = 'google-places';
@@ -67,6 +67,7 @@ function fc_enqueue_pdv() {
         'today'            => $today,
         'schedules'        => fc_get_schedules(),
         'fechasEspeciales' => fc_get_fechas_especiales(),
+        'fechasCerradas'   => fc_get_fechas_cerradas(),
         'gmapsKey'         => $gmaps_key,
     ] );
 }
@@ -574,6 +575,96 @@ function fc_ajax_pdv_get_informes() {
             'totales' => $totales,
             'desde'   => $desde,
             'hasta'   => $hasta,
+        ],
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+    wp_die();
+}
+
+// ─────────────────────────────────────────────
+// AJAX: Transacciones (ventas detalladas por fecha)
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_fc_pdv_get_transacciones', 'fc_ajax_pdv_get_transacciones' );
+function fc_ajax_pdv_get_transacciones() {
+    fc_pdv_verify_nonce();
+    fc_pdv_require_admin();
+
+    $tz    = new DateTimeZone( 'America/Tijuana' );
+    $desde = sanitize_text_field( wp_unslash( $_POST['desde'] ?? '' ) );
+    $hasta = sanitize_text_field( wp_unslash( $_POST['hasta'] ?? '' ) );
+
+    if ( ! $desde ) {
+        $desde = ( new DateTime( 'today', $tz ) )->format( 'Y-m-d' );
+        $hasta = $desde;
+    }
+
+    $posts = get_posts( [
+        'post_type'      => 'pedido',
+        'post_status'    => 'publish',
+        'posts_per_page' => 200,
+        'date_query'     => [ [
+            'after'     => $desde . ' 00:00:00',
+            'before'    => $hasta . ' 23:59:59',
+            'inclusive' => true,
+            'column'    => 'post_date',
+        ] ],
+        'meta_query'     => [ [
+            'key'   => '_fc_pedido_canal',
+            'value' => 'pdv',
+        ] ],
+        'orderby' => 'date',
+        'order'   => 'DESC',
+    ] );
+
+    $por_dia = [];
+    foreach ( $posts as $p ) {
+        $items_raw = get_post_meta( $p->ID, '_fc_pedido_items', true );
+        $items     = $items_raw ? json_decode( $items_raw, true ) : null;
+        if ( ! is_array( $items ) || empty( $items ) ) {
+            $items = [ [
+                'arreglo_nombre'         => get_post_meta( $p->ID, '_fc_pedido_arreglo_nombre', true ),
+                'tamano'                 => get_post_meta( $p->ID, '_fc_pedido_tamano',         true ),
+                'color'                  => get_post_meta( $p->ID, '_fc_pedido_color',          true ),
+                'precio'                 => (float) get_post_meta( $p->ID, '_fc_pedido_monto',  true ),
+                'destinatario'           => get_post_meta( $p->ID, '_fc_pedido_destinatario',           true ),
+                'destinatario_telefono'  => get_post_meta( $p->ID, '_fc_pedido_destinatario_telefono',  true ),
+                'destinatario_telefono2' => '',
+                'mensaje_tarjeta'        => get_post_meta( $p->ID, '_fc_pedido_mensaje_tarjeta', true ),
+            ] ];
+        }
+
+        $ts  = get_post_meta( $p->ID, '_fc_pedido_fecha_venta', true ) ?: $p->post_date;
+        $dia = substr( $ts, 0, 10 );
+
+        $tx = [
+            'id'            => $p->ID,
+            'numero'        => get_post_meta( $p->ID, '_fc_pedido_numero',     true ),
+            'fecha_venta'   => $ts,
+            'fecha_entrega' => get_post_meta( $p->ID, '_fc_pedido_fecha',      true ),
+            'tipo'          => get_post_meta( $p->ID, '_fc_pedido_tipo',        true ),
+            'status'        => get_post_meta( $p->ID, '_fc_pedido_status',      true ),
+            'monto'         => (float) get_post_meta( $p->ID, '_fc_pedido_monto',      true ),
+            'forma_pago'    => get_post_meta( $p->ID, '_fc_pedido_forma_pago',  true ),
+            'direccion'        => get_post_meta( $p->ID, '_fc_pedido_direccion',          true ),
+            'horario'          => get_post_meta( $p->ID, '_fc_pedido_horario',            true ),
+            'hora_recoleccion' => get_post_meta( $p->ID, '_fc_pedido_hora_recoleccion',   true ),
+            'items'            => $items,
+        ];
+
+        if ( ! isset( $por_dia[ $dia ] ) ) {
+            $por_dia[ $dia ] = [ 'fecha' => $dia, 'transacciones' => [] ];
+        }
+        $por_dia[ $dia ]['transacciones'][] = $tx;
+    }
+
+    krsort( $por_dia );
+
+    header( 'Content-Type: application/json; charset=utf-8' );
+    echo json_encode( [
+        'success' => true,
+        'data'    => [
+            'dias'  => array_values( $por_dia ),
+            'desde' => $desde,
+            'hasta' => $hasta,
         ],
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
     wp_die();

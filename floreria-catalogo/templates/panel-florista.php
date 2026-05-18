@@ -10,8 +10,17 @@ $has_cap      = $is_logged_in && fc_user_can_access_panel( $current_user );
 $shop_name     = 'Florería Monarca';
 $status_labels = fc_pedido_status_labels();
 
-get_header();
 ?>
+<!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+    <meta charset="<?php bloginfo( 'charset' ); ?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo esc_html( $shop_name ); ?> — Panel Floristas</title>
+    <?php wp_head(); ?>
+</head>
+<body <?php body_class( 'fc-panel-page' ); ?>>
+<?php wp_body_open(); ?>
 <div class="fc-panel-body">
 
 <?php if ( ! $has_cap ) : ?>
@@ -246,5 +255,6 @@ get_header();
 <?php endif; ?>
 
 </div><!-- .fc-panel-body -->
-
-<?php get_footer(); ?>
+<?php wp_footer(); ?>
+</body>
+</html>

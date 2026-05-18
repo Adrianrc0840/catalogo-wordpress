@@ -9,11 +9,20 @@ nocache_headers();
 
 $is_logged_in = is_user_logged_in();
 $is_admin     = $is_logged_in && current_user_can( 'administrator' );
-$shop_name    = get_option( 'blogname', 'Florería' );
+$shop_name    = 'Florería Monarca';
 $today        = current_time( 'Y-m-d' );
 
-get_header();
 ?>
+<!DOCTYPE html>
+<html <?php language_attributes(); ?>>
+<head>
+    <meta charset="<?php bloginfo( 'charset' ); ?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo esc_html( $shop_name ); ?> — Punto de Venta</title>
+    <?php wp_head(); ?>
+</head>
+<body <?php body_class( 'fc-pdv-page' ); ?>>
+<?php wp_body_open(); ?>
 <div class="fc-pdv-body">
 
 <?php if ( ! $is_admin ) : ?>
@@ -55,6 +64,7 @@ get_header();
         <nav class="fc-pdv-nav">
             <button class="fc-pdv-nav-btn active" data-view="pdv">🛒 PDV</button>
             <button class="fc-pdv-nav-btn" data-view="caja">💰 Caja</button>
+            <button class="fc-pdv-nav-btn" data-view="transacciones">📋 Ventas</button>
             <button class="fc-pdv-nav-btn" data-view="informes">📊 Informes</button>
         </nav>
         <button id="fc-pdv-btn-logout" class="fc-pdv-btn-header">Salir</button>
@@ -102,6 +112,22 @@ get_header();
         </div>
     </div>
 
+    <!-- ── VIEW: Transacciones ── -->
+    <div id="fc-pdv-view-transacciones" class="fc-pdv-view">
+        <div class="fc-pdv-informes-toolbar">
+            <div class="fc-pdv-form-group" style="margin:0">
+                <label>Desde</label>
+                <input type="date" id="fc-pdv-tx-desde" />
+            </div>
+            <div class="fc-pdv-form-group" style="margin:0">
+                <label>Hasta</label>
+                <input type="date" id="fc-pdv-tx-hasta" />
+            </div>
+            <button id="fc-pdv-tx-buscar" class="fc-pdv-btn-sm outline">Buscar</button>
+        </div>
+        <div id="fc-pdv-transacciones-result" class="fc-pdv-informes-result"></div>
+    </div>
+
     <!-- ── VIEW: Informes ── -->
     <div id="fc-pdv-view-informes" class="fc-pdv-view">
         <div class="fc-pdv-informes-toolbar">
@@ -122,4 +148,6 @@ get_header();
 <?php endif; ?>
 
 </div><!-- /.fc-pdv-body -->
-<?php get_footer(); ?>
+<?php wp_footer(); ?>
+</body>
+</html>
