@@ -406,15 +406,27 @@ function fc_add_pedidos_submenu() {
         'fc-panel-florista-link',
         '__return_false'
     );
+
+    // Enlace al PDV (solo admins)
+    add_submenu_page(
+        'edit.php?post_type=arreglo',
+        'Punto de Venta',
+        'Punto de Venta ↗',
+        'administrator',
+        'fc-pdv-link',
+        '__return_false'
+    );
 }
 
 // Redirigir al hacer clic en "Panel Floristas ↗"
-// El usuario ya tiene sesión activa en wp-admin, así que basta con ir directamente
-// al panel con ?nc= para evitar que el plugin de caché sirva una página cacheada.
 add_action( 'admin_init', 'fc_redirect_panel_link' );
 function fc_redirect_panel_link() {
     if ( isset( $_GET['page'] ) && $_GET['page'] === 'fc-panel-florista-link' ) {
         wp_safe_redirect( home_url( '/panel-florista/?nc=' . time() ) );
+        exit;
+    }
+    if ( isset( $_GET['page'] ) && $_GET['page'] === 'fc-pdv-link' ) {
+        wp_safe_redirect( home_url( '/pdv/' ) );
         exit;
     }
 }
