@@ -600,19 +600,22 @@ function fc_ajax_pdv_get_transacciones() {
     $posts = get_posts( [
         'post_type'      => 'pedido',
         'post_status'    => 'publish',
-        'posts_per_page' => 200,
-        'date_query'     => [ [
-            'after'     => $desde . ' 00:00:00',
-            'before'    => $hasta . ' 23:59:59',
-            'inclusive' => true,
-            'column'    => 'post_date',
-        ] ],
-        'meta_query'     => [ [
-            'key'   => '_fc_pedido_canal',
-            'value' => 'pdv',
-        ] ],
-        'orderby' => 'date',
-        'order'   => 'DESC',
+        'posts_per_page' => 500,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'meta_query'     => [
+            'relation' => 'AND',
+            [
+                'key'   => '_fc_pedido_canal',
+                'value' => 'pdv',
+            ],
+            [
+                'key'     => '_fc_pedido_fecha_venta',
+                'value'   => [ $desde . ' 00:00:00', $hasta . ' 23:59:59' ],
+                'compare' => 'BETWEEN',
+                'type'    => 'DATETIME',
+            ],
+        ],
     ] );
 
     $por_dia = [];
