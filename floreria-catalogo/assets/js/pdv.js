@@ -49,11 +49,19 @@
         return new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Tijuana' }));
     }
 
-    /** Extrae los minutos desde medianoche del inicio de un slot "HH:MM - HH:MM". */
+    /**
+     * Extrae los minutos desde medianoche del inicio de un slot.
+     * Soporta formato 24h ("10:00 - 12:00") y 12h ("1:00pm – 3:00pm").
+     */
     function parseSlotStartMinutes(slot) {
-        const m = slot.match(/^(\d{1,2}):(\d{2})/);
+        const m = slot.match(/^(\d{1,2}):(\d{2})\s*(am|pm)?/i);
         if (!m) return 0;
-        return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+        let h        = parseInt(m[1], 10);
+        const min    = parseInt(m[2], 10);
+        const ampm   = (m[3] || '').toLowerCase();
+        if (ampm === 'pm' && h !== 12) h += 12;
+        if (ampm === 'am' && h === 12) h  = 0;
+        return h * 60 + min;
     }
 
     /**
