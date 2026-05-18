@@ -139,6 +139,64 @@ function fc_ajax_pdv_logout() {
 }
 
 // ─────────────────────────────────────────────
+// Helper: construir datos completos de un arreglo para el PDV
+// ─────────────────────────────────────────────
+function fc_pdv_build_arreglo_data( $p ) {
+    $tamanos_raw = get_post_meta( $p->ID, '_fc_tamanos', true );
+    if ( ! is_array( $tamanos_raw ) ) $tamanos_raw = [];
+
+    $thumb = '';
+    $tamanos = [];
+
+    foreach ( $tamanos_raw as $t ) {
+        if ( empty( $t['nombre'] ) ) continue; // ignorar entradas vacías
+
+        $imagen_url = $t['imagen_url'] ?? '';
+
+        // Determinar la foto de portada del catálogo
+        if ( ! empty( $t['foto_catalogo'] ) && $t['foto_catalogo'] === '1' && $imagen_url ) {
+            $thumb = $imagen_url;
+        }
+        if ( ! $thumb && $imagen_url ) {
+            $thumb = $imagen_url; // primera foto disponible como fallback
+        }
+
+        // Colores de este tamaño
+        $colores = [];
+        if ( ! empty( $t['colores'] ) && is_array( $t['colores'] ) ) {
+            foreach ( $t['colores'] as $c ) {
+                if ( empty( $c['nombre'] ) ) continue;
+                $colores[] = [
+                    'nombre'     => $c['nombre'],
+                    'hex'        => $c['hex']        ?? '#c8185a',
+                    'imagen_url' => $c['imagen_url'] ?? '',
+                ];
+            }
+        }
+
+        $tamanos[] = [
+            'label'      => $t['nombre'],
+            'precio'     => (float) ( $t['precio'] ?? 0 ),
+            'imagen_url' => $imagen_url,
+            'colores'    => $colores,
+        ];
+    }
+
+    // Fallback de foto al thumbnail de WP si no hay ninguna
+    if ( ! $thumb ) {
+        $thumb = get_the_post_thumbnail_url( $p->ID, 'medium' ) ?: '';
+    }
+
+    return [
+        'id'          => $p->ID,
+        'nombre'      => $p->post_title,
+        'descripcion' => get_post_meta( $p->ID, '_fc_descripcion', true ) ?: '',
+        'thumb'       => $thumb,
+        'tamanos'     => $tamanos,
+    ];
+}
+
+// ─────────────────────────────────────────────
 // AJAX: Obtener catálogo completo (categorías + arreglos)
 // ─────────────────────────────────────────────
 add_action( 'wp_ajax_fc_pdv_get_catalogo', 'fc_ajax_pdv_get_catalogo' );
@@ -169,31 +227,7 @@ function fc_ajax_pdv_get_catalogo() {
             ] ],
         ] );
 
-        $arreglos = [];
-        foreach ( $posts as $p ) {
-            $tamanos = get_post_meta( $p->ID, '_fc_tamanos', true );
-            if ( ! is_array( $tamanos ) ) $tamanos = [];
-            // Solo incluir tamaños con label (ignorar entradas vacías)
-            $tamanos = array_values( array_filter( $tamanos, fn( $t ) => ! empty( $t['label'] ) ) );
-
-            $thumb = get_the_post_thumbnail_url( $p->ID, 'thumbnail' );
-            if ( ! $thumb ) {
-                // Intentar desde el primer tamaño que tenga foto
-                foreach ( $tamanos as $t ) {
-                    if ( ! empty( $t['foto'] ) ) { $thumb = $t['foto']; break; }
-                }
-            }
-
-            $arreglos[] = [
-                'id'      => $p->ID,
-                'nombre'  => $p->post_title,
-                'thumb'   => $thumb ?: '',
-                'tamanos' => array_map( fn( $t ) => [
-                    'label'  => $t['label']  ?? '',
-                    'precio' => (float) ( $t['precio'] ?? 0 ),
-                ], $tamanos ),
-            ];
-        }
+        $arreglos = array_map( 'fc_pdv_build_arreglo_data', $posts );
 
         if ( $arreglos ) {
             $result[] = [
@@ -218,23 +252,11 @@ function fc_ajax_pdv_get_catalogo() {
     ] );
 
     if ( $sin_cat ) {
-        $arreglos = [];
-        foreach ( $sin_cat as $p ) {
-            $tamanos = get_post_meta( $p->ID, '_fc_tamanos', true );
-            if ( ! is_array( $tamanos ) ) $tamanos = [];
-            $tamanos  = array_values( array_filter( $tamanos, fn( $t ) => ! empty( $t['label'] ) ) );
-            $thumb    = get_the_post_thumbnail_url( $p->ID, 'thumbnail' ) ?: '';
-            $arreglos[] = [
-                'id'      => $p->ID,
-                'nombre'  => $p->post_title,
-                'thumb'   => $thumb,
-                'tamanos' => array_map( fn( $t ) => [
-                    'label'  => $t['label']  ?? '',
-                    'precio' => (float) ( $t['precio'] ?? 0 ),
-                ], $tamanos ),
-            ];
-        }
-        $result[] = [ 'id' => 0, 'nombre' => 'Sin categoría', 'arreglos' => $arreglos ];
+        $result[] = [
+            'id'       => 0,
+            'nombre'   => 'Sin categoría',
+            'arreglos' => array_map( 'fc_pdv_build_arreglo_data', $sin_cat ),
+        ];
     }
 
     header( 'Content-Type: application/json; charset=utf-8' );

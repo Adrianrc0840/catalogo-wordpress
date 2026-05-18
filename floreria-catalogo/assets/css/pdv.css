@@ -11,7 +11,6 @@
     --pdv-text:      #1a202c;
     --pdv-muted:     #64748b;
     --pdv-header-h:  56px;
-    --pdv-bottom-h:  320px;
     --pdv-ticket-w:  340px;
 }
 
@@ -23,6 +22,17 @@
     color: var(--pdv-text);
     min-height: 100vh;
     margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+#fc-pdv-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 0px); /* ajustar si el tema tiene header */
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* ── LOGIN ── */
@@ -109,29 +119,37 @@
 }
 
 .fc-pdv-header-brand {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     letter-spacing: 0.03em;
-}
-
-.fc-pdv-header-caja {
-    font-size: 13px;
     display: flex;
     align-items: center;
     gap: 8px;
+    white-space: nowrap;
 }
 
-.fc-pdv-caja-badge {
-    background: rgba(255,255,255,0.2);
-    border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 12px;
+/* Nav de 3 botones */
+.fc-pdv-nav {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    justify-content: center;
+}
+.fc-pdv-nav-btn {
+    padding: 7px 18px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.8);
+    font-size: 14px;
     font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
 }
-.fc-pdv-caja-badge.abierta { background: rgba(16,185,129,0.35); }
-.fc-pdv-caja-badge.cerrada { background: rgba(239,68,68,0.35); }
-
-.fc-pdv-header-actions { display: flex; gap: 10px; align-items: center; }
+.fc-pdv-nav-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
+.fc-pdv-nav-btn.active { background: rgba(255,255,255,0.28); color: #fff; }
 
 .fc-pdv-btn-header {
     background: rgba(255,255,255,0.15);
@@ -147,13 +165,18 @@
 }
 .fc-pdv-btn-header:hover { background: rgba(255,255,255,0.25); }
 
-/* Middle section (catalog + ticket) */
-.fc-pdv-middle {
-    display: flex;
+/* ── VIEWS (PDV / Caja / Informes) ── */
+.fc-pdv-view {
+    display: none;
     flex: 1;
-    overflow: hidden;
     min-height: 0;
+    overflow: hidden;
 }
+.fc-pdv-view.active { display: flex; }
+
+#fc-pdv-view-pdv  { flex-direction: row; }
+#fc-pdv-view-caja { overflow-y: auto; flex-direction: column; padding: 20px; }
+#fc-pdv-view-informes { flex-direction: column; overflow: hidden; }
 
 /* ── LEFT: Catalog ── */
 .fc-pdv-catalog {
@@ -201,84 +224,388 @@
 }
 .fc-pdv-btn-personalizado:hover { background: var(--pdv-primary); color: #fff; }
 
-.fc-pdv-catalog-list {
+.fc-pdv-catalog-content {
     flex: 1;
-    overflow-y: auto;
-    padding: 12px 14px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* el scroll lo maneja cada vista interna */
 }
 
-/* Category accordion */
-.fc-pdv-category { margin-bottom: 8px; }
+/* Vista grid: sí tiene padding y scroll */
+.fc-pdv-catalog-content.is-grid {
+    overflow-y: auto;
+    padding: 14px 14px 20px;
+}
 
-.fc-pdv-category-header {
+/* ── Category pills ── */
+.fc-pdv-cat-pills {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 14px;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 0 2px 10px;
+    scrollbar-width: none;
+    flex-shrink: 0;
+}
+.fc-pdv-cat-pills::-webkit-scrollbar { display: none; }
+
+.fc-pdv-cat-pill {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--pdv-border);
+    background: #fff;
+    color: var(--pdv-muted);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, color .15s, border-color .15s;
+}
+.fc-pdv-cat-pill:hover { border-color: var(--pdv-primary); color: var(--pdv-primary); }
+.fc-pdv-cat-pill.active {
+    background: var(--pdv-primary);
+    border-color: var(--pdv-primary);
+    color: #fff;
+}
+
+/* ── Catalog card grid ── */
+.fc-pdv-catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.fc-pdv-catalog-card {
     background: var(--pdv-card);
     border: 1.5px solid var(--pdv-border);
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--pdv-text);
-    user-select: none;
-    transition: border-color .15s, background .15s;
-}
-.fc-pdv-category-header:hover { border-color: var(--pdv-primary); background: #fdf5f7; }
-.fc-pdv-category-header.open { border-color: var(--pdv-primary); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-
-.fc-pdv-category-chevron { font-size: 12px; transition: transform .2s; color: var(--pdv-muted); }
-.fc-pdv-category-header.open .fc-pdv-category-chevron { transform: rotate(180deg); }
-
-.fc-pdv-category-items {
-    border: 1.5px solid var(--pdv-primary);
-    border-top: none;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
-    display: none;
-}
-.fc-pdv-category-items.open { display: block; }
-
-.fc-pdv-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    background: #fff;
     cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
-    transition: background .12s;
+    transition: box-shadow .15s, border-color .15s, transform .12s;
 }
-.fc-pdv-item:last-child { border-bottom: none; }
-.fc-pdv-item:hover { background: #fdf5f7; }
+.fc-pdv-catalog-card:hover {
+    border-color: var(--pdv-primary);
+    box-shadow: 0 4px 16px rgba(200,24,90,0.12);
+    transform: translateY(-2px);
+}
 
-.fc-pdv-item-thumb {
-    width: 48px;
-    height: 48px;
-    object-fit: cover;
-    border-radius: 8px;
-    flex-shrink: 0;
-    border: 1px solid var(--pdv-border);
+.fc-pdv-card-img-wrap {
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: #f8f8f8;
 }
-.fc-pdv-item-thumb-empty {
-    width: 48px;
-    height: 48px;
-    border-radius: 8px;
-    border: 1px dashed var(--pdv-border);
+.fc-pdv-card-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .2s;
+}
+.fc-pdv-catalog-card:hover .fc-pdv-card-img-wrap img { transform: scale(1.04); }
+
+.fc-pdv-card-img-empty {
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
+    font-size: 36px;
+    color: #d1d5db;
 }
 
-.fc-pdv-item-info { flex: 1; min-width: 0; }
-.fc-pdv-item-nombre { font-size: 14px; font-weight: 600; color: var(--pdv-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fc-pdv-item-precio { font-size: 12px; color: var(--pdv-muted); margin-top: 2px; }
+.fc-pdv-card-body {
+    padding: 10px 10px 12px;
+}
+.fc-pdv-card-nombre {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--pdv-text);
+    line-height: 1.3;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.fc-pdv-card-precio {
+    font-size: 13px;
+    color: var(--pdv-primary);
+    font-weight: 700;
+}
 
-.fc-pdv-item-add { color: var(--pdv-primary); font-size: 20px; font-weight: 700; flex-shrink: 0; }
+/* ── Detail panel — dos columnas (foto izq + info der) ── */
+.fc-pdv-detail-panel {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Columna izquierda: foto */
+.fc-pdv-detail-photo-col {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    overflow: hidden;
+    background: #f0f0f0;
+    cursor: zoom-in;
+}
+.fc-pdv-detail-photo-col img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .3s;
+}
+.fc-pdv-detail-photo-col:hover img { transform: scale(1.02); }
+
+.fc-pdv-detail-photo-empty-col {
+    flex: 1;
+    min-width: 0;
+    background: #f8f8f8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 72px;
+    color: #d1d5db;
+}
+
+.fc-pdv-photo-zoom-hint {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s;
+    white-space: nowrap;
+}
+.fc-pdv-detail-photo-col:hover .fc-pdv-photo-zoom-hint { opacity: 1; }
+
+/* Columna derecha: info con scroll */
+.fc-pdv-detail-info-col {
+    width: 360px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--pdv-border);
+    overflow-y: auto;
+    padding: 20px 22px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.fc-pdv-detail-back {
+    background: none;
+    border: none;
+    color: var(--pdv-primary);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 0 0 14px;
+    text-align: left;
+    transition: opacity .15s;
+}
+.fc-pdv-detail-back:hover { opacity: 0.7; }
+
+.fc-pdv-detail-edit-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--pdv-warn);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.fc-pdv-detail-nombre {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--pdv-text);
+    margin: 0 0 6px;
+    line-height: 1.2;
+}
+
+/* Precio dinámico grande */
+.fc-pdv-precio-display {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--pdv-primary);
+    margin: 0 0 14px;
+    line-height: 1;
+}
+
+.fc-pdv-detail-desc {
+    font-size: 14px;
+    color: var(--pdv-muted);
+    margin: 0 0 18px;
+    line-height: 1.65;
+    border-bottom: 1px solid var(--pdv-border);
+    padding-bottom: 18px;
+}
+
+/* Botón agregar al ticket */
+.fc-pdv-btn-agregar {
+    width: 100%;
+    padding: 14px;
+    background: var(--pdv-primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    margin-top: 8px;
+    transition: opacity .15s;
+}
+.fc-pdv-btn-agregar:hover { opacity: 0.88; }
+
+/* ── Lightbox ── */
+.fc-pdv-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-out;
+    animation: pdvFadeIn .15s ease;
+}
+.fc-pdv-lightbox img {
+    max-width: 92vw;
+    max-height: 92vh;
+    object-fit: contain;
+    border-radius: 6px;
+    pointer-events: none;
+}
+.fc-pdv-lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    font-size: 26px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s;
+}
+.fc-pdv-lightbox-close:hover { background: rgba(255,255,255,0.28); }
+
+.fc-pdv-label-sm {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pdv-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+/* Tamano chips en el detalle */
+.fc-pdv-tamano-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+}
+.fc-pdv-tamano-chip {
+    padding: 8px 14px;
+    border: 2px solid var(--pdv-border);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--pdv-text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    transition: border-color .15s, background .15s;
+    user-select: none;
+}
+.fc-pdv-tamano-chip:hover { border-color: var(--pdv-primary); }
+.fc-pdv-tamano-chip.active {
+    border-color: var(--pdv-primary);
+    background: #fdf5f7;
+    color: var(--pdv-primary);
+}
+.fc-pdv-chip-precio {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--pdv-primary);
+}
+.fc-pdv-tamano-chip.active .fc-pdv-chip-precio { color: var(--pdv-dark); }
+
+/* Colores */
+.fc-pdv-colores {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+.fc-pdv-color-swatch {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s;
+    outline: 2px solid rgba(0,0,0,0.08);
+    outline-offset: 0;
+}
+.fc-pdv-color-swatch:hover { transform: scale(1.15); }
+.fc-pdv-color-swatch.active {
+    border-color: #fff;
+    outline: 3px solid var(--pdv-primary);
+    outline-offset: 2px;
+}
+
+/* ── Informes view full-height ── */
+.fc-pdv-informes-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--pdv-border);
+    background: var(--pdv-card);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+.fc-pdv-informes-toolbar label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pdv-muted);
+    display: block;
+    margin-bottom: 4px;
+}
+.fc-pdv-informes-toolbar input[type="date"] {
+    padding: 8px 10px;
+    border: 1.5px solid var(--pdv-border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--pdv-text);
+    outline: none;
+}
+.fc-pdv-informes-toolbar input[type="date"]:focus { border-color: var(--pdv-primary); }
 
 /* ── RIGHT: Ticket ── */
 .fc-pdv-ticket {
@@ -324,8 +651,23 @@
     border-bottom: 1px solid #f5f5f5;
     display: flex;
     gap: 8px;
-    align-items: flex-start;
+    align-items: center;
 }
+
+/* Área clickeable (info + precio) */
+.fc-pdv-ticket-item-click {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    transition: background .12s;
+}
+.fc-pdv-ticket-item-click:hover { background: #fdf5f7; }
 
 .fc-pdv-ticket-item-info { flex: 1; min-width: 0; }
 .fc-pdv-ticket-item-nombre { font-size: 13px; font-weight: 600; color: var(--pdv-text); }
@@ -381,51 +723,8 @@
 .fc-pdv-btn-cobrar:hover { opacity: 0.88; }
 .fc-pdv-btn-cobrar:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ── BOTTOM SECTION ── */
-.fc-pdv-bottom {
-    height: var(--pdv-bottom-h);
-    border-top: 2px solid var(--pdv-border);
-    background: var(--pdv-card);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    flex-shrink: 0;
-}
-
-.fc-pdv-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--pdv-border);
-    flex-shrink: 0;
-}
-
-.fc-pdv-tab {
-    padding: 10px 20px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--pdv-muted);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: color .15s, border-color .15s;
-    background: none;
-    border-top: none;
-    border-left: none;
-    border-right: none;
-    font-family: inherit;
-}
-.fc-pdv-tab:hover { color: var(--pdv-primary); }
-.fc-pdv-tab.active { color: var(--pdv-primary); border-bottom-color: var(--pdv-primary); }
-
-.fc-pdv-tab-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 14px 16px;
-    display: none;
-}
-.fc-pdv-tab-content.active { display: block; }
-
-/* ── Caja section ── */
-.fc-pdv-caja-wrap { display: flex; gap: 16px; flex-wrap: wrap; }
+/* ── Caja section (full view) ── */
+.fc-pdv-caja-wrap { display: flex; gap: 16px; flex-wrap: wrap; align-content: flex-start; max-width: 900px; }
 
 .fc-pdv-caja-card {
     background: var(--pdv-bg);
@@ -486,24 +785,11 @@
 .fc-pdv-hist-total { font-weight: 700; color: var(--pdv-text); }
 
 /* ── Informes section ── */
-.fc-pdv-informes-toolbar {
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
+.fc-pdv-informes-result {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
 }
-.fc-pdv-informes-toolbar label { font-size: 12px; font-weight: 600; color: var(--pdv-muted); display: block; margin-bottom: 4px; }
-.fc-pdv-informes-toolbar input[type="date"] {
-    padding: 7px 10px;
-    border: 1.5px solid var(--pdv-border);
-    border-radius: 8px;
-    font-size: 13px;
-    font-family: inherit;
-    color: var(--pdv-text);
-    outline: none;
-}
-.fc-pdv-informes-toolbar input[type="date"]:focus { border-color: var(--pdv-primary); }
 
 .fc-pdv-informe-totales {
     display: flex;
@@ -555,6 +841,12 @@
     display: flex;
     flex-direction: column;
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    position: relative;
+}
+
+/* Modal de detalle: más ancho en pantallas grandes */
+@media (min-width: 768px) {
+    .fc-pdv-detail-modal { max-width: 460px; }
 }
 
 .fc-pdv-modal-header {

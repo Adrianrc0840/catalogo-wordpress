@@ -11,7 +11,10 @@
 
     // ── State ──
     let cart         = [];   // items del ticket
-    let catalogo     = [];   // categorías + arreglos
+    let catalogo     = [];   // categorías + arreglos (estructura original)
+    let allArreglos  = [];   // lista plana de todos los arreglos para el grid
+    let selectedCat  = null; // id de categoría activa (null = todas)
+    let searchTerm   = '';   // término de búsqueda activo
     let cajaActiva   = null; // objeto de la caja abierta principal
     let cajasData    = { abiertas: [], cerradas: [] };
     let tipoPedido   = 'recoleccion';
@@ -79,19 +82,42 @@
                 </div>`;
         } else {
             container.innerHTML = cart.map((it, i) => `
-                <div class="fc-pdv-ticket-item">
-                    <div class="fc-pdv-ticket-item-info">
-                        <div class="fc-pdv-ticket-item-nombre">${escHtml(it.arreglo_nombre)}</div>
-                        <div class="fc-pdv-ticket-item-sub">${[it.tamano, it.color].filter(Boolean).join(' · ')}</div>
+                <div class="fc-pdv-ticket-item" data-idx="${i}">
+                    <div class="fc-pdv-ticket-item-click" title="Editar">
+                        <div class="fc-pdv-ticket-item-info">
+                            <div class="fc-pdv-ticket-item-nombre">${escHtml(it.arreglo_nombre)}</div>
+                            <div class="fc-pdv-ticket-item-sub">${[it.tamano, it.color].filter(Boolean).join(' · ')}</div>
+                        </div>
+                        <span class="fc-pdv-ticket-item-precio">${fmt(it.precio)}</span>
                     </div>
-                    <span class="fc-pdv-ticket-item-precio">${fmt(it.precio)}</span>
                     <button class="fc-pdv-ticket-item-remove" data-idx="${i}" title="Quitar">×</button>
                 </div>`).join('');
 
+            // Botón quitar
             $$('.fc-pdv-ticket-item-remove', container).forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', e => {
+                    e.stopPropagation();
                     cart.splice(parseInt(btn.dataset.idx), 1);
                     renderTicket();
+                });
+            });
+
+            // Click en el área del ítem → editar
+            $$('.fc-pdv-ticket-item-click', container).forEach(clickArea => {
+                clickArea.addEventListener('click', () => {
+                    const row = clickArea.closest('[data-idx]');
+                    const idx = parseInt(row.dataset.idx);
+                    const cartItem = cart[idx];
+                    if (!cartItem) return;
+                    // Ir a vista PDV si no está
+                    switchView('pdv');
+                    const arreglo = cartItem.arreglo_id
+                        ? (allArreglos.find(a => a.id === cartItem.arreglo_id) || null)
+                        : null;
+                    showDetailPanel(
+                        arreglo || { id: 0, nombre: cartItem.arreglo_nombre, descripcion: '', thumb: cartItem.imagen_url || '', tamanos: [] },
+                        idx
+                    );
                 });
             });
         }
@@ -103,157 +129,329 @@
         if (cobrarBtn) cobrarBtn.disabled = !cart.length;
     }
 
+    // Cambiar entre vistas PDV / Caja / Informes
+    function switchView(view) {
+        $$('.fc-pdv-nav-btn').forEach(b => b.classList.remove('active'));
+        $$('.fc-pdv-view').forEach(v => v.classList.remove('active'));
+        const btn = $(`.fc-pdv-nav-btn[data-view="${view}"]`);
+        if (btn) btn.classList.add('active');
+        const panel = $(`#fc-pdv-view-${view}`);
+        if (panel) panel.classList.add('active');
+    }
+
     // ── CATALOG ──
-    function renderCatalog(cats) {
-        const list = $('#fc-pdv-catalog-list');
-        if (!list) return;
+    function renderCatalog() {
+        const container = $('#fc-pdv-catalog-content');
+        if (!container) return;
+        container.classList.add('is-grid'); // padding + scroll para el grid
 
-        if (!cats.length) {
-            list.innerHTML = '<p style="color:#94a3b8;font-size:14px;text-align:center;padding:20px 0;">No hay arreglos disponibles.</p>';
-            return;
-        }
+        // Aplicar filtros de categoría y búsqueda
+        let arr = allArreglos;
+        if (selectedCat !== null) arr = arr.filter(a => a.cat_id === selectedCat);
+        if (searchTerm) arr = arr.filter(a => a.nombre.toLowerCase().includes(searchTerm));
 
-        list.innerHTML = cats.map(cat => `
-            <div class="fc-pdv-category" data-cat-id="${cat.id}">
-                <div class="fc-pdv-category-header">
-                    <span>${escHtml(cat.nombre)}</span>
-                    <span class="fc-pdv-category-chevron">▼</span>
-                </div>
-                <div class="fc-pdv-category-items">
-                    ${cat.arreglos.map(a => `
-                        <div class="fc-pdv-item" data-arreglo='${JSON.stringify({id:a.id,nombre:a.nombre,thumb:a.thumb,tamanos:a.tamanos})}'>
-                            ${a.thumb
-                                ? `<img class="fc-pdv-item-thumb" src="${escHtml(a.thumb)}" alt="" loading="lazy" />`
-                                : `<div class="fc-pdv-item-thumb-empty">🌸</div>`}
-                            <div class="fc-pdv-item-info">
-                                <div class="fc-pdv-item-nombre">${escHtml(a.nombre)}</div>
-                                <div class="fc-pdv-item-precio">${a.tamanos.length ? a.tamanos.map(t => t.label + (t.precio ? ' · ' + fmt(t.precio) : '')).join(' / ') : 'Sin precio'}</div>
+        // Pills de categoría (solo si hay más de una)
+        const pillsHtml = catalogo.length > 1 ? `
+            <div class="fc-pdv-cat-pills">
+                <button class="fc-pdv-cat-pill${selectedCat === null ? ' active' : ''}" data-cat="all">Todos</button>
+                ${catalogo.map(c => `
+                    <button class="fc-pdv-cat-pill${selectedCat === c.id ? ' active' : ''}" data-cat="${c.id}">${escHtml(c.nombre)}</button>
+                `).join('')}
+            </div>` : '';
+
+        // Grid de tarjetas
+        const capturedArr = arr; // closure para eventos
+        const cardsHtml = arr.length
+            ? `<div class="fc-pdv-catalog-grid">
+                ${arr.map((a, i) => {
+                    const precios = a.tamanos.map(t => t.precio).filter(p => p > 0);
+                    const pMin = precios.length ? Math.min(...precios) : 0;
+                    const pMax = precios.length ? Math.max(...precios) : 0;
+                    const precioStr = pMin && pMax && pMin !== pMax
+                        ? `${fmt(pMin)} – ${fmt(pMax)}`
+                        : pMin ? fmt(pMin) : 'Sin precio';
+                    return `
+                        <div class="fc-pdv-catalog-card" data-idx="${i}">
+                            <div class="fc-pdv-card-img-wrap">
+                                ${a.thumb
+                                    ? `<img src="${escHtml(a.thumb)}" alt="${escHtml(a.nombre)}" loading="lazy" />`
+                                    : `<div class="fc-pdv-card-img-empty">🌸</div>`}
                             </div>
-                            <span class="fc-pdv-item-add">+</span>
-                        </div>`).join('')}
-                </div>
-            </div>`).join('');
+                            <div class="fc-pdv-card-body">
+                                <div class="fc-pdv-card-nombre">${escHtml(a.nombre)}</div>
+                                <div class="fc-pdv-card-precio">${precioStr}</div>
+                            </div>
+                        </div>`;
+                }).join('')}
+               </div>`
+            : `<p style="color:#94a3b8;font-size:14px;text-align:center;padding:32px 16px;">
+                   ${searchTerm ? `Sin resultados para "<strong>${escHtml(searchTerm)}</strong>"` : 'No hay arreglos disponibles.'}
+               </p>`;
 
-        // Category toggle
-        $$('.fc-pdv-category-header', list).forEach(h => {
-            h.addEventListener('click', () => {
-                const items = h.nextElementSibling;
-                h.classList.toggle('open');
-                items.classList.toggle('open');
+        container.innerHTML = pillsHtml + cardsHtml;
+
+        // Pills → filtrar por categoría
+        $$('.fc-pdv-cat-pill', container).forEach(pill => {
+            pill.addEventListener('click', () => {
+                const val = pill.dataset.cat;
+                selectedCat = val === 'all' ? null : parseInt(val);
+                renderCatalog();
             });
         });
 
-        // Click item → open add modal
-        $$('.fc-pdv-item', list).forEach(el => {
-            el.addEventListener('click', () => {
-                const data = JSON.parse(el.dataset.arreglo);
-                showAddItemModal(data);
+        // Tarjeta → abrir detalle
+        $$('.fc-pdv-catalog-card', container).forEach(card => {
+            card.addEventListener('click', () => {
+                showDetailPanel(capturedArr[parseInt(card.dataset.idx)]);
             });
         });
     }
 
-    // ── ADD ITEM MODAL ──
-    function showAddItemModal(arreglo) {
+    // ── DETAIL PANEL — reemplaza el grid en el panel izquierdo ──
+    function showDetailPanel(arreglo, cartIdx = -1) {
+        const container = $('#fc-pdv-catalog-content');
+        if (!container) return;
+        container.classList.remove('is-grid'); // sin padding para el detalle 2-col
+
         const isPersonalizado = !arreglo.id;
         const tamanos = arreglo.tamanos || [];
-        let selectedTamano = tamanos[0] || null;
+        const editItem = cartIdx >= 0 ? cart[cartIdx] : null;
 
-        const backdrop = document.createElement('div');
-        backdrop.className = 'fc-pdv-modal-backdrop';
-        backdrop.innerHTML = `
-            <div class="fc-pdv-modal">
-                <div class="fc-pdv-modal-header">
-                    <h3>${isPersonalizado ? 'Pedido personalizado' : escHtml(arreglo.nombre)}</h3>
-                    <button class="fc-pdv-modal-close">×</button>
-                </div>
-                <div class="fc-pdv-modal-body">
-                    ${isPersonalizado ? `
+        // Pre-seleccionar tamaño si estamos editando
+        let selTamIdx = 0;
+        if (editItem?.tamano && tamanos.length > 0) {
+            const found = tamanos.findIndex(t => t.label === editItem.tamano);
+            if (found >= 0) selTamIdx = found;
+        }
+        let selTamano = tamanos[selTamIdx] || null;
+
+        // Pre-seleccionar color si estamos editando
+        let selColor = selTamano?.colores?.[0] || null;
+        if (editItem?.color && selTamano?.colores) {
+            const colorName = editItem.color.split(' · ')[0];
+            const found = selTamano.colores.find(c => c.nombre === colorName);
+            if (found) selColor = found;
+        }
+
+        // Notas previas (sin el prefijo del color)
+        let editNotas = '';
+        if (editItem?.color) {
+            const parts = editItem.color.split(' · ');
+            editNotas = parts.length > 1 ? parts.slice(1).join(' · ') : '';
+        }
+
+        function getMainPhoto() {
+            if (selColor?.imagen_url) return selColor.imagen_url;
+            if (selTamano?.imagen_url) return selTamano.imagen_url;
+            return arreglo.thumb || '';
+        }
+
+        function render() {
+            const photo   = getMainPhoto();
+            const colores = selTamano?.colores || [];
+            const precio  = editItem ? editItem.precio : (selTamano?.precio || 0);
+
+            container.innerHTML = `
+                <div class="fc-pdv-detail-panel">
+
+                    ${/* ── Columna izquierda: foto ── */ ''}
+                    ${!isPersonalizado && photo
+                        ? `<div class="fc-pdv-detail-photo-col" id="pdv-photo-col">
+                               <img id="pdv-detail-img" src="${escHtml(photo)}" alt="${escHtml(arreglo.nombre)}" />
+                               <div class="fc-pdv-photo-zoom-hint">🔍 Toca para ver completa</div>
+                           </div>`
+                        : `<div class="fc-pdv-detail-photo-empty-col">🌸</div>`}
+
+                    ${/* ── Columna derecha: info ── */ ''}
+                    <div class="fc-pdv-detail-info-col">
+
+                        <button class="fc-pdv-detail-back">
+                            ← Volver${editItem ? '<span class="fc-pdv-detail-edit-badge">Editando</span>' : ''}
+                        </button>
+
+                        ${isPersonalizado ? `
+                            <div class="fc-pdv-form-group">
+                                <label>Nombre del arreglo <span style="color:#ef4444">*</span></label>
+                                <input type="text" id="pdv-item-nombre"
+                                       placeholder="Ej: Girasoles personalizados"
+                                       value="${escHtml(editItem?.arreglo_nombre || '')}" />
+                            </div>` : `
+                            <h2 class="fc-pdv-detail-nombre">${escHtml(arreglo.nombre)}</h2>`}
+
+                        <div class="fc-pdv-precio-display" id="pdv-precio-display">${fmt(precio)}</div>
+
+                        ${arreglo.descripcion
+                            ? `<p class="fc-pdv-detail-desc">${escHtml(arreglo.descripcion)}</p>`
+                            : ''}
+
+                        ${!isPersonalizado && tamanos.length > 1 ? `
+                            <div class="fc-pdv-form-group">
+                                <label class="fc-pdv-label-sm">Tamaño</label>
+                                <div class="fc-pdv-tamano-chips">
+                                    ${tamanos.map((t, i) => `
+                                        <div class="fc-pdv-tamano-chip${i === selTamIdx ? ' active' : ''}" data-idx="${i}">
+                                            ${escHtml(t.label)}
+                                        </div>`).join('')}
+                                </div>
+                            </div>` : ''}
+
+                        ${colores.length > 0 ? `
+                            <div class="fc-pdv-form-group">
+                                <label class="fc-pdv-label-sm">Color:
+                                    <strong id="pdv-color-label">${escHtml(selColor?.nombre || '')}</strong>
+                                </label>
+                                <div class="fc-pdv-colores">
+                                    ${colores.map((c, ci) => `
+                                        <div class="fc-pdv-color-swatch${selColor?.nombre === c.nombre ? ' active' : ''}"
+                                             data-cidx="${ci}" title="${escHtml(c.nombre)}"
+                                             style="background:${escHtml(c.hex || '#c8185a')}"></div>`).join('')}
+                                </div>
+                            </div>` : ''}
+
                         <div class="fc-pdv-form-group">
-                            <label>Nombre / descripción del arreglo</label>
-                            <input type="text" id="pdv-item-nombre" placeholder="Ej: Girasoles personalizados" />
-                        </div>` : ''}
-                    ${!isPersonalizado && tamanos.length > 1 ? `
+                            <label class="fc-pdv-label-sm">Notas adicionales</label>
+                            <input type="text" id="pdv-item-notas"
+                                   placeholder="Detalles, personalización, etc. (opcional)"
+                                   value="${escHtml(editNotas)}" />
+                        </div>
                         <div class="fc-pdv-form-group">
-                            <label>Tamaño</label>
-                            <div class="fc-pdv-tamano-select">
-                                ${tamanos.map((t, i) => `
-                                    <div class="fc-pdv-tamano-chip ${i === 0 ? 'active' : ''}" data-idx="${i}">${escHtml(t.label)}${t.precio ? ' · ' + fmt(t.precio) : ''}</div>
-                                `).join('')}
-                            </div>
-                        </div>` : ''}
-                    <div class="fc-pdv-form-group">
-                        <label>Color / especificaciones</label>
-                        <input type="text" id="pdv-item-color" placeholder="Opcional" />
+                            <label class="fc-pdv-label-sm">Precio <span style="color:#ef4444">*</span></label>
+                            <input type="number" id="pdv-item-precio" min="0" step="0.01"
+                                   placeholder="0.00" value="${precio || ''}" />
+                        </div>
+
+                        <button class="fc-pdv-btn-agregar" id="pdv-item-confirm">
+                            ${editItem ? '✓ Actualizar en ticket' : '+ Agregar al ticket'}
+                        </button>
                     </div>
-                    <div class="fc-pdv-form-group">
-                        <label>Precio <span style="color:#ef4444">*</span></label>
-                        <input type="number" id="pdv-item-precio" min="0" step="0.01" placeholder="0.00"
-                            value="${selectedTamano?.precio || ''}" />
-                    </div>
-                </div>
-                <div class="fc-pdv-modal-footer">
-                    <button class="fc-pdv-modal-cancel">Cancelar</button>
-                    <button class="fc-pdv-btn-primary" id="pdv-item-confirm">Agregar al ticket</button>
-                </div>
-            </div>`;
 
-        document.body.appendChild(backdrop);
+                </div>`;
 
-        // Tamaño chips
-        $$('.fc-pdv-tamano-chip', backdrop).forEach(chip => {
-            chip.addEventListener('click', () => {
-                $$('.fc-pdv-tamano-chip', backdrop).forEach(c => c.classList.remove('active'));
-                chip.classList.add('active');
-                const idx = parseInt(chip.dataset.idx);
-                selectedTamano = tamanos[idx];
-                const precioInput = $('#pdv-item-precio', backdrop);
-                if (precioInput && selectedTamano?.precio) precioInput.value = selectedTamano.precio;
-            });
-        });
+            bindPanelEvents();
+        }
 
-        // Close
-        const close = () => backdrop.remove();
-        $('.fc-pdv-modal-close', backdrop).addEventListener('click', close);
-        $('.fc-pdv-modal-cancel', backdrop).addEventListener('click', close);
-        backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+        function bindPanelEvents() {
+            // Volver al grid
+            $('.fc-pdv-detail-back', container)?.addEventListener('click', renderCatalog);
 
-        // Confirm
-        $('#pdv-item-confirm', backdrop).addEventListener('click', () => {
-            const precio = parseFloat($('#pdv-item-precio', backdrop).value || 0);
-            if (!precio || precio <= 0) {
-                $('#pdv-item-precio', backdrop).focus();
-                $('#pdv-item-precio', backdrop).style.borderColor = '#ef4444';
-                return;
+            // Lightbox al hacer click en la foto
+            const photoCol = $('#pdv-photo-col', container);
+            if (photoCol) {
+                photoCol.addEventListener('click', () => {
+                    const img = $('#pdv-detail-img', container);
+                    if (!img) return;
+                    const lb = document.createElement('div');
+                    lb.className = 'fc-pdv-lightbox';
+                    lb.innerHTML = `
+                        <button class="fc-pdv-lightbox-close">×</button>
+                        <img src="${escHtml(img.src)}" alt="${escHtml(arreglo.nombre)}" />`;
+                    document.body.appendChild(lb);
+                    const close = () => lb.remove();
+                    lb.addEventListener('click', e => {
+                        if (!e.target.closest('img')) close();
+                    });
+                });
             }
-            const nombre = isPersonalizado
-                ? ($('#pdv-item-nombre', backdrop).value || '').trim()
-                : arreglo.nombre;
-            if (!nombre) {
-                $('#pdv-item-nombre', backdrop)?.focus();
-                return;
-            }
-            const color = ($('#pdv-item-color', backdrop).value || '').trim();
-            cart.push({
-                arreglo_id:    arreglo.id || 0,
-                arreglo_nombre: nombre,
-                imagen_url:    arreglo.thumb || '',
-                tamano:        selectedTamano?.label || '',
-                color,
-                precio,
-                destinatario: '',
-                destinatario_telefono: '',
-                destinatario_telefono2: '',
-                mensaje_tarjeta: '',
-            });
-            renderTicket();
-            close();
-            showToast('Agregado al ticket', 'success');
-        });
 
-        setTimeout(() => {
-            const first = backdrop.querySelector('input[type="text"], input[type="number"]');
-            if (first) first.focus();
-        }, 60);
+            // Chips de tamaño
+            $$('.fc-pdv-tamano-chip', container).forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const prevColor = selColor?.nombre;
+                    selTamIdx = parseInt(chip.dataset.idx);
+                    selTamano = tamanos[selTamIdx];
+                    selColor  = selTamano?.colores?.find(c => c.nombre === prevColor)
+                             || selTamano?.colores?.[0] || null;
+
+                    // Actualizar chip activo
+                    $$('.fc-pdv-tamano-chip', container).forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+
+                    // Actualizar precio
+                    const pd = $('#pdv-precio-display', container);
+                    const pi = $('#pdv-item-precio', container);
+                    if (pd) pd.textContent = fmt(selTamano?.precio || 0);
+                    if (pi && selTamano?.precio) pi.value = selTamano.precio;
+
+                    // Actualizar foto
+                    const img = $('#pdv-detail-img', container);
+                    if (img) { const url = getMainPhoto(); if (url) img.src = url; }
+
+                    // Actualizar colores
+                    const coloresWrap = $('.fc-pdv-colores', container);
+                    if (coloresWrap) {
+                        coloresWrap.innerHTML = (selTamano?.colores || []).map((c, ci) => `
+                            <div class="fc-pdv-color-swatch${selColor?.nombre === c.nombre ? ' active' : ''}"
+                                 data-cidx="${ci}" title="${escHtml(c.nombre)}"
+                                 style="background:${escHtml(c.hex || '#c8185a')}"></div>`).join('');
+                        bindColorSwatches();
+                    }
+                    const labelEl = $('#pdv-color-label', container);
+                    if (labelEl) labelEl.textContent = selColor?.nombre || '';
+                });
+            });
+
+            bindColorSwatches();
+
+            // Confirmar
+            $('#pdv-item-confirm', container)?.addEventListener('click', () => {
+                const precioInput = $('#pdv-item-precio', container);
+                const precio = parseFloat(precioInput?.value || 0);
+                if (!precio || precio <= 0) {
+                    if (precioInput) { precioInput.focus(); precioInput.style.borderColor = '#ef4444'; }
+                    return;
+                }
+                const nombre = isPersonalizado
+                    ? ($('#pdv-item-nombre', container)?.value || '').trim()
+                    : arreglo.nombre;
+                if (!nombre) { $('#pdv-item-nombre', container)?.focus(); return; }
+
+                const notas       = ($('#pdv-item-notas', container)?.value || '').trim();
+                const colorNombre = selColor?.nombre || '';
+                const colorDisplay = colorNombre && notas
+                    ? `${colorNombre} · ${notas}` : (colorNombre || notas);
+
+                const item = {
+                    arreglo_id:            arreglo.id || 0,
+                    arreglo_nombre:        nombre,
+                    imagen_url:            getMainPhoto(),
+                    tamano:                selTamano?.label || '',
+                    color:                 colorDisplay,
+                    precio,
+                    destinatario:          editItem?.destinatario          || '',
+                    destinatario_telefono: editItem?.destinatario_telefono  || '',
+                    destinatario_telefono2:editItem?.destinatario_telefono2 || '',
+                    mensaje_tarjeta:       editItem?.mensaje_tarjeta        || '',
+                };
+
+                if (cartIdx >= 0) {
+                    cart[cartIdx] = item;
+                    showToast('Ticket actualizado', 'success');
+                } else {
+                    cart.push(item);
+                    showToast('Agregado al ticket', 'success');
+                }
+
+                renderTicket();
+                renderCatalog(); // regresa al grid
+            });
+        }
+
+        function bindColorSwatches() {
+            $$('.fc-pdv-color-swatch', container).forEach(sw => {
+                sw.addEventListener('click', () => {
+                    const ci = parseInt(sw.dataset.cidx);
+                    selColor = (selTamano?.colores || [])[ci] || null;
+                    $$('.fc-pdv-color-swatch', container).forEach(s => s.classList.remove('active'));
+                    sw.classList.add('active');
+                    const labelEl = $('#pdv-color-label', container);
+                    if (labelEl) labelEl.textContent = selColor?.nombre || '';
+                    const img = $('#pdv-detail-img', container);
+                    if (img) { const url = getMainPhoto(); if (url) img.src = url; }
+                });
+            });
+        }
+
+        render();
     }
 
     // ── CHECKOUT MODAL ──
@@ -798,15 +996,14 @@
         const mainPanel = $('#fc-pdv-main');
         if (!mainPanel) return; // not logged in, login form is shown
 
-        // Tabs
-        $$('.fc-pdv-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                $$('.fc-pdv-tab').forEach(t => t.classList.remove('active'));
-                $$('.fc-pdv-tab-content').forEach(c => c.classList.remove('active'));
-                tab.classList.add('active');
-                const target = $('#' + tab.dataset.tab);
-                if (target) target.classList.add('active');
-                if (tab.dataset.tab === 'fc-pdv-tab-informes') loadInformes();
+        // Nav: PDV | Caja | Informes
+        $$('.fc-pdv-nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.view;
+                switchView(view);
+                if (view === 'caja')     loadCajas();
+                if (view === 'informes') loadInformes();
+                if (view === 'pdv')      renderCatalog(); // asegurar que el grid esté visible
             });
         });
 
@@ -821,7 +1018,7 @@
 
         // Personalizado button
         $('#fc-pdv-btn-personalizado')?.addEventListener('click', () => {
-            showAddItemModal({ id: 0, nombre: '', thumb: '', tamanos: [] });
+            showDetailPanel({ id: 0, nombre: '', descripcion: '', thumb: '', tamanos: [] });
         });
 
         // Search
@@ -830,17 +1027,9 @@
             let searchTimer = null;
             searchInput.addEventListener('input', () => {
                 clearTimeout(searchTimer);
-                const term = searchInput.value.toLowerCase().trim();
                 searchTimer = setTimeout(() => {
-                    if (!term) {
-                        renderCatalog(catalogo);
-                        return;
-                    }
-                    const filtered = catalogo.map(cat => ({
-                        ...cat,
-                        arreglos: cat.arreglos.filter(a => a.nombre.toLowerCase().includes(term))
-                    })).filter(cat => cat.arreglos.length);
-                    renderCatalog(filtered);
+                    searchTerm = searchInput.value.toLowerCase().trim();
+                    renderCatalog();
                 }, 250);
             });
         }
@@ -862,8 +1051,9 @@
         renderTicket();
         const catData = await ajax('fc_pdv_get_catalogo');
         if (catData.success) {
-            catalogo = catData.data.categorias || [];
-            renderCatalog(catalogo);
+            catalogo    = catData.data.categorias || [];
+            allArreglos = catalogo.flatMap(c => c.arreglos.map(a => ({ ...a, cat_id: c.id })));
+            renderCatalog();
         }
 
         // Load cajas
