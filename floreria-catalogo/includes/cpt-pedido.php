@@ -244,6 +244,7 @@ function fc_pedido_status_labels() {
         'en_camino'         => 'En camino',
         'listo_recoleccion' => 'Listo para recolección',
         'entregado'         => 'Entregado',
+        'no_entregado'      => 'No entregado',
     ];
 }
 
@@ -569,7 +570,7 @@ function fc_handle_pedido_admin_actions() {
                 update_post_meta( $pedido_id, $key, $val );
             }
             if ( ! empty( $items_clean ) ) {
-                update_post_meta( $pedido_id, '_fc_pedido_items', wp_json_encode( $items_clean ) );
+                update_post_meta( $pedido_id, '_fc_pedido_items', json_encode( $items_clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
             }
         }
         wp_safe_redirect( add_query_arg( 'updated', '1', $base ) );
@@ -988,7 +989,7 @@ $pendientes_q = get_posts( [
             <td style="font-size:12px;color:#555;max-width:150px;"><?php echo esc_html( $nota ); ?></td>
             <td style="white-space:nowrap;">
                 <button type="button" class="button button-small fc-admin-edit-btn"
-                        data-pedido="<?php echo esc_attr( wp_json_encode( $p_edit_data ) ); ?>">&#9998; Editar</button>
+                        data-pedido="<?php echo esc_attr( json_encode( $p_edit_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ); ?>">&#9998; Editar</button>
                 <form method="post" style="display:inline-block;margin-left:4px;">
                     <?php wp_nonce_field( 'fc_admin_aceptar_pendiente' ); ?>
                     <input type="hidden" name="pedido_id" value="<?php echo esc_attr( $pedido->ID ); ?>" />
@@ -1242,7 +1243,7 @@ $pendientes_q = get_posts( [
                         $p_edit_data = fc_build_pedido_data( $pedido );
                         ?>
                         <button type="button" class="button button-small fc-admin-edit-btn"
-                                data-pedido="<?php echo esc_attr( wp_json_encode( $p_edit_data ) ); ?>">Editar</button>
+                                data-pedido="<?php echo esc_attr( json_encode( $p_edit_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ); ?>">Editar</button>
                         <form method="post" style="display:inline-block;margin-left:4px;"
                               onsubmit="return confirm('¿Mover el pedido <?php echo esc_js( $num ); ?> a la papelera?')">
                             <?php wp_nonce_field( 'fc_admin_delete' ); ?>
