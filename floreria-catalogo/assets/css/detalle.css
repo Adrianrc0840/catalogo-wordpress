@@ -542,6 +542,16 @@
     border-color: #c44;
 }
 
+/* ── Google Places — forzar tema claro en iOS ── */
+gmp-place-autocomplete {
+    --gmpx-color-surface: #ffffff;
+    --gmpx-color-on-surface: #1a202c;
+    --gmpx-color-on-surface-variant: #666666;
+    --gmpx-color-primary: #c8185a;
+    background-color: #ffffff !important;
+    color-scheme: light;
+}
+
 /* ── Dirección ── */
 .fc-direccion-wrap {
     position: relative;

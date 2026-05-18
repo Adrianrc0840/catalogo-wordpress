@@ -11,6 +11,7 @@
         en_camino:         'En camino',
         listo_recoleccion: 'Listo para recolección',
         entregado:         'Entregado',
+        no_entregado:      'No entregado',
     };
 
     // ── State ──
@@ -106,6 +107,93 @@
             .map(([k, v]) =>
                 `<option value="${k}" ${k === current ? 'selected' : ''}>${v}</option>`
             ).join('');
+    }
+
+    // ── Modal para datos extra al cambiar estado ──
+    // Retorna Promise<extraData|null> — null si el usuario cancela
+    function showDeliveryModal(status) {
+        return new Promise((resolve) => {
+            let title, desc, fields, confirmColor;
+
+            if (status === 'entregado') {
+                title        = '¿Quién recibió el pedido?';
+                desc         = 'Ingresa los datos de la entrega para que el cliente pueda verlos.';
+                confirmColor = '#10b981';
+                fields = `
+                    <div class="fc-dm-field">
+                        <label>Quién recibió <span style="color:#ef4444">*</span></label>
+                        <input id="fc-dm-quien" type="text" placeholder="Nombre de quien recibió" autocomplete="off" />
+                    </div>
+                    <div class="fc-dm-field">
+                        <label>Notas adicionales <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
+                        <textarea id="fc-dm-nota" rows="2" placeholder="Alguna observación de la entrega..."></textarea>
+                    </div>`;
+            } else if (status === 'no_entregado') {
+                title        = '¿Qué pasó con la entrega?';
+                desc         = 'Describe la situación para informar al cliente.';
+                confirmColor = '#ef4444';
+                fields = `
+                    <div class="fc-dm-field">
+                        <label>Situación <span style="color:#ef4444">*</span></label>
+                        <textarea id="fc-dm-situacion" rows="3" placeholder="Ej: No había nadie en casa, dirección incorrecta..."></textarea>
+                    </div>`;
+            }
+
+            const backdrop = document.createElement('div');
+            backdrop.className = 'fc-delivery-modal-backdrop';
+            backdrop.innerHTML = `
+                <div class="fc-delivery-modal" role="dialog" aria-modal="true">
+                    <h3>${title}</h3>
+                    <p>${desc}</p>
+                    ${fields}
+                    <div class="fc-dm-actions">
+                        <button class="fc-dm-cancel">Cancelar</button>
+                        <button class="fc-dm-confirm" style="background:${confirmColor}">Confirmar</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(backdrop);
+
+            // Focus al primer input
+            setTimeout(() => {
+                const first = backdrop.querySelector('input, textarea');
+                if (first) first.focus();
+            }, 60);
+
+            // Cancelar
+            const cancelBtn = backdrop.querySelector('.fc-dm-cancel');
+            const cleanup   = () => { backdrop.remove(); };
+
+            cancelBtn.addEventListener('click', () => { cleanup(); resolve(null); });
+            backdrop.addEventListener('click', (e) => {
+                if (e.target === backdrop) { cleanup(); resolve(null); }
+            });
+
+            // Confirmar
+            const confirmBtn = backdrop.querySelector('.fc-dm-confirm');
+            confirmBtn.addEventListener('click', () => {
+                let extraData = {};
+                if (status === 'entregado') {
+                    const quien = (backdrop.querySelector('#fc-dm-quien')?.value || '').trim();
+                    if (!quien) {
+                        backdrop.querySelector('#fc-dm-quien').focus();
+                        backdrop.querySelector('#fc-dm-quien').style.borderColor = '#ef4444';
+                        return;
+                    }
+                    extraData.quien_recibio = quien;
+                    extraData.nota_entrega  = (backdrop.querySelector('#fc-dm-nota')?.value || '').trim();
+                } else if (status === 'no_entregado') {
+                    const situacion = (backdrop.querySelector('#fc-dm-situacion')?.value || '').trim();
+                    if (!situacion) {
+                        backdrop.querySelector('#fc-dm-situacion').focus();
+                        backdrop.querySelector('#fc-dm-situacion').style.borderColor = '#ef4444';
+                        return;
+                    }
+                    extraData.nota_situacion = situacion;
+                }
+                cleanup();
+                resolve(extraData);
+            });
+        });
     }
 
     // ── Render order card ──
@@ -587,11 +675,19 @@
                 const select   = $('.fc-select-status', card);
                 const status   = select.value;
 
+                // Para "entregado" y "no_entregado" pedir datos extra antes de enviar
+                let extraData = {};
+                if (status === 'entregado' || status === 'no_entregado') {
+                    const result = await showDeliveryModal(status);
+                    if (result === null) return; // usuario canceló
+                    extraData = result;
+                }
+
                 btn.textContent = '...';
                 btn.disabled    = true;
 
                 try {
-                    const data = await ajax('fc_panel_actualizar_status', { pedido_id: pedidoId, status });
+                    const data = await ajax('fc_panel_actualizar_status', { pedido_id: pedidoId, status, ...extraData });
                     if (data.success) {
                         showToast('Estado actualizado', 'success');
                         card.dataset.status = status;
@@ -1979,7 +2075,6 @@
     }
 
     // ── Google Places Autocomplete en campo de dirección ──
-    // ── Google Places Autocomplete (PlaceAutocompleteElement — nueva API) ──
     function initDireccionAutocomplete() {
         if (
             !window.google ||
@@ -1997,11 +2092,9 @@
             });
             pac.id = 'fc-direccion-pac';
 
-            // Insertar el elemento antes del input original y ocultar el original
             inputEl.parentNode.insertBefore(pac, inputEl);
             inputEl.style.display = 'none';
 
-            // Al seleccionar una sugerencia, llenar el input oculto
             pac.addEventListener('gmp-select', function(event) {
                 const pred = event.placePrediction;
                 if (!pred) return;
@@ -2013,7 +2106,6 @@
                 });
             });
 
-            // Sincronizar texto escrito manualmente al input oculto
             const syncShadowInput = function() {
                 const si = pac.shadowRoot && pac.shadowRoot.querySelector('input');
                 if (si) {
@@ -2025,7 +2117,6 @@
             };
             syncShadowInput();
 
-            // Exponer función para pre-llenar desde modal de edición
             window._fcSetDireccionPac = function(val) {
                 inputEl.value = val || '';
                 const si = pac.shadowRoot && pac.shadowRoot.querySelector('input');
@@ -2033,11 +2124,11 @@
             };
 
         } catch (e) {
-            // Fallback: mostrar input original si Places falla
             inputEl.style.display = '';
             console.warn('Google Places no disponible:', e);
         }
     }
+
 
     // ── Limpiar parámetro nc= (cache-buster) de la URL sin recargar ──
     (function cleanNcParam() {

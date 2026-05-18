@@ -357,7 +357,10 @@ function fc_ajax_get_pedidos() {
         } );
     }
 
-    wp_send_json_success( [ 'pedidos' => $pedidos ] );
+    // JSON_UNESCAPED_UNICODE preserva acentos y caracteres en español (á, é, ñ, etc.)
+    header( 'Content-Type: application/json; charset=utf-8' );
+    echo json_encode( [ 'success' => true, 'data' => [ 'pedidos' => $pedidos ] ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+    wp_die();
 }
 
 // ─────────────────────────────────────────────
@@ -391,7 +394,7 @@ function fc_ajax_upload_foto() {
             $items[ $item_idx ]['fotos_extra'] = [];
         }
         $items[ $item_idx ]['fotos_extra'][] = esc_url_raw( $url );
-        update_post_meta( $pedido_id, '_fc_pedido_items', wp_json_encode( $items ) );
+        update_post_meta( $pedido_id, '_fc_pedido_items', json_encode( $items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
     }
 
     wp_send_json_success( [ 'url' => $url ] );
@@ -425,7 +428,7 @@ function fc_ajax_save_foto_url() {
             $items[ $item_idx ]['fotos_extra'] = [];
         }
         $items[ $item_idx ]['fotos_extra'][] = $url;
-        update_post_meta( $pedido_id, '_fc_pedido_items', wp_json_encode( $items ) );
+        update_post_meta( $pedido_id, '_fc_pedido_items', json_encode( $items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
     }
 
     wp_send_json_success( [ 'url' => $url ] );
@@ -616,7 +619,10 @@ function fc_ajax_search_pedidos() {
 
     $pedidos = array_map( 'fc_build_pedido_data', $results );
 
-    wp_send_json_success( [ 'pedidos' => $pedidos ] );
+    // JSON_UNESCAPED_UNICODE preserva acentos y caracteres en español (á, é, ñ, etc.)
+    header( 'Content-Type: application/json; charset=utf-8' );
+    echo json_encode( [ 'success' => true, 'data' => [ 'pedidos' => $pedidos ] ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+    wp_die();
 }
 
 // ─────────────────────────────────────────────
@@ -693,7 +699,7 @@ function fc_ajax_crear_pedido_whatsapp() {
     }
 
     if ( ! empty( $items_clean ) ) {
-        update_post_meta( $post_id, '_fc_pedido_items', wp_json_encode( $items_clean ) );
+        update_post_meta( $post_id, '_fc_pedido_items', json_encode( $items_clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
     }
 
     update_post_meta( $post_id, '_fc_pedido_historial', maybe_serialize( [] ) );
@@ -784,7 +790,7 @@ function fc_ajax_crear_pedido() {
 
     // Multi-item JSON
     if ( ! empty( $items_clean ) ) {
-        update_post_meta( $post_id, '_fc_pedido_items', wp_json_encode( $items_clean ) );
+        update_post_meta( $post_id, '_fc_pedido_items', json_encode( $items_clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
     }
 
     $historial = $es_pendiente ? [] : [ [
@@ -862,6 +868,16 @@ function fc_ajax_actualizar_status() {
         'user_name' => $current_user->display_name,
         'timestamp' => current_time( 'mysql' ),
     ];
+
+    // Datos adicionales según el estado
+    if ( $new_status === 'no_entregado' ) {
+        $entry['nota_situacion'] = sanitize_textarea_field( wp_unslash( $_POST['nota_situacion'] ?? '' ) );
+    }
+    if ( $new_status === 'entregado' ) {
+        $entry['quien_recibio'] = sanitize_text_field( wp_unslash( $_POST['quien_recibio'] ?? '' ) );
+        $entry['nota_entrega']  = sanitize_textarea_field( wp_unslash( $_POST['nota_entrega'] ?? '' ) );
+    }
+
     $historial[] = $entry;
     update_post_meta( $pedido_id, '_fc_pedido_historial', maybe_serialize( $historial ) );
 
@@ -982,7 +998,7 @@ function fc_ajax_actualizar_pedido_datos() {
 
     // Multi-item JSON
     if ( ! empty( $items_clean ) ) {
-        update_post_meta( $pedido_id, '_fc_pedido_items', wp_json_encode( $items_clean ) );
+        update_post_meta( $pedido_id, '_fc_pedido_items', json_encode( $items_clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
     }
 
     wp_send_json_success( [ 'message' => 'Pedido actualizado correctamente.' ] );
@@ -1080,7 +1096,11 @@ function fc_ajax_get_papelera() {
     ] );
 
     $pedidos = array_map( 'fc_build_pedido_data', $posts );
-    wp_send_json_success( [ 'pedidos' => $pedidos ] );
+
+    // JSON_UNESCAPED_UNICODE preserva acentos y caracteres en español (á, é, ñ, etc.)
+    header( 'Content-Type: application/json; charset=utf-8' );
+    echo json_encode( [ 'success' => true, 'data' => [ 'pedidos' => $pedidos ] ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+    wp_die();
 }
 
 // ─────────────────────────────────────────────

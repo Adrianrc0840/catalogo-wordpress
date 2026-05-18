@@ -11,6 +11,7 @@
     --fc-s-en_camino:         #8b5cf6;
     --fc-s-listo_recoleccion: #06b6d4;
     --fc-s-entregado:         #10b981;
+    --fc-s-no_entregado:      #ef4444;
 }
 
 /* ── Reset for panel scope ── */
@@ -280,6 +281,7 @@
 .fc-order-card[data-status="en_camino"]         { border-left-color: var(--fc-s-en_camino); }
 .fc-order-card[data-status="listo_recoleccion"] { border-left-color: var(--fc-s-listo_recoleccion); }
 .fc-order-card[data-status="entregado"]         { border-left-color: var(--fc-s-entregado); }
+.fc-order-card[data-status="no_entregado"]      { border-left-color: var(--fc-s-no_entregado); }
 
 .fc-card-header {
     display: flex;
@@ -318,6 +320,7 @@
 .fc-status-badge.en_camino         { background: var(--fc-s-en_camino); }
 .fc-status-badge.listo_recoleccion { background: var(--fc-s-listo_recoleccion); }
 .fc-status-badge.entregado         { background: var(--fc-s-entregado); }
+.fc-status-badge.no_entregado      { background: var(--fc-s-no_entregado); }
 .fc-status-badge.pendiente         { background: #92400e; }
 
 /* ── Card body ── */
@@ -574,7 +577,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 100001; /* por encima de #wpadminbar (99999) */
     padding: 20px;
     opacity: 0;
     pointer-events: none;
@@ -594,6 +597,7 @@
     max-width: 580px;
     max-height: 90vh;
     overflow-y: auto;
+    overflow-x: hidden;
     transform: translateY(-20px);
     transition: transform 0.2s;
 }
@@ -634,6 +638,31 @@
 
 .fc-modal-body {
     padding: 0 24px 24px;
+    overflow-x: hidden;
+    /* Asegura que todo hijo respete el ancho del modal */
+    box-sizing: border-box;
+    width: 100%;
+}
+
+/* Todos los inputs, selects y textareas dentro del modal no pueden desbordar */
+.fc-modal-body input,
+.fc-modal-body select,
+.fc-modal-body textarea,
+.fc-modal-body .fc-form-group,
+.fc-modal-body .fc-tipo-toggle,
+.fc-modal-body .fc-autocomplete-wrap,
+.fc-modal-body .fc-item-block,
+.fc-modal-body .fc-items-section {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+
+/* Evitar zoom automático de iOS al enfocar inputs (font-size >= 16px) */
+.fc-modal-body input,
+.fc-modal-body select,
+.fc-modal-body textarea {
+    font-size: 16px !important;
 }
 
 .fc-modal-footer {
@@ -1334,8 +1363,43 @@
         padding: 32px 20px;
     }
 
+
+    /* Modal full-screen en mobile */
+    .fc-modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+
     .fc-modal {
-        max-height: 95vh;
+        max-height: 96dvh;
+        border-radius: 20px 20px 0 0;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .fc-modal-header {
+        padding: 16px 16px 0;
+        position: sticky;
+        top: 0;
+        background: #fff;
+        z-index: 10;
+        border-bottom: 1px solid #f0f0f0;
+        margin-bottom: 0;
+        padding-bottom: 14px;
+    }
+
+    .fc-modal-body {
+        padding: 16px 16px 16px;
+    }
+
+    .fc-modal-footer {
+        padding: 0 16px 24px;
+        position: sticky;
+        bottom: 0;
+        background: #fff;
+        border-top: 1px solid #f0f0f0;
+        padding-top: 12px;
     }
 
     .fc-status-row {
@@ -1343,7 +1407,16 @@
     }
 }
 
-/* ── Google Places — nuevo elemento gmp-place-autocomplete ── */
+/* ── Google Places — gmp-place-autocomplete (tema claro) ── */
+gmp-place-autocomplete {
+    --gmpx-color-surface: #ffffff;
+    --gmpx-color-on-surface: #1a202c;
+    --gmpx-color-on-surface-variant: #666666;
+    --gmpx-color-primary: #c8185a;
+    background-color: #ffffff !important;
+    color-scheme: light;
+}
+
 #fc-direccion-pac {
     width: 100%;
     display: block;
@@ -1351,11 +1424,9 @@
 
 #fc-direccion-pac::part(input) {
     width: 100%;
-    height: auto;
     min-height: 38px;
     padding: 8px 10px;
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 16px; /* ≥16px evita zoom automático en iOS */
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     box-sizing: border-box;
@@ -1363,7 +1434,6 @@
     color: #1a202c;
     background: #fff;
     outline: none;
-    transition: border-color 0.2s;
 }
 
 #fc-direccion-pac::part(input):focus {
@@ -1530,4 +1600,110 @@
     border-color: var(--fc-primary, #c8185a);
     color: var(--fc-primary, #c8185a);
 }
+
+/* ── Modal de datos de entrega / no entregado ── */
+.fc-delivery-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fcFadeIn .18s ease;
+}
+@keyframes fcFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.fc-delivery-modal {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+}
+
+.fc-delivery-modal h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a202c;
+    margin: 0 0 6px;
+}
+
+.fc-delivery-modal p {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0 0 18px;
+}
+
+.fc-delivery-modal .fc-dm-field {
+    margin-bottom: 14px;
+}
+
+.fc-delivery-modal label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.fc-delivery-modal input,
+.fc-delivery-modal textarea {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #1a202c;
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color .15s;
+    resize: vertical;
+}
+
+.fc-delivery-modal input:focus,
+.fc-delivery-modal textarea:focus {
+    outline: none;
+    border-color: var(--fc-primary, #c8185a);
+    box-shadow: 0 0 0 3px rgba(200,24,90,0.1);
+}
+
+.fc-delivery-modal .fc-dm-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.fc-delivery-modal .fc-dm-confirm {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    color: #fff;
+    transition: opacity .15s;
+}
+.fc-delivery-modal .fc-dm-confirm:hover { opacity: 0.88; }
+
+.fc-delivery-modal .fc-dm-cancel {
+    padding: 10px 18px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    background: #fff;
+    color: #374151;
+    transition: border-color .15s;
+}
+.fc-delivery-modal .fc-dm-cancel:hover { border-color: #94a3b8; }
 

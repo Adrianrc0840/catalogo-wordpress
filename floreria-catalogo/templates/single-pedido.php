@@ -93,15 +93,30 @@ $status_colors = [
     'en_camino'         => '#8b5cf6',
     'listo_recoleccion' => '#06b6d4',
     'entregado'         => '#10b981',
+    'no_entregado'      => '#ef4444',
 ];
 $line_color = $status_colors[ $status ] ?? '#c8185a';
 
+// ── Historial — buscar entrada de entrega o no_entregado ──
+$historial_raw  = $pid ? get_post_meta( $pid, '_fc_pedido_historial', true ) : '';
+$historial      = maybe_unserialize( $historial_raw );
+$historial      = is_array( $historial ) ? $historial : [];
+$entrega_entry  = null;
+foreach ( array_reverse( $historial ) as $entry ) {
+    if ( in_array( $entry['status'] ?? '', [ 'entregado', 'no_entregado' ], true ) ) {
+        $entrega_entry = $entry;
+        break;
+    }
+}
+
 // ── Status steps ──
-$all_statuses = [
+// "no_entregado" se muestra como el último paso (en lugar de "entregado") en rojo
+$last_step     = ( $status === 'no_entregado' ) ? 'no_entregado' : 'entregado';
+$all_statuses  = [
     'aceptado',
     'en_preparacion',
     ( $tipo === 'recoleccion' ? 'listo_recoleccion' : 'en_camino' ),
-    'entregado',
+    $last_step,
 ];
 
 $status_labels_map = [
@@ -110,13 +125,14 @@ $status_labels_map = [
     'en_camino'         => 'En camino',
     'listo_recoleccion' => 'Listo para recolección',
     'entregado'         => 'Entregado',
+    'no_entregado'      => 'No entregado',
 ];
 
-// Current step index (0-based)
-$current_step = 0;
-$status_order = [ 'aceptado', 'en_preparacion', 'en_camino', 'listo_recoleccion', 'entregado' ];
+// Current step index (0-based) — no_entregado ocupa el índice del último paso
+$current_step  = 0;
+$status_for_step = ( $status === 'no_entregado' ) ? 'no_entregado' : $status;
 foreach ( $all_statuses as $i => $s ) {
-    if ( $s === $status ) {
+    if ( $s === $status_for_step ) {
         $current_step = $i;
     }
 }
@@ -204,6 +220,7 @@ get_header();
     --fc-s-en_camino:         #8b5cf6;
     --fc-s-listo_recoleccion: #06b6d4;
     --fc-s-entregado:         #10b981;
+    --fc-s-no_entregado:      #ef4444;
 }
 
 /* ── Progress bar ── */
@@ -292,6 +309,12 @@ get_header();
     box-shadow: 0 0 0 2px var(--fc-s-entregado);
     color: #fff;
 }
+.fc-progress-step.step-no_entregado.done .fc-progress-dot,
+.fc-progress-step.step-no_entregado.current .fc-progress-dot {
+    background: var(--fc-s-no_entregado);
+    box-shadow: 0 0 0 2px var(--fc-s-no_entregado);
+    color: #fff;
+}
 
 /* Anillo extra en el paso actual */
 .fc-progress-step.step-aceptado.current .fc-progress-dot          { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--fc-s-aceptado);          transform: scale(1.15); }
@@ -299,6 +322,7 @@ get_header();
 .fc-progress-step.step-en_camino.current .fc-progress-dot         { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--fc-s-en_camino);         transform: scale(1.15); }
 .fc-progress-step.step-listo_recoleccion.current .fc-progress-dot { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--fc-s-listo_recoleccion); transform: scale(1.15); }
 .fc-progress-step.step-entregado.current .fc-progress-dot         { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--fc-s-entregado);         transform: scale(1.15); }
+.fc-progress-step.step-no_entregado.current .fc-progress-dot      { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--fc-s-no_entregado);      transform: scale(1.15); }
 
 /* Labels coloreados según status */
 .fc-progress-step.step-aceptado.done .fc-progress-label,
@@ -311,6 +335,8 @@ get_header();
 .fc-progress-step.step-listo_recoleccion.current .fc-progress-label { color: var(--fc-s-listo_recoleccion); font-weight: 600; }
 .fc-progress-step.step-entregado.done .fc-progress-label,
 .fc-progress-step.step-entregado.current .fc-progress-label         { color: var(--fc-s-entregado);         font-weight: 600; }
+.fc-progress-step.step-no_entregado.done .fc-progress-label,
+.fc-progress-step.step-no_entregado.current .fc-progress-label      { color: var(--fc-s-no_entregado);      font-weight: 600; }
 
 .fc-progress-label {
     font-size: 10px;
@@ -388,6 +414,39 @@ get_header();
     margin: 0;
     line-height: 1.5;
 }
+
+/* ── Caja de info de entrega (quién recibió / no entregado) ── */
+.fc-entrega-box {
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1.5px solid;
+}
+.fc-entrega-box.entregado {
+    background: #f0fdf4;
+    border-color: #10b981;
+}
+.fc-entrega-box.no_entregado {
+    background: #fff5f5;
+    border-color: #ef4444;
+}
+.fc-entrega-box h3 {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 8px;
+}
+.fc-entrega-box.entregado h3   { color: #065f46; }
+.fc-entrega-box.no_entregado h3 { color: #991b1b; }
+.fc-entrega-box p {
+    font-size: 14px;
+    margin: 0 0 4px;
+    line-height: 1.5;
+}
+.fc-entrega-box.entregado p   { color: #047857; }
+.fc-entrega-box.no_entregado p { color: #b91c1c; }
+.fc-entrega-box p:last-child { margin-bottom: 0; }
 
 /* ── Back link ── */
 .fc-back-link {
@@ -623,6 +682,27 @@ get_header();
     </div>
     <?php endif; ?>
 
+    <!-- Info de entrega: quién recibió (entregado) o situación (no entregado) -->
+    <?php if ( $status === 'entregado' && $entrega_entry ) : ?>
+    <div class="fc-entrega-box entregado">
+        <h3>&#10003; Pedido entregado</h3>
+        <?php if ( ! empty( $entrega_entry['quien_recibio'] ) ) : ?>
+        <p><strong>Recibió:</strong> <?php echo esc_html( $entrega_entry['quien_recibio'] ); ?></p>
+        <?php endif; ?>
+        <?php if ( ! empty( $entrega_entry['nota_entrega'] ) ) : ?>
+        <p><?php echo nl2br( esc_html( $entrega_entry['nota_entrega'] ) ); ?></p>
+        <?php endif; ?>
+    </div>
+    <?php elseif ( $status === 'no_entregado' && $entrega_entry ) : ?>
+    <div class="fc-entrega-box no_entregado">
+        <h3>&#x26A0; No pudimos entregar tu pedido</h3>
+        <?php if ( ! empty( $entrega_entry['nota_situacion'] ) ) : ?>
+        <p><?php echo nl2br( esc_html( $entrega_entry['nota_situacion'] ) ); ?></p>
+        <?php endif; ?>
+        <p>Por favor contáctanos para coordinar una nueva entrega.</p>
+    </div>
+    <?php endif; ?>
+
     <div class="fc-pedido-card">
         <!-- Card header -->
         <div class="fc-pedido-card-header" style="background:<?php echo esc_attr( $line_color ); ?>;">
@@ -666,6 +746,7 @@ get_header();
                     'en_camino'         => '&#x1F4E6;',
                     'listo_recoleccion' => '&#x1F3EA;',
                     'entregado'         => '&#x2665;',
+                    'no_entregado'      => '&#x2715;',
                 ];
                 $icon = $icons[ $step_status ] ?? ( $step_idx + 1 );
                 ?>
