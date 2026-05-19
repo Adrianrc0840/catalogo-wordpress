@@ -102,6 +102,14 @@ function fc_enqueue_frontend() {
     }
 }
 
+// Ocultar barra de administrador en PDV y panel de floristas
+add_filter( 'show_admin_bar', function( $show ) {
+    if ( get_query_var( 'fc_pdv' ) || get_query_var( 'fc_panel_florista' ) ) {
+        return false;
+    }
+    return $show;
+} );
+
 add_filter( 'template_include', 'fc_template_include' );
 function fc_template_include( $template ) {
     if ( is_singular( 'arreglo' ) ) {

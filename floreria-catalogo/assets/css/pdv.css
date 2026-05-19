@@ -243,35 +243,111 @@ body.fc-pdv-page input[type="number"] { -moz-appearance: textfield; appearance: 
     padding: 14px 14px 20px;
 }
 
-/* ── Category pills ── */
-.fc-pdv-cat-pills {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding: 0 2px 10px;
-    scrollbar-width: none;
+/* ── Category dropdown filter ── */
+.fc-pdv-cat-filter {
+    position: relative;
     flex-shrink: 0;
+    margin-bottom: 10px;
 }
-.fc-pdv-cat-pills::-webkit-scrollbar { display: none; }
 
-.fc-pdv-cat-pill {
-    padding: 6px 14px;
-    border-radius: 20px;
+.fc-pdv-cat-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px 8px 12px;
+    border-radius: 10px;
     border: 1.5px solid var(--pdv-border);
     background: #fff;
-    color: var(--pdv-muted);
+    color: var(--pdv-text);
     font-size: 13px;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
     white-space: nowrap;
-    transition: background .15s, color .15s, border-color .15s;
+    transition: border-color .18s, box-shadow .18s, background .18s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
 }
-.fc-pdv-cat-pill:hover { border-color: var(--pdv-primary); color: var(--pdv-primary); }
-.fc-pdv-cat-pill.active {
-    background: var(--pdv-primary);
+.fc-pdv-cat-toggle::before {
+    content: '🏷️';
+    font-size: 14px;
+    flex-shrink: 0;
+}
+.fc-pdv-cat-toggle:hover {
     border-color: var(--pdv-primary);
+    box-shadow: 0 2px 8px rgba(200,24,90,.12);
+}
+.fc-pdv-cat-toggle.open {
+    border-color: var(--pdv-primary);
+    background: #fff8fb;
+    box-shadow: 0 2px 8px rgba(200,24,90,.14);
+}
+
+.fc-pdv-cat-chevron {
+    font-size: 11px;
+    color: var(--pdv-muted);
+    margin-left: 4px;
+    transition: transform .22s ease;
+    display: inline-block;
+}
+.fc-pdv-cat-toggle.open .fc-pdv-cat-chevron {
+    transform: rotate(180deg);
+    color: var(--pdv-primary);
+}
+
+.fc-pdv-cat-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 50;
+    background: #fff;
+    border: 1.5px solid var(--pdv-border);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.13);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 200px;
+    max-height: 300px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--pdv-border) transparent;
+    animation: pdvCatPanelIn .18s ease;
+}
+@keyframes pdvCatPanelIn {
+    from { opacity: 0; transform: translateY(-6px) scale(.98); }
+    to   { opacity: 1; transform: translateY(0)   scale(1);   }
+}
+.fc-pdv-cat-panel::-webkit-scrollbar { width: 4px; }
+.fc-pdv-cat-panel::-webkit-scrollbar-thumb { background: var(--pdv-border); border-radius: 4px; }
+
+.fc-pdv-cat-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--pdv-text);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .12s, color .12s;
+}
+.fc-pdv-cat-btn:hover { background: var(--pdv-bg); }
+.fc-pdv-cat-btn.active {
+    background: linear-gradient(135deg, var(--pdv-primary) 0%, #e0306a 100%);
     color: #fff;
+    font-weight: 600;
+}
+.fc-pdv-cat-btn.active::after {
+    content: '✓';
+    font-size: 12px;
+    opacity: .9;
 }
 
 /* ── Catalog card grid ── */
@@ -464,6 +540,47 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
     letter-spacing: .04em;
     margin-left: 8px;
     vertical-align: middle;
+}
+
+/* Badge agotado en tarjeta del grid */
+.fc-pdv-catalog-card.agotado { opacity: 0.65; }
+.fc-pdv-card-img-wrap { position: relative; }
+.fc-pdv-card-agotado-badge {
+    position: absolute;
+    top: 8px; left: 8px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 99px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    pointer-events: none;
+}
+
+/* Aviso agotado en panel de detalle */
+.fc-pdv-agotado-aviso {
+    background: #fef2f2;
+    border: 1.5px solid #fecaca;
+    border-radius: 9px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #991b1b;
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+/* Aviso anticipación en panel de detalle */
+.fc-pdv-especial-aviso {
+    background: #fffbeb;
+    border: 1.5px solid #fcd34d;
+    border-radius: 9px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #92400e;
+    margin-bottom: 12px;
+    line-height: 1.5;
 }
 
 .fc-pdv-detail-nombre {

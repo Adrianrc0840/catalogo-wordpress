@@ -194,6 +194,8 @@ function fc_pdv_build_arreglo_data( $p ) {
         'descripcion' => get_post_meta( $p->ID, '_fc_descripcion', true ) ?: '',
         'thumb'       => $thumb,
         'tamanos'     => $tamanos,
+        'especial'    => get_post_meta( $p->ID, '_fc_especial', true ) === '1',
+        'agotado'     => get_post_meta( $p->ID, '_fc_agotado',  true ) === '1',
     ];
 }
 
@@ -205,63 +207,45 @@ function fc_ajax_pdv_get_catalogo() {
     fc_pdv_verify_nonce();
     fc_pdv_require_admin();
 
-    $categorias = get_terms( [
-        'taxonomy'   => 'categoria_arreglo',
-        'hide_empty' => true,
-        'orderby'    => 'name',
-        'order'      => 'ASC',
-    ] );
-
-    $result = [];
-
-    foreach ( $categorias as $cat ) {
-        $posts = get_posts( [
-            'post_type'      => 'arreglo',
-            'post_status'    => 'publish',
-            'posts_per_page' => -1,
-            'orderby'        => 'title',
-            'order'          => 'ASC',
-            'tax_query'      => [ [
-                'taxonomy' => 'categoria_arreglo',
-                'field'    => 'term_id',
-                'terms'    => $cat->term_id,
-            ] ],
-        ] );
-
-        $arreglos = array_map( 'fc_pdv_build_arreglo_data', $posts );
-
-        if ( $arreglos ) {
-            $result[] = [
-                'id'       => $cat->term_id,
-                'nombre'   => $cat->name,
-                'arreglos' => $arreglos,
-            ];
-        }
-    }
-
-    // Arreglos sin categoría
-    $sin_cat = get_posts( [
+    // Una sola query en menu_order — sin duplicados
+    $query = new WP_Query( [
         'post_type'      => 'arreglo',
         'post_status'    => 'publish',
         'posts_per_page' => -1,
-        'orderby'        => 'title',
+        'orderby'        => 'menu_order',
         'order'          => 'ASC',
-        'tax_query'      => [ [
-            'taxonomy' => 'categoria_arreglo',
-            'operator' => 'NOT EXISTS',
-        ] ],
     ] );
 
-    if ( $sin_cat ) {
-        $result[] = [
-            'id'       => 0,
-            'nombre'   => 'Sin categoría',
-            'arreglos' => array_map( 'fc_pdv_build_arreglo_data', $sin_cat ),
-        ];
+    // Categorías para los filtros
+    $cat_terms  = get_terms( [ 'taxonomy' => 'categoria_arreglo', 'hide_empty' => true, 'orderby' => 'name', 'order' => 'ASC' ] );
+    $categorias = [];
+    if ( ! is_wp_error( $cat_terms ) ) {
+        foreach ( $cat_terms as $ct ) {
+            $categorias[] = [ 'id' => $ct->term_id, 'nombre' => $ct->name ];
+        }
     }
 
+    // Lista plana de arreglos con todos sus cat_ids
+    $arreglos = [];
+    foreach ( $query->posts as $p ) {
+        $data    = fc_pdv_build_arreglo_data( $p );
+        $terms   = get_the_terms( $p->ID, 'categoria_arreglo' );
+        $cat_ids = ( $terms && ! is_wp_error( $terms ) )
+            ? array_map( fn( $t ) => (int) $t->term_id, $terms )
+            : [];
+        $data['cat_ids'] = $cat_ids;
+        $arreglos[]      = $data;
+    }
+    wp_reset_postdata();
+
     header( 'Content-Type: application/json; charset=utf-8' );
-    echo json_encode( [ 'success' => true, 'data' => [ 'categorias' => $result ] ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+    echo json_encode( [
+        'success' => true,
+        'data'    => [
+            'categorias' => $categorias,
+            'arreglos'   => $arreglos,
+        ],
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
     wp_die();
 }
 
