@@ -1,10 +1,10 @@
 <?php
 /**
- * Plugin Name: Florería Catálogo
+ * Plugin Name: Florería Monarca
  * Plugin URI:  https://github.com/Adrianrc0840/catalogo-wordpress
- * Description: Catálogo de arreglos florales con pedidos por WhatsApp
- * Version:     1.0.0
- * Author:      Adrian
+ * Description: Sistema completo para florerías: catálogo, pedidos por WhatsApp, punto de venta, panel de floristas y gestión de caja.
+ * Version:     3.2
+ * Author:      Adrián Rodríguez
  * Text Domain: floreria-catalogo
  */
 
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FC_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'FC_URL',     plugin_dir_url( __FILE__ ) );
-define( 'FC_VERSION', '1.0.0' );
+define( 'FC_VERSION', '3.2' );
 
 require_once FC_PATH . 'includes/cpt.php';
 require_once FC_PATH . 'includes/meta-boxes.php';
@@ -101,6 +101,14 @@ function fc_enqueue_frontend() {
         wp_enqueue_script( 'fc-politicas', FC_URL . 'assets/js/politicas.js', [], FC_VERSION, true );
     }
 }
+
+// Ocultar barra de administrador en PDV y panel de floristas
+add_filter( 'show_admin_bar', function( $show ) {
+    if ( get_query_var( 'fc_pdv' ) || get_query_var( 'fc_panel_florista' ) ) {
+        return false;
+    }
+    return $show;
+} );
 
 add_filter( 'template_include', 'fc_template_include' );
 function fc_template_include( $template ) {

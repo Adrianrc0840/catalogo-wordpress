@@ -233,16 +233,23 @@
 
         // Aplicar filtros de categoría y búsqueda
         let arr = allArreglos;
-        if (selectedCat !== null) arr = arr.filter(a => a.cat_id === selectedCat);
+        if (selectedCat !== null) arr = arr.filter(a => Array.isArray(a.cat_ids) && a.cat_ids.includes(selectedCat));
         if (searchTerm) arr = arr.filter(a => a.nombre.toLowerCase().includes(searchTerm));
 
-        // Pills de categoría (solo si hay más de una)
+        // Dropdown de categoría (solo si hay más de una)
+        const catLabel = selectedCat === null
+            ? 'Todas las categorías'
+            : (catalogo.find(c => c.id === selectedCat)?.nombre || 'Todas las categorías');
         const pillsHtml = catalogo.length > 1 ? `
-            <div class="fc-pdv-cat-pills">
-                <button class="fc-pdv-cat-pill${selectedCat === null ? ' active' : ''}" data-cat="all">Todos</button>
-                ${catalogo.map(c => `
-                    <button class="fc-pdv-cat-pill${selectedCat === c.id ? ' active' : ''}" data-cat="${c.id}">${escHtml(c.nombre)}</button>
-                `).join('')}
+            <div class="fc-pdv-cat-filter">
+                <button class="fc-pdv-cat-toggle" id="pdv-cat-toggle">
+                    <span id="pdv-cat-label">${escHtml(catLabel)}</span>
+                    <span class="fc-pdv-cat-chevron">▼</span>
+                </button>
+                <div class="fc-pdv-cat-panel" id="pdv-cat-panel" style="display:none">
+                    <button class="fc-pdv-cat-btn${selectedCat === null ? ' active' : ''}" data-cat="all">Todas</button>
+                    ${catalogo.map(c => `<button class="fc-pdv-cat-btn${selectedCat === c.id ? ' active' : ''}" data-cat="${c.id}">${escHtml(c.nombre)}</button>`).join('')}
+                </div>
             </div>` : '';
 
         // Grid de tarjetas
@@ -257,11 +264,12 @@
                         ? `${fmt(pMin)} – ${fmt(pMax)}`
                         : pMin ? fmt(pMin) : 'Sin precio';
                     return `
-                        <div class="fc-pdv-catalog-card" data-idx="${i}">
+                        <div class="fc-pdv-catalog-card${a.agotado ? ' agotado' : ''}" data-idx="${i}">
                             <div class="fc-pdv-card-img-wrap">
                                 ${a.thumb
                                     ? `<img src="${escHtml(a.thumb)}" alt="${escHtml(a.nombre)}" loading="lazy" />`
                                     : `<div class="fc-pdv-card-img-empty">🌸</div>`}
+                                ${a.agotado ? `<span class="fc-pdv-card-agotado-badge">Agotado</span>` : ''}
                             </div>
                             <div class="fc-pdv-card-body">
                                 <div class="fc-pdv-card-nombre">${escHtml(a.nombre)}</div>
@@ -276,10 +284,36 @@
 
         container.innerHTML = pillsHtml + cardsHtml;
 
-        // Pills → filtrar por categoría
-        $$('.fc-pdv-cat-pill', container).forEach(pill => {
-            pill.addEventListener('click', () => {
-                const val = pill.dataset.cat;
+        // Dropdown → toggle panel
+        const catToggleEl = $('#pdv-cat-toggle', container);
+        const catPanelEl  = $('#pdv-cat-panel', container);
+        if (catToggleEl && catPanelEl) {
+            catToggleEl.addEventListener('click', e => {
+                e.stopPropagation();
+                const isOpen = catPanelEl.style.display !== 'none';
+                catPanelEl.style.display = isOpen ? 'none' : '';
+                catToggleEl.classList.toggle('open', !isOpen);
+            });
+
+            // Cerrar al clic fuera
+            const closeCatPanel = e => {
+                if (!catToggleEl.contains(e.target) && !catPanelEl.contains(e.target)) {
+                    catPanelEl.style.display = 'none';
+                    catToggleEl.classList.remove('open');
+                    document.removeEventListener('click', closeCatPanel);
+                }
+            };
+            catToggleEl.addEventListener('click', () => {
+                if (catPanelEl.style.display !== 'none') {
+                    setTimeout(() => document.addEventListener('click', closeCatPanel), 0);
+                }
+            });
+        }
+
+        // Botones de categoría dentro del panel
+        $$('.fc-pdv-cat-btn', container).forEach(btn => {
+            btn.addEventListener('click', () => {
+                const val = btn.dataset.cat;
                 selectedCat = val === 'all' ? null : parseInt(val);
                 renderCatalog();
             });
@@ -358,6 +392,16 @@
                         <button class="fc-pdv-detail-back">
                             ← Volver${editItem ? '<span class="fc-pdv-detail-edit-badge">Editando</span>' : ''}
                         </button>
+
+                        ${arreglo.agotado ? `
+                            <div class="fc-pdv-agotado-aviso">
+                                🚫 Este arreglo está marcado como <strong>agotado</strong>.
+                            </div>` : ''}
+
+                        ${arreglo.especial ? `
+                            <div class="fc-pdv-especial-aviso">
+                                🕐 Este arreglo requiere <strong>al menos 2 días hábiles de anticipación</strong>. Sábado y domingo no cuentan.
+                            </div>` : ''}
 
                         ${isPersonalizado ? `
                             <div class="fc-pdv-form-group">
@@ -647,8 +691,10 @@
         // Populate horarios on open (fecha defaults to today)
         updateHorariosModal(backdrop);
 
-        // Fecha change → rebuild slots
-        $('#pdv-co-fecha', backdrop)?.addEventListener('change', () => updateHorariosModal(backdrop));
+        // Fecha change → rebuild slots (input cubre teclado; change cubre el picker)
+        const fechaInputEl = $('#pdv-co-fecha', backdrop);
+        fechaInputEl?.addEventListener('change', () => updateHorariosModal(backdrop));
+        fechaInputEl?.addEventListener('input',  () => updateHorariosModal(backdrop));
 
         // Tipo toggle
         $$('.fc-pdv-tipo-btn', backdrop).forEach(btn => {
@@ -1385,7 +1431,7 @@
         const catData = await ajax('fc_pdv_get_catalogo');
         if (catData.success) {
             catalogo    = catData.data.categorias || [];
-            allArreglos = catalogo.flatMap(c => c.arreglos.map(a => ({ ...a, cat_id: c.id })));
+            allArreglos = catData.data.arreglos   || [];
             renderCatalog();
         }
 
