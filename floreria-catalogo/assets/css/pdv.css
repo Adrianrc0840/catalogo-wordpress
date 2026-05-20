@@ -601,8 +601,10 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 }
 
 .fc-pdv-detail-desc {
-    font-size: 14px;
-    color: var(--pdv-muted);
+    font-size: 13.5px;
+    color: #4a5568;
+    font-weight: 500;
+    line-height: 1.65;
     margin: 0 0 18px;
     line-height: 1.65;
     border-bottom: 1px solid var(--pdv-border);
