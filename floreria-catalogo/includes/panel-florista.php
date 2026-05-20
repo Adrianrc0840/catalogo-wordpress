@@ -797,7 +797,7 @@ function fc_ajax_crear_pedido() {
         'status'    => 'aceptado',
         'user_id'   => get_current_user_id(),
         'user_name' => $current_user->display_name,
-        'timestamp' => current_time( 'mysql' ),
+        'timestamp' => current_time( 'mysql', true ), // UTC — el JS convierte a Tijuana
     ] ];
     update_post_meta( $post_id, '_fc_pedido_historial', maybe_serialize( $historial ) );
 
@@ -866,7 +866,7 @@ function fc_ajax_actualizar_status() {
         'status'    => $new_status,
         'user_id'   => get_current_user_id(),
         'user_name' => $current_user->display_name,
-        'timestamp' => current_time( 'mysql' ),
+        'timestamp' => current_time( 'mysql', true ), // UTC — el JS convierte a Tijuana
     ];
 
     // Datos adicionales según el estado
