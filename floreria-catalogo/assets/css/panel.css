@@ -1315,6 +1315,17 @@
     font-style: italic;
 }
 
+/* ── Modificaciones por arreglo ── */
+.fc-card-item-modificaciones {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #1a202c;
+    letter-spacing: 0.02em;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 /* ── Item count badge ── */
 .fc-card-item-count {
     font-size: 11px;

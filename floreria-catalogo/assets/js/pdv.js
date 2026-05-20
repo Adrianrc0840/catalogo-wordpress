@@ -443,9 +443,9 @@
                             </div>` : ''}
 
                         <div class="fc-pdv-form-group">
-                            <label class="fc-pdv-label-sm">Notas adicionales</label>
+                            <label class="fc-pdv-label-sm">Modificaciones</label>
                             <textarea id="pdv-item-notas" rows="3"
-                                      placeholder="Detalles, personalización, etc. (opcional)"
+                                      placeholder="Sin cenizo, con papel morado, listón rosita… (opcional)"
                                       style="resize:vertical">${escHtml(editNotas)}</textarea>
                         </div>
                         <div class="fc-pdv-form-group">
@@ -666,6 +666,13 @@
                             <label>Costo de envío <small style="color:var(--pdv-muted)">(opcional)</small></label>
                             <input type="number" id="pdv-co-costo-envio" min="0" step="0.01" placeholder="0.00" />
                         </div>
+                    </div>
+
+                    <div class="fc-pdv-form-group">
+                        <label>Referencias de entrega <small style="color:var(--pdv-muted)">(opcional)</small></label>
+                        <textarea id="pdv-co-referencias" rows="2"
+                                  placeholder="Casa azul con portón negro, frente al OXXO…"
+                                  style="resize:vertical"></textarea>
                     </div>
 
                     <div class="fc-pdv-section-title">Detalles por arreglo</div>
@@ -893,6 +900,7 @@
                     direccion:       $('#pdv-co-direccion', backdrop)?.value         || '',
                     forma_pago:      formaPago,
                     costo_envio:     costoEnvio,
+                    referencias:     ($('#pdv-co-referencias', backdrop)?.value || '').trim(),
                     monto_total:     montoTotal,
                     items_json:      JSON.stringify(itemsFinal),
                 });

@@ -269,6 +269,7 @@
                 <div class="fc-card-item-info">
                     <strong class="fc-card-item-nombre">${escHtml(item.arreglo_nombre)}</strong>
                     ${sub ? `<span class="fc-card-item-sub">${escHtml(sub)}</span>` : ''}
+                    ${item.notas ? `<span class="fc-card-item-modificaciones">${escHtml(item.notas)}</span>` : ''}
                     ${destLine}
                     ${tarjetaLine}
                 </div>
@@ -300,6 +301,7 @@
                 <span class="fc-value">${escHtml(tipoLabel)} · ${escHtml(p.fecha)}${horarioLabel ? ' · ' + escHtml(horarioLabel) : ''}</span>
             </div>
             ${p.tipo === 'envio' && p.direccion ? `<div class="fc-card-row"><span class="fc-label">Dirección</span><span class="fc-value"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.direccion)}" target="_blank" rel="noopener" class="fc-maps-link">${escHtml(p.direccion)}</a></span></div>` : ''}
+            ${p.referencias ? `<div class="fc-card-row"><span class="fc-label">Referencias</span><span class="fc-value">${escHtml(p.referencias)}</span></div>` : ''}
             ${notaEfectiva ? `<div class="fc-card-row fc-nota-destacada"><span class="fc-label">Nota</span><span class="fc-value">${escHtml(notaEfectiva)}</span></div>` : ''}
 
             <!-- Arreglos -->
@@ -1765,6 +1767,7 @@
             return '';
         }).filter(Boolean).join('\n');
         const notaEl   = $('#fc-modal-nota');           if (notaEl)   notaEl.value   = notaEfectivaModal;
+        const refEl    = $('#fc-modal-referencias');    if (refEl)    refEl.value    = pedido.referencias || '';
 
         // PDF
         const pdfUrl    = pedido.pdf_url || '';
@@ -1888,6 +1891,7 @@
             canal_nombre:     $('#fc-modal-canal-nombre')?.value     || '',
             canal_contacto:   $('#fc-modal-canal-contacto')?.value   || '',
             nota:             $('#fc-modal-nota')?.value             || '',
+            referencias:      $('#fc-modal-referencias')?.value      || '',
             pdf_url:          $('#fc-modal-pdf-url')?.value          || '',
             items_json:       JSON.stringify(items),
         };

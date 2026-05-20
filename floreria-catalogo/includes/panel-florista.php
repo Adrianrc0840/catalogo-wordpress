@@ -502,6 +502,7 @@ function fc_build_pedido_data( $p ) {
         'direccion'         => get_post_meta( $p->ID, '_fc_pedido_direccion',        true ),
         'hora_recoleccion'  => get_post_meta( $p->ID, '_fc_pedido_hora_recoleccion', true ),
         'nota'              => get_post_meta( $p->ID, '_fc_pedido_nota',             true ),
+        'referencias'       => get_post_meta( $p->ID, '_fc_pedido_referencias',      true ),
         'nota_floreria'     => get_post_meta( $p->ID, '_fc_pedido_nota_floreria',    true ),
         'canal'             => get_post_meta( $p->ID, '_fc_pedido_canal',            true ),
         'canal_nombre'      => get_post_meta( $p->ID, '_fc_pedido_canal_nombre',     true ),
@@ -771,7 +772,8 @@ function fc_ajax_crear_pedido() {
         '_fc_pedido_canal'            => sanitize_key( $_POST['canal'] ?? '' ),
         '_fc_pedido_canal_nombre'     => sanitize_text_field( $_POST['canal_nombre']    ?? '' ),
         '_fc_pedido_canal_contacto'   => sanitize_text_field( $_POST['canal_contacto']  ?? '' ),
-        '_fc_pedido_nota'             => sanitize_textarea_field( $_POST['nota'] ?? '' ),
+        '_fc_pedido_nota'             => sanitize_textarea_field( $_POST['nota']         ?? '' ),
+        '_fc_pedido_referencias'      => sanitize_textarea_field( $_POST['referencias']  ?? '' ),
         '_fc_pedido_registrado_por'   => get_current_user_id(),
         '_fc_pedido_pdf_url'          => esc_url_raw( $_POST['pdf_url'] ?? '' ),
         // Legacy single-item (first item) for backward compat

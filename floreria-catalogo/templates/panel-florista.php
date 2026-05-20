@@ -209,6 +209,12 @@ $status_labels = fc_pedido_status_labels();
                     <textarea id="fc-modal-nota" name="nota" rows="2" placeholder="Indicaciones especiales del cliente..."></textarea>
                 </div>
 
+                <!-- Referencias de entrega -->
+                <div class="fc-form-group">
+                    <label for="fc-modal-referencias">Referencias de entrega <small style="color:#718096;font-weight:400;">(opcional)</small></label>
+                    <textarea id="fc-modal-referencias" name="referencias" rows="2" placeholder="Casa azul con portón negro, frente al OXXO…"></textarea>
+                </div>
+
                 <!-- ── Arreglos (multi-ítem) ── -->
                 <div class="fc-items-section">
                     <div class="fc-items-section-title">Arreglos</div>
