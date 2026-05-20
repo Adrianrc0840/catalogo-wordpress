@@ -330,6 +330,7 @@ function fc_ajax_pdv_crear_venta() {
         '_fc_pedido_canal_nombre'            => '',
         '_fc_pedido_canal_contacto'          => '',
         '_fc_pedido_nota'                    => $nota_pedido,
+        '_fc_pedido_costo_envio'             => (float) ( $_POST['costo_envio'] ?? 0 ),
         '_fc_pedido_registrado_por'          => get_current_user_id(),
         '_fc_pedido_monto'                   => (float) ( $_POST['monto_total']   ?? 0 ),
         '_fc_pedido_forma_pago'              => sanitize_key( $_POST['forma_pago'] ?? 'efectivo' ),

@@ -526,6 +526,9 @@
 
             bindColorSwatches();
 
+            // Bloquear scroll del mouse en el campo precio
+            $('#pdv-item-precio', container)?.addEventListener('wheel', e => e.preventDefault(), { passive: false });
+
             // Confirmar
             $('#pdv-item-confirm', container)?.addEventListener('click', () => {
                 const precioInput = $('#pdv-item-precio', container);
@@ -659,6 +662,10 @@
                             <label>Dirección de entrega <span style="color:#ef4444">*</span></label>
                             <input type="text" id="pdv-co-direccion" placeholder="Busca la dirección…" autocomplete="off" />
                         </div>
+                        <div class="fc-pdv-form-group">
+                            <label>Costo de envío <small style="color:var(--pdv-muted)">(opcional)</small></label>
+                            <input type="number" id="pdv-co-costo-envio" min="0" step="0.01" placeholder="0.00" />
+                        </div>
                     </div>
 
                     <div class="fc-pdv-section-title">Detalles por arreglo</div>
@@ -786,14 +793,40 @@
         // Cambio calculator
         const montoInput = $('#pdv-co-monto-recibido', backdrop);
         if (montoInput) {
+            montoInput.addEventListener('wheel', e => e.preventDefault(), { passive: false });
             montoInput.addEventListener('input', () => {
-                const recibido = parseFloat(montoInput.value || 0);
-                const cambio   = recibido - cartTotal();
-                const row      = $('#pdv-co-cambio-row', backdrop);
-                const val      = $('#pdv-co-cambio-val', backdrop);
+                const recibido   = parseFloat(montoInput.value || 0);
+                const costoEnvio = parseFloat($('#pdv-co-costo-envio', backdrop)?.value || 0);
+                const cambio     = recibido - (cartTotal() + costoEnvio);
+                const row        = $('#pdv-co-cambio-row', backdrop);
+                const val        = $('#pdv-co-cambio-val', backdrop);
                 if (recibido > 0 && row && val) {
                     row.style.display = '';
                     val.textContent   = fmt(Math.max(0, cambio));
+                }
+            });
+        }
+
+        // Costo de envío — bloquear scroll y actualizar total en header
+        const costoEnvioInput = $('#pdv-co-costo-envio', backdrop);
+        if (costoEnvioInput) {
+            costoEnvioInput.addEventListener('wheel', e => e.preventDefault(), { passive: false });
+            costoEnvioInput.addEventListener('input', () => {
+                const costo  = parseFloat(costoEnvioInput.value || 0);
+                const total  = cartTotal() + costo;
+                // Actualizar título del modal
+                const h3 = $('.fc-pdv-modal-header h3', backdrop);
+                if (h3) h3.textContent = `Cobrar — ${fmt(total)}`;
+                // Actualizar placeholder de monto recibido
+                const mr = $('#pdv-co-monto-recibido', backdrop);
+                if (mr) mr.placeholder = total.toFixed(2);
+                // Recalcular cambio si ya hay monto ingresado
+                const recibido = parseFloat(mr?.value || 0);
+                const row = $('#pdv-co-cambio-row', backdrop);
+                const val = $('#pdv-co-cambio-val', backdrop);
+                if (recibido > 0 && row && val) {
+                    row.style.display = '';
+                    val.textContent   = fmt(Math.max(0, recibido - total));
                 }
             });
         }
@@ -843,7 +876,8 @@
                 mensaje_tarjeta:        ($('.pdv-co-tarjeta[data-idx="'  + i + '"]', backdrop)?.value || '').trim(),
             }));
 
-            const montoTotal = cartTotal();
+            const costoEnvio = parseFloat($('#pdv-co-costo-envio', backdrop)?.value || 0);
+            const montoTotal = cartTotal() + costoEnvio;
             const recibido   = parseFloat($('#pdv-co-monto-recibido', backdrop)?.value || 0);
             const cambio     = formaPago === 'efectivo' && recibido > 0 ? Math.max(0, recibido - montoTotal) : 0;
 
@@ -858,6 +892,7 @@
                     hora_recoleccion:$('#pdv-co-hora-recoleccion', backdrop)?.value || '',
                     direccion:       $('#pdv-co-direccion', backdrop)?.value         || '',
                     forma_pago:      formaPago,
+                    costo_envio:     costoEnvio,
                     monto_total:     montoTotal,
                     items_json:      JSON.stringify(itemsFinal),
                 });
