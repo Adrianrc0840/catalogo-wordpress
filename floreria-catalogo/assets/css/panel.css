@@ -349,6 +349,18 @@
     word-break: break-word;
 }
 
+/* Nota especial — resaltada para llamar la atención */
+.fc-card-row.fc-nota-destacada .fc-label {
+    color: #1a202c;
+}
+.fc-card-row.fc-nota-destacada .fc-value {
+    font-weight: 700;
+    font-size: 15px;
+    text-transform: uppercase;
+    color: #000;
+    letter-spacing: 0.02em;
+}
+
 .fc-maps-link,
 .fc-tel-link {
     color: inherit;

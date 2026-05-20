@@ -153,6 +153,7 @@ $status_labels = fc_pedido_status_labels();
                         <option value="whatsapp">WhatsApp</option>
                         <option value="instagram">Instagram</option>
                         <option value="facebook">Facebook</option>
+                        <option value="pdv">🖥️ PDV</option>
                         <option value="otro">Otro</option>
                     </select>
                 </div>

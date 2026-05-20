@@ -207,12 +207,21 @@
         const tipoLabel    = p.tipo === 'envio' ? 'Envío a domicilio' : 'Recolección en tienda';
         const horarioLabel = p.tipo === 'envio' ? p.horario : p.hora_recoleccion;
 
-        const CANAL_LABELS = { whatsapp: 'WhatsApp', instagram: 'Instagram', facebook: 'Facebook', otro: 'Otro' };
+        // Nota efectiva: usa _fc_pedido_nota si existe; si no, extrae de los items (campo notas o parte del color)
+        const notaEfectiva = p.nota || (p.items || []).map(item => {
+            if (item.notas) return item.notas;
+            if (item.color && item.color.includes(' · ')) return item.color.split(' · ').slice(1).join(' · ');
+            return '';
+        }).filter(Boolean).join('\n');
+
+        const CANAL_LABELS = { whatsapp: 'WhatsApp', instagram: 'Instagram', facebook: 'Facebook', pdv: '🖥️ PDV', otro: 'Otro' };
         const canalLabel = p.canal ? CANAL_LABELS[p.canal] || p.canal : '';
         const canalContactoHtml = p.canal === 'whatsapp' && p.canal_contacto
             ? telLink(p.canal_contacto)
             : escHtml(p.canal_contacto || '');
-        const canalInfoParts = [p.canal_nombre ? escHtml(p.canal_nombre) : '', canalContactoHtml].filter(Boolean);
+        const canalInfoParts = p.canal !== 'pdv'
+            ? [p.canal_nombre ? escHtml(p.canal_nombre) : '', canalContactoHtml].filter(Boolean)
+            : [];
         const canalHtml  = canalLabel
             ? `<div class="fc-card-row"><span class="fc-label">Canal</span><span class="fc-value">${escHtml(canalLabel)}${canalInfoParts.length ? ' · ' + canalInfoParts.join(' · ') : ''}</span></div>`
             : '';
@@ -236,7 +245,12 @@
                 thumb = `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
             }
 
-            const sub = [item.tamano, (item.color && !item.color.startsWith('--')) ? item.color : ''].filter(Boolean).join(' · ');
+            // Si el item tiene campo 'notas' separado, el color es solo el nombre del color.
+            // Si no (pedidos viejos), el color puede ser "ColorNombre · notas"; tomamos solo la parte antes del ·.
+            const colorParaMostrar = item.notas !== undefined
+                ? item.color
+                : (item.color ? item.color.split(' · ')[0] : '');
+            const sub = [item.tamano, (colorParaMostrar && !colorParaMostrar.startsWith('--')) ? colorParaMostrar : ''].filter(Boolean).join(' · ');
             const destLine = item.destinatario
                 ? `<span class="fc-card-item-dest">Para: ${escHtml(item.destinatario)}${item.destinatario_telefono ? ' · ' + telLink(item.destinatario_telefono) : ''}${item.destinatario_telefono2 ? ' · ' + telLink(item.destinatario_telefono2) : ''}</span>`
                 : '';
@@ -286,7 +300,7 @@
                 <span class="fc-value">${escHtml(tipoLabel)} · ${escHtml(p.fecha)}${horarioLabel ? ' · ' + escHtml(horarioLabel) : ''}</span>
             </div>
             ${p.tipo === 'envio' && p.direccion ? `<div class="fc-card-row"><span class="fc-label">Dirección</span><span class="fc-value"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.direccion)}" target="_blank" rel="noopener" class="fc-maps-link">${escHtml(p.direccion)}</a></span></div>` : ''}
-            ${p.nota ? `<div class="fc-card-row"><span class="fc-label">Nota</span><span class="fc-value">${escHtml(p.nota)}</span></div>` : ''}
+            ${notaEfectiva ? `<div class="fc-card-row fc-nota-destacada"><span class="fc-label">Nota</span><span class="fc-value">${escHtml(notaEfectiva)}</span></div>` : ''}
 
             <!-- Arreglos -->
             ${items.length ? `<div class="fc-card-items-list">${itemsHtml}</div>` : ''}
@@ -1109,7 +1123,7 @@
         const nombreInp  = $('#fc-modal-canal-nombre');
         if (!group || !label || !input) return;
 
-        if (!canal) {
+        if (!canal || canal === 'pdv') {
             group.style.display      = 'none';
             if (nombreGrp) nombreGrp.style.display = 'none';
             input.value = '';
@@ -1744,7 +1758,13 @@
             const dirEl = $('#fc-modal-direccion'); if (dirEl) dirEl.value = dirVal;
         }
         const horaEl   = $('#fc-modal-hora-recoleccion'); if (horaEl) horaEl.value   = pedido.hora_recoleccion || '';
-        const notaEl   = $('#fc-modal-nota');           if (notaEl)   notaEl.value   = pedido.nota            || '';
+        // Pre-rellenar nota: usa _fc_pedido_nota si existe; si no, extrae de items (PDV)
+        const notaEfectivaModal = pedido.nota || (pedido.items || []).map(item => {
+            if (item.notas) return item.notas;
+            if (item.color && item.color.includes(' · ')) return item.color.split(' · ').slice(1).join(' · ');
+            return '';
+        }).filter(Boolean).join('\n');
+        const notaEl   = $('#fc-modal-nota');           if (notaEl)   notaEl.value   = notaEfectivaModal;
 
         // PDF
         const pdfUrl    = pedido.pdf_url || '';

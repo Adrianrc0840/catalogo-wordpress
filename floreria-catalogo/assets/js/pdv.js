@@ -353,9 +353,9 @@
             if (found) selColor = found;
         }
 
-        // Notas previas (sin el prefijo del color)
-        let editNotas = '';
-        if (editItem?.color) {
+        // Notas previas — prefiere el campo 'notas' separado; fallback: extraer del color "Color · notas"
+        let editNotas = editItem?.notas || '';
+        if (!editNotas && editItem?.color) {
             const parts = editItem.color.split(' · ');
             editNotas = parts.length > 1 ? parts.slice(1).join(' · ') : '';
         }
@@ -444,9 +444,9 @@
 
                         <div class="fc-pdv-form-group">
                             <label class="fc-pdv-label-sm">Notas adicionales</label>
-                            <input type="text" id="pdv-item-notas"
-                                   placeholder="Detalles, personalización, etc. (opcional)"
-                                   value="${escHtml(editNotas)}" />
+                            <textarea id="pdv-item-notas" rows="3"
+                                      placeholder="Detalles, personalización, etc. (opcional)"
+                                      style="resize:vertical">${escHtml(editNotas)}</textarea>
                         </div>
                         <div class="fc-pdv-form-group">
                             <label class="fc-pdv-label-sm">Precio <span style="color:#ef4444">*</span></label>
@@ -550,6 +550,7 @@
                     imagen_url:            getMainPhoto(),
                     tamano:                selTamano?.label || '',
                     color:                 colorDisplay,
+                    notas:                 notas,
                     precio,
                     destinatario:          editItem?.destinatario          || '',
                     destinatario_telefono: editItem?.destinatario_telefono  || '',

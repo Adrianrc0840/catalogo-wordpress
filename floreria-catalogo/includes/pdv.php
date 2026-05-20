@@ -284,6 +284,7 @@ function fc_ajax_pdv_crear_venta() {
                 'fotos_extra'            => [],
                 'tamano'                 => sanitize_text_field(     $item['tamano']                 ?? '' ),
                 'color'                  => sanitize_text_field(     $item['color']                  ?? '' ),
+                'notas'                  => sanitize_textarea_field( $item['notas']                  ?? '' ),
                 'precio'                 => (float)                ( $item['precio']                 ?? 0  ),
                 'destinatario'           => sanitize_text_field(     $item['destinatario']           ?? '' ),
                 'destinatario_telefono'  => sanitize_text_field(     $item['destinatario_telefono']  ?? '' ),
@@ -293,6 +294,21 @@ function fc_ajax_pdv_crear_venta() {
         }
     }
     $first = $items_clean[0] ?? [];
+
+    // Agregar notas de todos los items en _fc_pedido_nota
+    // Prefiere el campo 'notas' separado; si no existe, lo extrae del campo 'color' (formato "Color · notas")
+    $notas_items = [];
+    foreach ( $items_clean as $item ) {
+        $nota = $item['notas'] ?? '';
+        if ( ! $nota && ! empty( $item['color'] ) ) {
+            $partes = explode( ' · ', $item['color'], 2 );
+            $nota   = count( $partes ) > 1 ? trim( $partes[1] ) : '';
+        }
+        if ( $nota ) {
+            $notas_items[] = $nota;
+        }
+    }
+    $nota_pedido = implode( "\n", $notas_items );
 
     // Caja activa
     $cajas    = fc_get_cajas_abiertas();
@@ -311,9 +327,9 @@ function fc_ajax_pdv_crear_venta() {
         '_fc_pedido_direccion'               => sanitize_text_field(   $_POST['direccion']        ?? '' ),
         '_fc_pedido_hora_recoleccion'        => sanitize_text_field(   $_POST['hora_recoleccion'] ?? '' ),
         '_fc_pedido_canal'                   => 'pdv',
-        '_fc_pedido_canal_nombre'            => sanitize_text_field(   $_POST['canal_nombre']     ?? '' ),
-        '_fc_pedido_canal_contacto'          => sanitize_text_field(   $_POST['canal_contacto']   ?? '' ),
-        '_fc_pedido_nota'                    => sanitize_textarea_field( $_POST['nota']           ?? '' ),
+        '_fc_pedido_canal_nombre'            => '',
+        '_fc_pedido_canal_contacto'          => '',
+        '_fc_pedido_nota'                    => $nota_pedido,
         '_fc_pedido_registrado_por'          => get_current_user_id(),
         '_fc_pedido_monto'                   => (float) ( $_POST['monto_total']   ?? 0 ),
         '_fc_pedido_forma_pago'              => sanitize_key( $_POST['forma_pago'] ?? 'efectivo' ),
