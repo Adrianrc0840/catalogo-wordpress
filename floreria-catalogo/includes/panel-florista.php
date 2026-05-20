@@ -466,6 +466,7 @@ function fc_build_pedido_data( $p ) {
                     'fotos_extra'           => array_values( array_filter( array_map( 'esc_url_raw', $fotos_extra_raw ) ) ),
                     'tamano'                => sanitize_text_field( $item['tamano'] ?? '' ),
                     'color'                 => sanitize_text_field( $item['color']  ?? '' ),
+                    'notas'                 => sanitize_textarea_field( $item['notas'] ?? '' ),
                     'destinatario'          => sanitize_text_field( $item['destinatario'] ?? '' ),
                     'destinatario_telefono' => sanitize_text_field( $item['destinatario_telefono']  ?? '' ),
                     'destinatario_telefono2'=> sanitize_text_field( $item['destinatario_telefono2'] ?? '' ),
@@ -755,6 +756,7 @@ function fc_ajax_crear_pedido() {
                 'destinatario_telefono'  => sanitize_text_field(    $item['destinatario_telefono']  ?? '' ),
                 'destinatario_telefono2' => sanitize_text_field(    $item['destinatario_telefono2'] ?? '' ),
                 'mensaje_tarjeta'        => sanitize_textarea_field( $item['mensaje_tarjeta']       ?? '' ),
+                'notas'                  => sanitize_textarea_field( $item['notas']                 ?? '' ),
             ];
         }
     }
@@ -772,7 +774,6 @@ function fc_ajax_crear_pedido() {
         '_fc_pedido_canal'            => sanitize_key( $_POST['canal'] ?? '' ),
         '_fc_pedido_canal_nombre'     => sanitize_text_field( $_POST['canal_nombre']    ?? '' ),
         '_fc_pedido_canal_contacto'   => sanitize_text_field( $_POST['canal_contacto']  ?? '' ),
-        '_fc_pedido_nota'             => sanitize_textarea_field( $_POST['nota']         ?? '' ),
         '_fc_pedido_referencias'      => sanitize_textarea_field( $_POST['referencias']  ?? '' ),
         '_fc_pedido_registrado_por'   => get_current_user_id(),
         '_fc_pedido_pdf_url'          => esc_url_raw( $_POST['pdf_url'] ?? '' ),
@@ -968,6 +969,7 @@ function fc_ajax_actualizar_pedido_datos() {
                 'destinatario_telefono'  => sanitize_text_field(    $item['destinatario_telefono']  ?? '' ),
                 'destinatario_telefono2' => sanitize_text_field(    $item['destinatario_telefono2'] ?? '' ),
                 'mensaje_tarjeta'        => sanitize_textarea_field( $item['mensaje_tarjeta']       ?? '' ),
+                'notas'                  => sanitize_textarea_field( $item['notas']                 ?? '' ),
             ];
         }
     }
@@ -982,7 +984,7 @@ function fc_ajax_actualizar_pedido_datos() {
         '_fc_pedido_canal'            => sanitize_key( $_POST['canal'] ?? '' ),
         '_fc_pedido_canal_nombre'     => sanitize_text_field( $_POST['canal_nombre']    ?? '' ),
         '_fc_pedido_canal_contacto'   => sanitize_text_field( $_POST['canal_contacto']  ?? '' ),
-        '_fc_pedido_nota'             => sanitize_textarea_field( $_POST['nota'] ?? '' ),
+        '_fc_pedido_referencias'      => sanitize_textarea_field( $_POST['referencias'] ?? '' ),
         '_fc_pedido_pdf_url'          => esc_url_raw( $_POST['pdf_url'] ?? '' ),
         // Legacy single-item for backward compat
         '_fc_pedido_arreglo_id'              => $first['arreglo_id']            ?? 0,

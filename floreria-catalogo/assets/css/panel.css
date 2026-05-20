@@ -1315,6 +1315,15 @@
     font-style: italic;
 }
 
+/* ── Referencias de entrega ── */
+.fc-card-row.fc-referencias-row .fc-label {
+    color: #4a5568;
+}
+.fc-card-row.fc-referencias-row .fc-value {
+    color: #2d3748;
+    white-space: pre-wrap;
+}
+
 /* ── Modificaciones por arreglo ── */
 .fc-card-item-modificaciones {
     font-size: 12px;

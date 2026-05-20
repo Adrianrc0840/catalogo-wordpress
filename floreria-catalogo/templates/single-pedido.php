@@ -34,6 +34,7 @@ $direccion        = $pid ? get_post_meta( $pid, '_fc_pedido_direccion',        t
 $hora_recoleccion = $pid ? get_post_meta( $pid, '_fc_pedido_hora_recoleccion', true ) : '';
 $nota             = $pid ? get_post_meta( $pid, '_fc_pedido_nota',             true ) : '';
 $nota_floreria    = $pid ? get_post_meta( $pid, '_fc_pedido_nota_floreria',    true ) : '';
+$referencias      = $pid ? get_post_meta( $pid, '_fc_pedido_referencias',      true ) : '';
 
 $shop_name   = get_bloginfo( 'name' );
 $catalog_url = get_option( 'fc_catalog_page_url', home_url() );
@@ -59,6 +60,7 @@ if ( $pid ) {
                     'imagen_url'            => $img,
                     'tamano'                => $item['tamano']                ?? '',
                     'color'                 => ( isset( $item['color'] ) && strpos( $item['color'], '--' ) === false ) ? $item['color'] : '',
+                    'notas'                  => $item['notas']                  ?? '',
                     'destinatario'           => $item['destinatario']           ?? '',
                     'destinatario_telefono'  => $item['destinatario_telefono']  ?? '',
                     'destinatario_telefono2' => $item['destinatario_telefono2'] ?? '',
@@ -566,6 +568,18 @@ get_header();
     font-style: italic;
 }
 
+.fc-item-modificaciones-value {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #1a202c;
+    letter-spacing: 0.02em;
+}
+
+.fc-detail-value.fc-item-modificaciones-value {
+    font-size: 14px;
+}
+
 /* ── Lightbox ── */
 .fc-lb-overlay {
     position: fixed;
@@ -807,6 +821,12 @@ get_header();
                     <span class="fc-detail-value"><?php echo esc_html( $first_item['color'] ); ?></span>
                 </div>
                 <?php endif; ?>
+                <?php if ( $first_item['notas'] ) : ?>
+                <div class="fc-detail-row">
+                    <span class="fc-detail-label">Modificaciones</span>
+                    <span class="fc-detail-value fc-item-modificaciones-value"><?php echo nl2br( esc_html( $first_item['notas'] ) ); ?></span>
+                </div>
+                <?php endif; ?>
             </div>
 
             <?php else : ?>
@@ -832,6 +852,9 @@ get_header();
                         $sub = array_filter( [ $it['tamano'], $it['color'] ] );
                         if ( $sub ) : ?>
                         <span class="fc-item-card-sub"><?php echo esc_html( implode( ' · ', $sub ) ); ?></span>
+                        <?php endif; ?>
+                        <?php if ( $it['notas'] ) : ?>
+                        <span class="fc-item-modificaciones-value"><?php echo nl2br( esc_html( $it['notas'] ) ); ?></span>
                         <?php endif; ?>
                         <?php if ( $it['destinatario'] ) : ?>
                         <span class="fc-item-card-dest">Para: <?php echo esc_html( $it['destinatario'] ); ?><?php echo $it['destinatario_telefono'] ? ' · ' . esc_html( $it['destinatario_telefono'] ) : ''; ?><?php echo $it['destinatario_telefono2'] ? ' · ' . esc_html( $it['destinatario_telefono2'] ) : ''; ?></span>
@@ -877,6 +900,12 @@ get_header();
                 <div class="fc-detail-row">
                     <span class="fc-detail-label">Dirección</span>
                     <span class="fc-detail-value"><?php echo esc_html( $direccion ); ?></span>
+                </div>
+                <?php endif; ?>
+                <?php if ( $referencias ) : ?>
+                <div class="fc-detail-row">
+                    <span class="fc-detail-label">Referencias</span>
+                    <span class="fc-detail-value"><?php echo nl2br( esc_html( $referencias ) ); ?></span>
                 </div>
                 <?php endif; ?>
             </div>

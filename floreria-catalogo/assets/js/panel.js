@@ -207,13 +207,6 @@
         const tipoLabel    = p.tipo === 'envio' ? 'Envío a domicilio' : 'Recolección en tienda';
         const horarioLabel = p.tipo === 'envio' ? p.horario : p.hora_recoleccion;
 
-        // Nota efectiva: usa _fc_pedido_nota si existe; si no, extrae de los items (campo notas o parte del color)
-        const notaEfectiva = p.nota || (p.items || []).map(item => {
-            if (item.notas) return item.notas;
-            if (item.color && item.color.includes(' · ')) return item.color.split(' · ').slice(1).join(' · ');
-            return '';
-        }).filter(Boolean).join('\n');
-
         const CANAL_LABELS = { whatsapp: 'WhatsApp', instagram: 'Instagram', facebook: 'Facebook', pdv: '🖥️ PDV', otro: 'Otro' };
         const canalLabel = p.canal ? CANAL_LABELS[p.canal] || p.canal : '';
         const canalContactoHtml = p.canal === 'whatsapp' && p.canal_contacto
@@ -301,8 +294,7 @@
                 <span class="fc-value">${escHtml(tipoLabel)} · ${escHtml(p.fecha)}${horarioLabel ? ' · ' + escHtml(horarioLabel) : ''}</span>
             </div>
             ${p.tipo === 'envio' && p.direccion ? `<div class="fc-card-row"><span class="fc-label">Dirección</span><span class="fc-value"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.direccion)}" target="_blank" rel="noopener" class="fc-maps-link">${escHtml(p.direccion)}</a></span></div>` : ''}
-            ${p.referencias ? `<div class="fc-card-row"><span class="fc-label">Referencias</span><span class="fc-value">${escHtml(p.referencias)}</span></div>` : ''}
-            ${notaEfectiva ? `<div class="fc-card-row fc-nota-destacada"><span class="fc-label">Nota</span><span class="fc-value">${escHtml(notaEfectiva)}</span></div>` : ''}
+            ${p.referencias ? `<div class="fc-card-row fc-referencias-row"><span class="fc-label">Referencias</span><span class="fc-value">${escHtml(p.referencias)}</span></div>` : ''}
 
             <!-- Arreglos -->
             ${items.length ? `<div class="fc-card-items-list">${itemsHtml}</div>` : ''}
@@ -1211,6 +1203,10 @@
                 <label>Mensaje de tarjeta</label>
                 <textarea class="fc-item-tarjeta" rows="2" placeholder="Mensaje para incluir en la tarjeta...">${escHtml(prefill.mensaje_tarjeta || '')}</textarea>
             </div>
+            <div class="fc-form-group">
+                <label>Modificaciones <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
+                <textarea class="fc-item-modificaciones-input" rows="2" placeholder="Sin cenizo, con papel morado, listón rosita…" style="resize:vertical">${escHtml(prefill.notas || '')}</textarea>
+            </div>
             <div class="fc-form-group fc-item-fotos-section">
                 <label>Fotos adicionales</label>
                 <input type="hidden" class="fc-item-fotos-json" value="" />
@@ -1462,6 +1458,7 @@
                 destinatario_telefono:  block.querySelector('.fc-item-dest-tel')?.value      || '',
                 destinatario_telefono2: block.querySelector('.fc-item-dest-tel2')?.value     || '',
                 mensaje_tarjeta:        block.querySelector('.fc-item-tarjeta')?.value       || '',
+                notas:                  block.querySelector('.fc-item-modificaciones-input')?.value || '',
                 fotos_extra:            (() => { try { return JSON.parse(block.querySelector('.fc-item-fotos-json')?.value || '[]'); } catch { return []; } })(),
             };
         });
@@ -1759,15 +1756,8 @@
         } else {
             const dirEl = $('#fc-modal-direccion'); if (dirEl) dirEl.value = dirVal;
         }
-        const horaEl   = $('#fc-modal-hora-recoleccion'); if (horaEl) horaEl.value   = pedido.hora_recoleccion || '';
-        // Pre-rellenar nota: usa _fc_pedido_nota si existe; si no, extrae de items (PDV)
-        const notaEfectivaModal = pedido.nota || (pedido.items || []).map(item => {
-            if (item.notas) return item.notas;
-            if (item.color && item.color.includes(' · ')) return item.color.split(' · ').slice(1).join(' · ');
-            return '';
-        }).filter(Boolean).join('\n');
-        const notaEl   = $('#fc-modal-nota');           if (notaEl)   notaEl.value   = notaEfectivaModal;
-        const refEl    = $('#fc-modal-referencias');    if (refEl)    refEl.value    = pedido.referencias || '';
+        const horaEl = $('#fc-modal-hora-recoleccion'); if (horaEl) horaEl.value = pedido.hora_recoleccion || '';
+        const refEl  = $('#fc-modal-referencias');    if (refEl)  refEl.value  = pedido.referencias || '';
 
         // PDF
         const pdfUrl    = pedido.pdf_url || '';
@@ -1890,7 +1880,6 @@
             canal:            canalVal,
             canal_nombre:     $('#fc-modal-canal-nombre')?.value     || '',
             canal_contacto:   $('#fc-modal-canal-contacto')?.value   || '',
-            nota:             $('#fc-modal-nota')?.value             || '',
             referencias:      $('#fc-modal-referencias')?.value      || '',
             pdf_url:          $('#fc-modal-pdf-url')?.value          || '',
             items_json:       JSON.stringify(items),
