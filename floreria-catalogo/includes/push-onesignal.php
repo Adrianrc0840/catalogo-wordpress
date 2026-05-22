@@ -213,9 +213,7 @@ function fc_onesignal_run_check() {
         $hora_str   = date( 'g:ia', $delivery_ts );
 
         $title   = '⏰ Pedido en 30 min — ' . $hora_str;
-        $message = ( $nombre ? $nombre : 'Sin nombre' ) .
-                   ( $numero ? ' #' . $numero : '' ) .
-                   ' · ' . $tipo_label;
+        $message = ( $numero ? 'Pedido #' . $numero : 'Sin número' ) . ' · ' . $tipo_label;
 
         fc_onesignal_send( $title, $message );
 
