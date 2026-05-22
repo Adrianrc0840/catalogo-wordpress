@@ -60,13 +60,19 @@ function fc_enqueue_frontend() {
         'gmapsKey'         => $gmaps_key,
     ] );
 
-    if ( is_singular( 'arreglo' ) ) {
+    // Detectar página de detalle de arreglo: ya sea URL directa (/arreglos/nombre/)
+    // o redirigida a una página wrapper de Elementor (flag puesto en template_redirect).
+    $is_arreglo_page = is_singular( 'arreglo' ) || ! empty( $GLOBALS['fc_is_arreglo_detalle'] );
+    $arreglo_id      = $is_arreglo_page
+        ? (int) ( $GLOBALS['fc_arreglo_id'] ?? ( is_singular( 'arreglo' ) ? get_the_ID() : 0 ) )
+        : 0;
+
+    if ( $is_arreglo_page && $arreglo_id ) {
         wp_enqueue_style( 'fc-detalle', FC_URL . 'assets/css/detalle.css', [], FC_VERSION );
 
         wp_enqueue_script( 'fc-detalle', FC_URL . 'assets/js/detalle.js', [ 'fc-cart' ], FC_VERSION, true );
 
-        global $post;
-        $tamanos = get_post_meta( $post->ID, '_fc_tamanos', true );
+        $tamanos = get_post_meta( $arreglo_id, '_fc_tamanos', true );
         if ( ! is_array( $tamanos ) ) $tamanos = [];
 
         // Índice del tamaño marcado como principal
@@ -81,16 +87,16 @@ function fc_enqueue_frontend() {
         wp_localize_script( 'fc-detalle', 'fcArreglo', [
             'ajaxurl'          => admin_url( 'admin-ajax.php' ),
             'whatsappNonce'    => wp_create_nonce( 'fc_whatsapp_pedido' ),
-            'arregloId'        => $post->ID,
+            'arregloId'        => $arreglo_id,
             'tamanos'          => $tamanos,
             'tamano_principal' => $tamano_principal,
             'whatsapp'         => get_option( 'fc_whatsapp', '' ),
             'schedules'        => fc_get_schedules(),
             'fechasEspeciales' => fc_get_fechas_especiales(),
             'fechasCerradas'   => fc_get_fechas_cerradas(),
-            'permalink'        => get_permalink( $post->ID ),
-            'titulo'           => get_the_title( $post->ID ),
-            'especial'         => get_post_meta( $post->ID, '_fc_especial', true ) === '1',
+            'permalink'        => get_permalink( $arreglo_id ),
+            'titulo'           => get_the_title( $arreglo_id ),
+            'especial'         => get_post_meta( $arreglo_id, '_fc_especial', true ) === '1',
             'politicas_url'    => get_option( 'fc_politicas_url', '' ),
         ] );
     } else {
@@ -110,8 +116,49 @@ add_filter( 'show_admin_bar', function( $show ) {
     return $show;
 } );
 
+// ── Wrapper de Elementor para detalle de arreglo ──────────────────────────────
+// Cuando el visitante entra a /arreglos/nombre-del-arreglo/, si hay una página
+// wrapper configurada, se cambia la query principal para que WordPress (y Elementor)
+// carguen esa página en su lugar.  La URL visible no cambia.
+// Prioridad 1 → corre antes de que Elementor registre su propio template_include.
+add_action( 'template_redirect', 'fc_arreglo_wrapper_redirect', 1 );
+function fc_arreglo_wrapper_redirect() {
+    if ( ! is_singular( 'arreglo' ) ) return;
+
+    $wrapper_id = (int) get_option( 'fc_arreglo_wrapper_page_id', 0 );
+    if ( ! $wrapper_id ) return;
+
+    $wrapper = get_post( $wrapper_id );
+    if ( ! $wrapper || $wrapper->post_status !== 'publish' ) return;
+
+    global $wp_query, $post;
+
+    // Guardar el ID del arreglo real para el shortcode y para enqueue
+    $GLOBALS['fc_arreglo_id']        = get_queried_object_id();
+    $GLOBALS['fc_is_arreglo_detalle'] = true;
+
+    // Hacer que la query principal apunte a la página wrapper
+    $post                        = $wrapper;
+    $wp_query->posts             = [ $wrapper ];
+    $wp_query->post              = $wrapper;
+    $wp_query->queried_object    = $wrapper;
+    $wp_query->queried_object_id = $wrapper_id;
+    $wp_query->found_posts       = 1;
+    $wp_query->post_count        = 1;
+    $wp_query->is_singular       = true;
+    $wp_query->is_page           = true;
+    $wp_query->is_single         = false;
+    setup_postdata( $post );
+    // A partir de aquí, is_singular('arreglo') = false → Elementor carga la
+    // página wrapper con su canvas/nav/footer.  El shortcode [floreria_detalle_arreglo]
+    // dentro de esa página usa $GLOBALS['fc_arreglo_id'] para saber qué mostrar.
+}
+
 add_filter( 'template_include', 'fc_template_include' );
 function fc_template_include( $template ) {
+    // Solo aplica cuando NO hay wrapper configurado (fallback al template propio).
+    // Si hay wrapper, template_redirect ya cambió la query y Elementor/tema
+    // elegirán el template de la página wrapper automáticamente.
     if ( is_singular( 'arreglo' ) ) {
         $custom = FC_PATH . 'templates/single-arreglo.php';
         if ( file_exists( $custom ) ) return $custom;

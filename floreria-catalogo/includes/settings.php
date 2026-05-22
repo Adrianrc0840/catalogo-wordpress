@@ -15,17 +15,19 @@ function fc_add_settings_page() {
 
 function fc_render_settings_page() {
     if ( isset( $_POST['fc_save_settings'] ) && check_admin_referer( 'fc_settings' ) ) {
-        update_option( 'fc_whatsapp',          sanitize_text_field( $_POST['fc_whatsapp']         ?? '' ) );
-        update_option( 'fc_catalog_page_url',  esc_url_raw(         $_POST['fc_catalog_page_url']  ?? '' ) );
-        update_option( 'fc_politicas_url',     esc_url_raw(         $_POST['fc_politicas_url']     ?? '' ) );
-        update_option( 'fc_gmaps_key',         sanitize_text_field( $_POST['fc_gmaps_key']         ?? '' ) );
+        update_option( 'fc_whatsapp',                 sanitize_text_field( $_POST['fc_whatsapp']                ?? '' ) );
+        update_option( 'fc_catalog_page_url',         esc_url_raw(         $_POST['fc_catalog_page_url']         ?? '' ) );
+        update_option( 'fc_politicas_url',            esc_url_raw(         $_POST['fc_politicas_url']            ?? '' ) );
+        update_option( 'fc_gmaps_key',                sanitize_text_field( $_POST['fc_gmaps_key']               ?? '' ) );
+        update_option( 'fc_arreglo_wrapper_page_id',  (int)                ( $_POST['fc_arreglo_wrapper_page_id'] ?? 0 ) );
         echo '<div class="notice notice-success is-dismissible"><p>¡Configuración guardada!</p></div>';
     }
 
-    $whatsapp      = get_option( 'fc_whatsapp',         '' );
-    $catalog_url   = get_option( 'fc_catalog_page_url', '' );
-    $politicas_url = get_option( 'fc_politicas_url',    '' );
-    $gmaps_key     = get_option( 'fc_gmaps_key',        '' );
+    $whatsapp          = get_option( 'fc_whatsapp',                '' );
+    $catalog_url       = get_option( 'fc_catalog_page_url',        '' );
+    $politicas_url     = get_option( 'fc_politicas_url',           '' );
+    $gmaps_key         = get_option( 'fc_gmaps_key',               '' );
+    $wrapper_page_id   = (int) get_option( 'fc_arreglo_wrapper_page_id', 0 );
     ?>
     <div class="wrap">
         <h1>Configuración del Catálogo</h1>
@@ -59,6 +61,29 @@ function fc_render_settings_page() {
                     <td>
                         <input type="text" name="fc_gmaps_key" id="fc_gmaps_key" value="<?php echo esc_attr( $gmaps_key ); ?>" class="regular-text" placeholder="AIzaSy..." />
                         <p class="description">Necesaria para el autocompletado de direcciones en el formulario de pedidos. Requiere <strong>Places API</strong> habilitada en Google Cloud Console.</p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th><label for="fc_arreglo_wrapper_page_id">Página de detalle de arreglo</label></th>
+                    <td>
+                        <?php
+                        // Lista de páginas publicadas para el selector
+                        $pages = get_pages( [ 'post_status' => 'publish', 'sort_column' => 'post_title' ] );
+                        ?>
+                        <select name="fc_arreglo_wrapper_page_id" id="fc_arreglo_wrapper_page_id">
+                            <option value="0">— Sin página wrapper (usar template del plugin) —</option>
+                            <?php foreach ( $pages as $p ) : ?>
+                            <option value="<?php echo $p->ID; ?>" <?php selected( $wrapper_page_id, $p->ID ); ?>>
+                                <?php echo esc_html( $p->post_title ); ?> (ID <?php echo $p->ID; ?>)
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="description">
+                            Selecciona la página de Elementor que usarás como plantilla para el detalle de cada arreglo.<br>
+                            Esa página debe contener el shortcode <code>[floreria_detalle_arreglo]</code> donde quieras mostrar el producto.<br>
+                            Si dejas <em>Sin página wrapper</em>, se usará el template propio del plugin (sin tu nav/footer de Elementor).
+                        </p>
                     </td>
                 </tr>
 
