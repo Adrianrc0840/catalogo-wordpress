@@ -17,6 +17,14 @@ $status_labels = fc_pedido_status_labels();
     <meta charset="<?php bloginfo( 'charset' ); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo esc_html( $shop_name ); ?> — Panel Floristas</title>
+    <!-- PWA / Home screen -->
+    <link rel="manifest" href="/wp-content/plugins/floreria-catalogo/assets/manifest.json">
+    <meta name="theme-color" content="#c8185a">
+    <!-- iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Monarca">
+    <link rel="apple-touch-icon" href="/wp-content/plugins/floreria-catalogo/assets/images/icon-180.png">
     <?php wp_head(); ?>
 </head>
 <body <?php body_class( 'fc-panel-page' ); ?>>
@@ -72,6 +80,7 @@ $status_labels = fc_pedido_status_labels();
     <div class="fc-panel-header-right">
         <span class="fc-user-name">Hola, <?php echo esc_html( $current_user->display_name ); ?></span>
         <button class="fc-btn-outline" id="fc-logout-btn">Cerrar sesión</button>
+        <button class="fc-btn-outline fc-btn-refresh" id="fc-btn-refresh" title="Actualizar pedidos">&#8635;</button>
         <button class="fc-btn-new-pedido" id="fc-btn-new-pedido">+ Nuevo pedido</button>
     </div>
 </header>

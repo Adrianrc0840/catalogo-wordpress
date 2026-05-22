@@ -1085,6 +1085,16 @@
         });
     }
 
+    // ── Refresh (hard reload) ──
+    function initRefresh() {
+        const btn = $('#fc-btn-refresh');
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+            const url = location.pathname + '?r=' + Date.now();
+            location.replace(url);
+        });
+    }
+
     // ── Logout ──
     function initLogout() {
         const btn = $('#fc-logout-btn');
@@ -2166,6 +2176,7 @@
 
         initLoginForm();
         initLogout();
+        initRefresh();
         initSearch();
         initFilterTabs();
         initDateFilter();
