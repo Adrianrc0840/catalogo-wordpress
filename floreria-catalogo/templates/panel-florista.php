@@ -26,17 +26,6 @@ $status_labels = fc_pedido_status_labels();
     <meta name="apple-mobile-web-app-title" content="Monarca">
     <link rel="apple-touch-icon" href="/wp-content/plugins/floreria-catalogo/assets/images/icon-180.png">
     <?php wp_head(); ?>
-    <?php if ( $has_cap ) :
-        $fc_vapid = fc_push_get_vapid_keys(); ?>
-    <script>
-    window.fcPushData = {
-        ajaxurl:        '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
-        nonce:          '<?php echo wp_create_nonce( 'fc_panel_nonce' ); ?>',
-        vapidPublicKey: '<?php echo $fc_vapid ? esc_js( $fc_vapid['public'] ) : ''; ?>',
-    };
-    </script>
-    <script src="/wp-content/plugins/floreria-catalogo/assets/js/push-manager.js?v=<?php echo FC_VERSION; ?>" defer></script>
-    <?php endif; ?>
 </head>
 <body <?php body_class( 'fc-panel-page' ); ?>>
 <?php wp_body_open(); ?>
@@ -92,7 +81,6 @@ $status_labels = fc_pedido_status_labels();
         <span class="fc-user-name">Hola, <?php echo esc_html( $current_user->display_name ); ?></span>
         <button class="fc-btn-outline" id="fc-logout-btn">Cerrar sesión</button>
         <button class="fc-btn-outline fc-btn-refresh" id="fc-btn-refresh" title="Actualizar pedidos">&#8635;</button>
-        <button class="fc-btn-outline fc-btn-push-test" id="fc-btn-push-test" title="Probar notificación">🔔</button>
         <button class="fc-btn-new-pedido" id="fc-btn-new-pedido">+ Nuevo pedido</button>
     </div>
 </header>

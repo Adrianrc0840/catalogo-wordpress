@@ -27,7 +27,6 @@ require_once FC_PATH . 'includes/cpt-pedido.php';
 require_once FC_PATH . 'includes/panel-florista.php';
 require_once FC_PATH . 'includes/cpt-caja.php';
 require_once FC_PATH . 'includes/pdv.php';
-require_once FC_PATH . 'includes/push-notifications.php';
 
 add_action( 'wp_enqueue_scripts', 'fc_enqueue_frontend' );
 function fc_enqueue_frontend() {
