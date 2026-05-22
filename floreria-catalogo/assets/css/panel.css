@@ -184,11 +184,17 @@
     cursor: pointer;
     transition: border-color 0.2s, color 0.2s;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .fc-btn-outline:hover {
     border-color: var(--fc-primary);
     color: var(--fc-primary);
+}
+.fc-btn-refresh {
+    padding: 6px 10px;
+    font-size: 18px;
+    line-height: 1;
 }
 
 .fc-btn-new-pedido {
@@ -201,6 +207,7 @@
     font-weight: 600;
     cursor: pointer;
     transition: background 0.2s;
+    white-space: nowrap;
 }
 
 .fc-btn-new-pedido:hover {

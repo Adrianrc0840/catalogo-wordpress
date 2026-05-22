@@ -1,0 +1,25 @@
+{
+    "name": "Florería Monarca",
+    "short_name": "Monarca",
+    "description": "Panel de gestión de pedidos — Florería Monarca",
+    "start_url": "/panel-florista/",
+    "scope": "/panel-florista/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#c8185a",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/wp-content/plugins/floreria-catalogo/assets/images/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/wp-content/plugins/floreria-catalogo/assets/images/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ]
+}
