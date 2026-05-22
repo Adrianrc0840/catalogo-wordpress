@@ -20,6 +20,8 @@ function fc_render_settings_page() {
         update_option( 'fc_politicas_url',            esc_url_raw(         $_POST['fc_politicas_url']            ?? '' ) );
         update_option( 'fc_gmaps_key',                sanitize_text_field( $_POST['fc_gmaps_key']               ?? '' ) );
         update_option( 'fc_arreglo_wrapper_page_id',  (int)                ( $_POST['fc_arreglo_wrapper_page_id'] ?? 0 ) );
+        update_option( 'fc_onesignal_app_id',         sanitize_text_field( $_POST['fc_onesignal_app_id']          ?? '' ) );
+        update_option( 'fc_onesignal_api_key',        sanitize_text_field( $_POST['fc_onesignal_api_key']         ?? '' ) );
         echo '<div class="notice notice-success is-dismissible"><p>¡Configuración guardada!</p></div>';
     }
 
@@ -28,6 +30,8 @@ function fc_render_settings_page() {
     $politicas_url     = get_option( 'fc_politicas_url',           '' );
     $gmaps_key         = get_option( 'fc_gmaps_key',               '' );
     $wrapper_page_id   = (int) get_option( 'fc_arreglo_wrapper_page_id', 0 );
+    $os_app_id         = get_option( 'fc_onesignal_app_id',  '' );
+    $os_api_key        = get_option( 'fc_onesignal_api_key', '' );
     ?>
     <div class="wrap">
         <h1>Configuración del Catálogo</h1>
@@ -86,6 +90,33 @@ function fc_render_settings_page() {
                         </p>
                     </td>
                 </tr>
+
+                <tr>
+                    <th colspan="2"><h2 style="margin:0;padding:12px 0 4px;">Notificaciones Push — OneSignal</h2></th>
+                </tr>
+                <tr>
+                    <th><label for="fc_onesignal_app_id">App ID</label></th>
+                    <td>
+                        <input type="text" name="fc_onesignal_app_id" id="fc_onesignal_app_id" value="<?php echo esc_attr( $os_app_id ); ?>" class="regular-text" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+                        <p class="description">Encuéntralo en OneSignal → Settings → Keys &amp; IDs.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="fc_onesignal_api_key">REST API Key</label></th>
+                    <td>
+                        <input type="password" name="fc_onesignal_api_key" id="fc_onesignal_api_key" value="<?php echo esc_attr( $os_api_key ); ?>" class="regular-text" placeholder="os_v2_app_..." />
+                        <p class="description">Clave privada — nunca la compartas ni la subas a GitHub.</p>
+                    </td>
+                </tr>
+                <?php if ( $os_app_id && $os_api_key ) : ?>
+                <tr>
+                    <th>Prueba</th>
+                    <td>
+                        <button type="button" id="fc-onesignal-test-btn" class="button button-secondary">Enviar notificación de prueba</button>
+                        <p class="description">Asegúrate de haber aceptado las notificaciones en el panel de floristas antes de probar.</p>
+                    </td>
+                </tr>
+                <?php endif; ?>
 
             </table>
             <?php submit_button( 'Guardar cambios', 'primary', 'fc_save_settings' ); ?>

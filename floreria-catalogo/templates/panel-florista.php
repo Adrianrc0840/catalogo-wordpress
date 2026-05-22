@@ -25,6 +25,19 @@ $status_labels = fc_pedido_status_labels();
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Monarca">
     <link rel="apple-touch-icon" href="/wp-content/plugins/floreria-catalogo/assets/images/icon-180.png">
+    <!-- OneSignal Push Notifications -->
+    <?php $os_app_id = get_option( 'fc_onesignal_app_id', '' ); if ( $os_app_id ) : ?>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function(OneSignal) {
+            await OneSignal.init({
+                appId: "<?php echo esc_js( $os_app_id ); ?>",
+                notifyButton: { enable: true },
+            });
+        });
+    </script>
+    <?php endif; ?>
     <?php wp_head(); ?>
 </head>
 <body <?php body_class( 'fc-panel-page' ); ?>>
