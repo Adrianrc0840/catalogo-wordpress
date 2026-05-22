@@ -120,16 +120,17 @@ function fc_onesignal_clear_cron() {
 }
 
 /**
- * Convierte una hora en formato "10:00am" o "1:00pm" a timestamp del día dado.
+ * Convierte una hora "10:00am" / "1:00pm" a timestamp real usando la zona
+ * horaria configurada en WordPress (evita mezclar UTC del servidor).
  *
- * @param string $hora_label  p.ej. "10:00am"
- * @param string $fecha_ymd   p.ej. "2026-05-22"
- * @return int|false  Timestamp Unix o false si no se puede parsear.
+ * @param string      $hora_label  p.ej. "10:00am"
+ * @param string      $fecha_ymd   p.ej. "2026-05-22"
+ * @param DateTimeZone $tz         Zona horaria de WordPress.
+ * @return int|false
  */
-function fc_parse_hora_a_timestamp( $hora_label, $fecha_ymd ) {
+function fc_parse_hora_a_timestamp( $hora_label, $fecha_ymd, $tz ) {
     $hora_label = trim( strtolower( $hora_label ) );
 
-    // Extraer horas, minutos y meridiem  →  "10:00am"  "1:00pm"  "12:00pm"
     if ( ! preg_match( '/^(\d{1,2}):(\d{2})(am|pm)$/', $hora_label, $m ) ) {
         return false;
     }
@@ -138,16 +139,20 @@ function fc_parse_hora_a_timestamp( $hora_label, $fecha_ymd ) {
     $min = (int) $m[2];
     $mer = $m[3];
 
-    // Convertir a 24 h
     if ( $mer === 'pm' && $h !== 12 ) $h += 12;
     if ( $mer === 'am' && $h === 12 ) $h  = 0;
 
-    return strtotime( $fecha_ymd . ' ' . sprintf( '%02d:%02d:00', $h, $min ) );
+    $dt = new DateTime(
+        $fecha_ymd . ' ' . sprintf( '%02d:%02d:00', $h, $min ),
+        $tz
+    );
+    return $dt->getTimestamp();
 }
 
 /**
  * Callback del cron: revisa pedidos de hoy y manda notificación si faltan ~30 min.
- * Usa una ventana de ±5 min para compensar la imprecisión del cron de WordPress.
+ * Toda la lógica de tiempo usa la zona horaria de WordPress para evitar
+ * discrepancias con el servidor (HostGator corre en UTC).
  */
 add_action( 'fc_onesignal_check_pedidos', 'fc_onesignal_run_check' );
 function fc_onesignal_run_check() {
@@ -155,16 +160,20 @@ function fc_onesignal_run_check() {
     $api_key = get_option( 'fc_onesignal_api_key', '' );
     if ( ! $app_id || ! $api_key ) return;
 
-    $now       = current_time( 'timestamp' );
-    $hoy       = date( 'Y-m-d', $now );
-    $min_diff  = 25 * 60;  // 25 min
-    $max_diff  = 35 * 60;  // 35 min  →  ventana de 10 min centrada en 30
+    // Usar siempre la zona horaria configurada en WordPress
+    $tz      = wp_timezone();
+    $now_dt  = new DateTime( 'now', $tz );
+    $now     = $now_dt->getTimestamp();          // Unix timestamp real
+    $hoy     = $now_dt->format( 'Y-m-d' );      // fecha local
+
+    $min_diff = 20 * 60;  // 20 min  ┐ ventana amplia para absorber
+    $max_diff = 40 * 60;  // 40 min  ┘ imprecisión del cron de WP
 
     $pedidos = get_posts( [
-        'post_type'      => 'pedido',
-        'post_status'    => 'publish',
-        'numberposts'    => -1,
-        'meta_query'     => [
+        'post_type'   => 'pedido',
+        'post_status' => 'publish',
+        'numberposts' => -1,
+        'meta_query'  => [
             'relation' => 'AND',
             [
                 'key'     => '_fc_pedido_fecha',
@@ -173,33 +182,32 @@ function fc_onesignal_run_check() {
             ],
             [
                 'key'     => '_fc_onesignal_notif_enviada',
-                'compare' => 'NOT EXISTS',   // evitar notificación duplicada
+                'compare' => 'NOT EXISTS',
             ],
         ],
     ] );
 
     foreach ( $pedidos as $pedido ) {
-        $tipo         = get_post_meta( $pedido->ID, '_fc_pedido_tipo',              true );
-        $horario      = get_post_meta( $pedido->ID, '_fc_pedido_horario',           true );
-        $hora_rec     = get_post_meta( $pedido->ID, '_fc_pedido_hora_recoleccion',  true );
-        $numero       = get_post_meta( $pedido->ID, '_fc_pedido_numero',            true );
-        $nombre       = get_post_meta( $pedido->ID, '_fc_pedido_cliente_nombre',    true );
-        $status       = get_post_meta( $pedido->ID, '_fc_pedido_status',            true );
+        $tipo     = get_post_meta( $pedido->ID, '_fc_pedido_tipo',             true );
+        $horario  = get_post_meta( $pedido->ID, '_fc_pedido_horario',          true );
+        $hora_rec = get_post_meta( $pedido->ID, '_fc_pedido_hora_recoleccion', true );
+        $numero   = get_post_meta( $pedido->ID, '_fc_pedido_numero',           true );
+        $status   = get_post_meta( $pedido->ID, '_fc_pedido_status',           true );
 
-        // No avisar pedidos cancelados o entregados
         if ( in_array( $status, [ 'cancelado', 'entregado' ], true ) ) continue;
 
         $delivery_ts = false;
 
         if ( $tipo === 'recoleccion' && $hora_rec ) {
-            // hora_recoleccion viene como "HH:MM" (input type="time")
-            $delivery_ts = strtotime( $hoy . ' ' . $hora_rec . ':00' );
+            // hora_recoleccion: "HH:MM"
+            $dt = new DateTime( $hoy . ' ' . $hora_rec . ':00', $tz );
+            $delivery_ts = $dt->getTimestamp();
 
         } elseif ( $horario ) {
-            // horario viene como "10:00am – 12:00pm" → tomar la hora de inicio
+            // horario: "10:00am – 12:00pm" → tomar la hora de inicio
             $partes = preg_split( '/\s*[–-]\s*/', $horario );
             if ( ! empty( $partes[0] ) ) {
-                $delivery_ts = fc_parse_hora_a_timestamp( trim( $partes[0] ), $hoy );
+                $delivery_ts = fc_parse_hora_a_timestamp( trim( $partes[0] ), $hoy, $tz );
             }
         }
 
@@ -208,16 +216,13 @@ function fc_onesignal_run_check() {
         $diff = $delivery_ts - $now;
         if ( $diff < $min_diff || $diff > $max_diff ) continue;
 
-        // ── Mandar notificación ──
         $tipo_label = ( $tipo === 'recoleccion' ) ? 'Recolección' : 'Envío';
-        $hora_str   = date( 'g:ia', $delivery_ts );
+        $hora_str   = $now_dt->setTimestamp( $delivery_ts )->format( 'g:ia' );
 
         $title   = '⏰ Pedido en 30 min — ' . $hora_str;
         $message = ( $numero ? 'Pedido #' . $numero : 'Sin número' ) . ' · ' . $tipo_label;
 
         fc_onesignal_send( $title, $message );
-
-        // Marcar para no volver a notificar
         update_post_meta( $pedido->ID, '_fc_onesignal_notif_enviada', current_time( 'mysql' ) );
     }
 }
@@ -232,15 +237,21 @@ function fc_onesignal_run_check() {
  */
 add_action( 'admin_init', 'fc_onesignal_handle_test' );
 function fc_onesignal_handle_test() {
-    if ( ! isset( $_POST['fc_onesignal_test'] ) ) return;
     if ( ! check_admin_referer( 'fc_settings' ) )  return;
     if ( ! current_user_can( 'manage_options' ) )  return;
 
-    fc_onesignal_send(
-        '🌸 Notificación de prueba',
-        'Las notificaciones de Florería Monarca están funcionando correctamente.'
-    );
+    // Botón: notificación de prueba genérica
+    if ( isset( $_POST['fc_onesignal_test'] ) ) {
+        fc_onesignal_send(
+            '🌸 Notificación de prueba',
+            'Las notificaciones de Florería Monarca están funcionando correctamente.'
+        );
+        set_transient( 'fc_onesignal_test_ok', 1, 30 );
+    }
 
-    // Guardar un transient para mostrar el aviso en la página
-    set_transient( 'fc_onesignal_test_ok', 1, 30 );
+    // Botón: disparar la verificación del cron ahora mismo
+    if ( isset( $_POST['fc_onesignal_trigger'] ) ) {
+        fc_onesignal_run_check();
+        set_transient( 'fc_onesignal_trigger_ok', 1, 30 );
+    }
 }

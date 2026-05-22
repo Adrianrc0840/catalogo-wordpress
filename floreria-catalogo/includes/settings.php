@@ -25,10 +25,14 @@ function fc_render_settings_page() {
         echo '<div class="notice notice-success is-dismissible"><p>¡Configuración guardada!</p></div>';
     }
 
-    // Aviso tras enviar notificación de prueba
+    // Avisos de prueba
     if ( get_transient( 'fc_onesignal_test_ok' ) ) {
         delete_transient( 'fc_onesignal_test_ok' );
         echo '<div class="notice notice-success is-dismissible"><p>✅ Notificación de prueba enviada. Revisa tu celular.</p></div>';
+    }
+    if ( get_transient( 'fc_onesignal_trigger_ok' ) ) {
+        delete_transient( 'fc_onesignal_trigger_ok' );
+        echo '<div class="notice notice-success is-dismissible"><p>✅ Verificación de pedidos ejecutada. Si había alguno a ~30 min, llegó la notificación.</p></div>';
     }
 
     $whatsapp        = get_option( 'fc_whatsapp',                '' );
@@ -120,7 +124,14 @@ function fc_render_settings_page() {
                     <th>Prueba</th>
                     <td>
                         <button type="submit" name="fc_onesignal_test" value="1" class="button button-secondary">Enviar notificación de prueba</button>
-                        <p class="description">Asegúrate de haber aceptado las notificaciones en el panel de floristas antes de probar.</p>
+                        <p class="description">Manda una notificación genérica para verificar que la conexión con OneSignal funciona.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Verificar ahora</th>
+                    <td>
+                        <button type="submit" name="fc_onesignal_trigger" value="1" class="button button-secondary">Disparar verificación de pedidos</button>
+                        <p class="description">Ejecuta la revisión de pedidos inmediatamente (igual que el cron automático). Útil para probar sin esperar 5 minutos.</p>
                     </td>
                 </tr>
                 <?php endif; ?>
