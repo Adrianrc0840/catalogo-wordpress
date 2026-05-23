@@ -54,14 +54,8 @@ function fc_onesignal_send( $title, $message, $url = '' ) {
  * Dispara la notificación cuando se guarda un pedido nuevo (no en actualizaciones).
  * Aplica tanto para pedidos creados desde el panel como desde el PDV.
  */
-add_action( 'save_post_pedido', 'fc_onesignal_nuevo_pedido', 20, 3 );
-function fc_onesignal_nuevo_pedido( $post_id, $post, $update ) {
-    // Solo pedidos nuevos publicados (no borradores ni actualizaciones)
-    if ( $update )                          return;
-    if ( $post->post_status !== 'publish' ) return;
-    if ( wp_is_post_revision( $post_id ) )  return;
-    if ( wp_is_post_autosave( $post_id ) )  return;
-
+add_action( 'fc_pedido_creado', 'fc_onesignal_nuevo_pedido' );
+function fc_onesignal_nuevo_pedido( $post_id ) {
     $numero   = get_post_meta( $post_id, '_fc_pedido_numero',           true );
     $tipo     = get_post_meta( $post_id, '_fc_pedido_tipo',             true );
     $horario  = get_post_meta( $post_id, '_fc_pedido_horario',          true );

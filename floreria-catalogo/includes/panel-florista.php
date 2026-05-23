@@ -804,6 +804,9 @@ function fc_ajax_crear_pedido() {
     ] ];
     update_post_meta( $post_id, '_fc_pedido_historial', maybe_serialize( $historial ) );
 
+    // Disparar acción DESPUÉS de guardar todo el meta (save_post es demasiado temprano)
+    do_action( 'fc_pedido_creado', $post_id );
+
     if ( $es_pendiente ) {
         wp_send_json_success( [
             'message'   => 'Pedido guardado como pendiente.',
