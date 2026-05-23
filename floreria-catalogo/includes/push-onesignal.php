@@ -237,6 +237,8 @@ function fc_onesignal_run_check() {
  */
 add_action( 'admin_init', 'fc_onesignal_handle_test' );
 function fc_onesignal_handle_test() {
+    // Salir inmediatamente si no es ninguno de nuestros botones
+    if ( ! isset( $_POST['fc_onesignal_test'] ) && ! isset( $_POST['fc_onesignal_trigger'] ) ) return;
     if ( ! check_admin_referer( 'fc_settings' ) )  return;
     if ( ! current_user_can( 'manage_options' ) )  return;
 
