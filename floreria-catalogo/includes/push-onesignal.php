@@ -18,7 +18,7 @@ function fc_onesignal_send( $title, $message, $url = '' ) {
     $app_id  = get_option( 'fc_onesignal_app_id',  '' );
     $api_key = get_option( 'fc_onesignal_api_key', '' );
 
-    if ( ! $app_id || ! $api_key ) return;
+    if ( ! $app_id || ! $api_key ) return 'sin_credenciales';
 
     if ( ! $url ) {
         $url = home_url( '/panel-florista/' );
@@ -33,15 +33,22 @@ function fc_onesignal_send( $title, $message, $url = '' ) {
         'web_url'           => $url,
     ];
 
-    wp_remote_post( 'https://onesignal.com/api/v1/notifications', [
+    $response = wp_remote_post( 'https://onesignal.com/api/v1/notifications', [
         'headers' => [
             'Authorization' => 'Key ' . $api_key,
             'Content-Type'  => 'application/json; charset=utf-8',
             'Accept'        => 'application/json',
         ],
         'body'    => wp_json_encode( $body ),
-        'timeout' => 15,
+        'timeout' => 20,
+        'sslverify' => false,
     ] );
+
+    if ( is_wp_error( $response ) ) {
+        return 'wp_error: ' . $response->get_error_message();
+    }
+
+    return wp_remote_retrieve_body( $response );
 }
 
 /**
@@ -244,11 +251,11 @@ function fc_onesignal_handle_test() {
 
     // Botón: notificación de prueba genérica
     if ( isset( $_POST['fc_onesignal_test'] ) ) {
-        fc_onesignal_send(
+        $result = fc_onesignal_send(
             '🌸 Notificación de prueba',
             'Las notificaciones de Florería Monarca están funcionando correctamente.'
         );
-        set_transient( 'fc_onesignal_test_ok', 1, 30 );
+        set_transient( 'fc_onesignal_test_ok', $result, 30 );
     }
 
     // Botón: disparar la verificación del cron ahora mismo

@@ -26,9 +26,9 @@ function fc_render_settings_page() {
     }
 
     // Avisos de prueba
-    if ( get_transient( 'fc_onesignal_test_ok' ) ) {
+    if ( $test_result = get_transient( 'fc_onesignal_test_ok' ) ) {
         delete_transient( 'fc_onesignal_test_ok' );
-        echo '<div class="notice notice-success is-dismissible"><p>✅ Notificación de prueba enviada. Revisa tu celular.</p></div>';
+        echo '<div class="notice notice-info is-dismissible"><p><strong>Respuesta de OneSignal:</strong><br><code>' . esc_html( $test_result ) . '</code></p></div>';
     }
     if ( get_transient( 'fc_onesignal_trigger_ok' ) ) {
         delete_transient( 'fc_onesignal_trigger_ok' );
