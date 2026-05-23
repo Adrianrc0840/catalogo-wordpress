@@ -62,30 +62,26 @@ function fc_onesignal_nuevo_pedido( $post_id, $post, $update ) {
     if ( wp_is_post_revision( $post_id ) )  return;
     if ( wp_is_post_autosave( $post_id ) )  return;
 
-    $numero = get_post_meta( $post_id, '_fc_pedido_numero',        true );
-    $nombre = get_post_meta( $post_id, '_fc_pedido_cliente_nombre', true );
-    $tipo   = get_post_meta( $post_id, '_fc_pedido_tipo',           true );
-    $items  = get_post_meta( $post_id, '_fc_pedido_items',          true );
-
-    // Construir descripción del primer arreglo si existe
-    $detalle = '';
-    if ( is_array( $items ) && ! empty( $items ) ) {
-        $first = $items[0];
-        $detalle = ! empty( $first['nombre'] ) ? $first['nombre'] : '';
-    }
-    if ( ! $detalle ) {
-        // Fallback: campo legacy de arreglo
-        $detalle = get_post_meta( $post_id, '_fc_pedido_arreglo_nombre', true );
-    }
+    $numero   = get_post_meta( $post_id, '_fc_pedido_numero',           true );
+    $tipo     = get_post_meta( $post_id, '_fc_pedido_tipo',             true );
+    $horario  = get_post_meta( $post_id, '_fc_pedido_horario',          true );
+    $hora_rec = get_post_meta( $post_id, '_fc_pedido_hora_recoleccion', true );
+    $fecha    = get_post_meta( $post_id, '_fc_pedido_fecha',            true );
 
     $tipo_label = ( $tipo === 'recoleccion' ) ? 'Recolección' : 'Envío';
 
+    // Hora de entrega
+    $hora_str = '';
+    if ( $tipo === 'recoleccion' && $hora_rec ) {
+        $hora_str = $hora_rec;
+    } elseif ( $horario ) {
+        // Tomar la hora de inicio del rango "10:00am – 12:00pm"
+        $partes = preg_split( '/\s*[–-]\s*/', $horario );
+        $hora_str = ! empty( $partes[0] ) ? trim( $partes[0] ) : $horario;
+    }
+
     $title   = '🌸 Nuevo pedido' . ( $numero ? ' #' . $numero : '' );
-    $message = trim(
-        ( $nombre  ? $nombre . ' — ' : '' ) .
-        $tipo_label .
-        ( $detalle ? ': ' . $detalle : '' )
-    );
+    $message = $tipo_label . ( $hora_str ? ' · ' . $hora_str : '' ) . ( $fecha ? ' · ' . $fecha : '' );
 
     fc_onesignal_send( $title, $message );
 }
