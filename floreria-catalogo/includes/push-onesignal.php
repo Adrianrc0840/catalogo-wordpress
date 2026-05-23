@@ -29,7 +29,6 @@ function fc_onesignal_send( $title, $message, $url = '' ) {
         'included_segments' => [ 'All' ],
         'headings'          => [ 'en' => $title,   'es' => $title   ],
         'contents'          => [ 'en' => $message, 'es' => $message ],
-        'url'               => $url,
         'web_url'           => $url,
     ];
 
