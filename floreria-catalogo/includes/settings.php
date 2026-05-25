@@ -20,8 +20,11 @@ function fc_render_settings_page() {
         update_option( 'fc_politicas_url',           esc_url_raw(         $_POST['fc_politicas_url']           ?? '' ) );
         update_option( 'fc_gmaps_key',               sanitize_text_field( $_POST['fc_gmaps_key']              ?? '' ) );
         update_option( 'fc_arreglo_wrapper_page_id', (int)                ( $_POST['fc_arreglo_wrapper_page_id'] ?? 0 ) );
+        update_option( 'fc_rastreo_wrapper_page_id', (int)               ( $_POST['fc_rastreo_wrapper_page_id']  ?? 0 ) );
         update_option( 'fc_onesignal_app_id',        sanitize_text_field( $_POST['fc_onesignal_app_id']       ?? '' ) );
         update_option( 'fc_onesignal_api_key',       sanitize_text_field( $_POST['fc_onesignal_api_key']      ?? '' ) );
+        $disabled_pages = isset( $_POST['fc_cart_disabled_pages'] ) ? array_map( 'intval', (array) $_POST['fc_cart_disabled_pages'] ) : [];
+        update_option( 'fc_cart_disabled_pages', $disabled_pages );
         echo '<div class="notice notice-success is-dismissible"><p>¡Configuración guardada!</p></div>';
     }
 
@@ -39,7 +42,8 @@ function fc_render_settings_page() {
     $catalog_url     = get_option( 'fc_catalog_page_url',        '' );
     $politicas_url   = get_option( 'fc_politicas_url',           '' );
     $gmaps_key       = get_option( 'fc_gmaps_key',               '' );
-    $wrapper_page_id = (int) get_option( 'fc_arreglo_wrapper_page_id', 0 );
+    $wrapper_page_id        = (int) get_option( 'fc_arreglo_wrapper_page_id',  0 );
+    $rastreo_wrapper_page_id = (int) get_option( 'fc_rastreo_wrapper_page_id', 0 );
     $os_app_id       = get_option( 'fc_onesignal_app_id',        '' );
     $os_api_key      = get_option( 'fc_onesignal_api_key',       '' );
     ?>
@@ -101,6 +105,26 @@ function fc_render_settings_page() {
                     </td>
                 </tr>
 
+                <tr>
+                    <th><label for="fc_rastreo_wrapper_page_id">Página de rastreo de pedido</label></th>
+                    <td>
+                        <?php $pages2 = get_pages( [ 'post_status' => 'publish', 'sort_column' => 'post_title' ] ); ?>
+                        <select name="fc_rastreo_wrapper_page_id" id="fc_rastreo_wrapper_page_id">
+                            <option value="0">— Sin página wrapper (usar template del plugin) —</option>
+                            <?php foreach ( $pages2 as $p ) : ?>
+                            <option value="<?php echo $p->ID; ?>" <?php selected( $rastreo_wrapper_page_id, $p->ID ); ?>>
+                                <?php echo esc_html( $p->post_title ); ?> (ID <?php echo $p->ID; ?>)
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="description">
+                            Selecciona la página de Elementor que usarás como plantilla para el rastreo de pedidos del cliente.<br>
+                            Esa página debe contener el shortcode <code>[floreria_rastreo_pedido]</code> donde quieras mostrar el contenido.<br>
+                            Si dejas <em>Sin página wrapper</em>, se usará el template propio del plugin (sin tu nav/footer de Elementor).
+                        </p>
+                    </td>
+                </tr>
+
                 <!-- ── OneSignal ── -->
                 <tr>
                     <th colspan="2"><h2 style="margin:0;padding:16px 0 4px;">Notificaciones Push — OneSignal</h2></th>
@@ -135,6 +159,34 @@ function fc_render_settings_page() {
                     </td>
                 </tr>
                 <?php endif; ?>
+
+                <!-- ── Carrito flotante ── -->
+                <tr>
+                    <th colspan="2"><h2 style="margin:0;padding:16px 0 4px;">Carrito flotante</h2></th>
+                </tr>
+                <tr>
+                    <th>Ocultar carrito en</th>
+                    <td>
+                        <?php
+                        $cart_disabled = get_option( 'fc_cart_disabled_pages', [] );
+                        if ( ! is_array( $cart_disabled ) ) $cart_disabled = [];
+                        $cart_disabled = array_map( 'intval', $cart_disabled );
+                        $all_pages = get_pages( [ 'post_status' => 'publish', 'sort_column' => 'post_title' ] );
+                        if ( $all_pages ) :
+                            foreach ( $all_pages as $p ) : ?>
+                            <label style="display:block;margin-bottom:6px;">
+                                <input type="checkbox" name="fc_cart_disabled_pages[]" value="<?php echo $p->ID; ?>"
+                                    <?php checked( in_array( $p->ID, $cart_disabled ) ); ?> />
+                                <?php echo esc_html( $p->post_title ); ?>
+                                <span style="color:#888;font-size:12px;">(ID <?php echo $p->ID; ?>)</span>
+                            </label>
+                        <?php endforeach;
+                        else : ?>
+                            <p style="color:#888;">No hay páginas publicadas.</p>
+                        <?php endif; ?>
+                        <p class="description">Marca las páginas donde <strong>NO</strong> quieres que aparezca el botón flotante del carrito.</p>
+                    </td>
+                </tr>
 
             </table>
             <?php submit_button( 'Guardar cambios', 'primary', 'fc_save_settings' ); ?>

@@ -103,6 +103,9 @@ function fc_pedido_query_vars( $vars ) {
 
 add_filter( 'template_include', 'fc_pedido_template_include' );
 function fc_pedido_template_include( $template ) {
+    // Si hay wrapper configurado, template_redirect ya cambió la query → no cargar el template propio
+    if ( ! empty( $GLOBALS['fc_is_rastreo_pedido'] ) ) return $template;
+
     if ( get_query_var( 'fc_pedido_ref' ) ) {
         $custom = FC_PATH . 'templates/single-pedido.php';
         if ( file_exists( $custom ) ) {
@@ -1451,4 +1454,438 @@ $pendientes_q = get_posts( [
     })();
     </script>
     <?php
+}
+
+// ─────────────────────────────────────────────
+// [floreria_rastreo_pedido] shortcode
+// Renderiza el rastreo de pedido dentro de cualquier página Elementor.
+// La URL /pedido/TOKEN sigue funcionando con el template del plugin como fallback.
+// ─────────────────────────────────────────────
+add_shortcode( 'floreria_rastreo_pedido', 'fc_render_rastreo_pedido_sc' );
+function fc_render_rastreo_pedido_sc() {
+    // Ref: viene del global (wrapper Elementor) o del query var (template directo)
+    $ref = sanitize_text_field( $GLOBALS['fc_pedido_ref'] ?? get_query_var( 'fc_pedido_ref' ) );
+
+    $pedido = null;
+    if ( $ref ) {
+        $by_token = new WP_Query( [
+            'post_type'      => 'pedido',
+            'post_status'    => 'publish',
+            'posts_per_page' => 1,
+            'meta_query'     => [ [
+                'key'   => '_fc_pedido_token',
+                'value' => $ref,
+            ] ],
+        ] );
+        if ( $by_token->have_posts() ) {
+            $pedido = $by_token->posts[0];
+        }
+        wp_reset_postdata();
+    }
+
+    $pid = $pedido ? $pedido->ID : 0;
+
+    $numero           = $pid ? get_post_meta( $pid, '_fc_pedido_numero',           true ) : '';
+    $status           = $pid ? get_post_meta( $pid, '_fc_pedido_status',           true ) : '';
+    $tipo             = $pid ? get_post_meta( $pid, '_fc_pedido_tipo',             true ) : '';
+    $fecha            = $pid ? get_post_meta( $pid, '_fc_pedido_fecha',            true ) : '';
+    $horario          = $pid ? get_post_meta( $pid, '_fc_pedido_horario',          true ) : '';
+    $direccion        = $pid ? get_post_meta( $pid, '_fc_pedido_direccion',        true ) : '';
+    $hora_recoleccion = $pid ? get_post_meta( $pid, '_fc_pedido_hora_recoleccion', true ) : '';
+    $nota             = $pid ? get_post_meta( $pid, '_fc_pedido_nota',             true ) : '';
+    $nota_floreria    = $pid ? get_post_meta( $pid, '_fc_pedido_nota_floreria',    true ) : '';
+    $referencias      = $pid ? get_post_meta( $pid, '_fc_pedido_referencias',      true ) : '';
+
+    $catalog_url = get_option( 'fc_catalog_page_url', home_url() );
+
+    // ── Items (multi-arreglo) ──
+    $items = [];
+    if ( $pid ) {
+        $items_raw = get_post_meta( $pid, '_fc_pedido_items', true );
+        if ( $items_raw ) {
+            $decoded = json_decode( $items_raw, true );
+            if ( is_array( $decoded ) && count( $decoded ) ) {
+                foreach ( $decoded as $item ) {
+                    $img = $item['imagen_url'] ?? '';
+                    if ( ! $img && ! empty( $item['arreglo_id'] ) ) {
+                        $img = fc_get_arreglo_thumb_by_tamano_color(
+                            (int) $item['arreglo_id'],
+                            $item['tamano'] ?? '',
+                            $item['color']  ?? ''
+                        );
+                    }
+                    $items[] = [
+                        'arreglo_nombre'        => $item['arreglo_nombre']        ?? '',
+                        'imagen_url'            => $img,
+                        'tamano'                => $item['tamano']                ?? '',
+                        'color'                 => ( isset( $item['color'] ) && strpos( $item['color'], '--' ) === false ) ? $item['color'] : '',
+                        'notas'                 => $item['notas']                 ?? '',
+                        'destinatario'          => $item['destinatario']          ?? '',
+                        'destinatario_telefono' => $item['destinatario_telefono']  ?? '',
+                        'destinatario_telefono2'=> $item['destinatario_telefono2'] ?? '',
+                        'mensaje_tarjeta'       => $item['mensaje_tarjeta']       ?? '',
+                    ];
+                }
+            }
+        }
+        // Legacy fallback
+        if ( empty( $items ) ) {
+            $color_raw = get_post_meta( $pid, '_fc_pedido_color', true );
+            $items[] = [
+                'arreglo_nombre'        => get_post_meta( $pid, '_fc_pedido_arreglo_nombre',         true ),
+                'imagen_url'            => fc_get_pedido_arreglo_thumb( $pid ),
+                'tamano'                => get_post_meta( $pid, '_fc_pedido_tamano',                 true ),
+                'color'                 => ( $color_raw && strpos( $color_raw, '--' ) === false ) ? $color_raw : '',
+                'destinatario'          => get_post_meta( $pid, '_fc_pedido_destinatario',           true ),
+                'destinatario_telefono' => get_post_meta( $pid, '_fc_pedido_destinatario_telefono',  true ),
+                'destinatario_telefono2'=> '',
+                'mensaje_tarjeta'       => get_post_meta( $pid, '_fc_pedido_mensaje_tarjeta',        true ),
+            ];
+        }
+    }
+
+    $first_item = $items[0] ?? [];
+
+    $status_colors = [
+        'aceptado'          => '#3b82f6',
+        'en_preparacion'    => '#f59e0b',
+        'en_camino'         => '#8b5cf6',
+        'listo_recoleccion' => '#06b6d4',
+        'entregado'         => '#10b981',
+        'no_entregado'      => '#ef4444',
+    ];
+    $line_color = $status_colors[ $status ] ?? '#c8185a';
+
+    // Historial — buscar entrada de entrega
+    $historial_raw = $pid ? get_post_meta( $pid, '_fc_pedido_historial', true ) : '';
+    $historial     = maybe_unserialize( $historial_raw );
+    $historial     = is_array( $historial ) ? $historial : [];
+    $entrega_entry = null;
+    foreach ( array_reverse( $historial ) as $entry ) {
+        if ( in_array( $entry['status'] ?? '', [ 'entregado', 'no_entregado' ], true ) ) {
+            $entrega_entry = $entry;
+            break;
+        }
+    }
+
+    $last_step    = ( $status === 'no_entregado' ) ? 'no_entregado' : 'entregado';
+    $all_statuses = [
+        'aceptado',
+        'en_preparacion',
+        ( $tipo === 'recoleccion' ? 'listo_recoleccion' : 'en_camino' ),
+        $last_step,
+    ];
+
+    $status_labels_map = [
+        'aceptado'          => 'Aceptado',
+        'en_preparacion'    => 'En preparación',
+        'en_camino'         => 'En camino',
+        'listo_recoleccion' => 'Listo para recolección',
+        'entregado'         => 'Entregado',
+        'no_entregado'      => 'No entregado',
+    ];
+
+    $current_step    = 0;
+    $status_for_step = ( $status === 'no_entregado' ) ? 'no_entregado' : $status;
+    foreach ( $all_statuses as $i => $s ) {
+        if ( $s === $status_for_step ) {
+            $current_step = $i;
+        }
+    }
+
+    // Fecha formateada
+    $fecha_display = '';
+    if ( $fecha ) {
+        $ts = strtotime( $fecha );
+        if ( $ts ) {
+            $meses = [
+                1=>'enero', 2=>'febrero', 3=>'marzo', 4=>'abril', 5=>'mayo', 6=>'junio',
+                7=>'julio', 8=>'agosto', 9=>'septiembre', 10=>'octubre', 11=>'noviembre', 12=>'diciembre',
+            ];
+            $fecha_display = date( 'j', $ts ) . ' de ' . $meses[ (int) date( 'n', $ts ) ] . ' de ' . date( 'Y', $ts );
+        }
+    }
+
+    // ── Render HTML ──
+    $single_item = count( $items ) === 1;
+    $any_thumb   = false;
+    foreach ( $items as $it ) {
+        if ( $it['imagen_url'] ) { $any_thumb = true; break; }
+    }
+
+    // Gradiente barra de progreso
+    $total_steps = count( $all_statuses );
+    $fill_pct    = $total_steps > 1 ? ( $current_step / ( $total_steps - 1 ) ) * 100 : 0;
+    $gradient_stops = [];
+    for ( $i = 0; $i <= $current_step; $i++ ) {
+        $s    = $all_statuses[ $i ];
+        $c    = $status_colors[ $s ] ?? '#c8185a';
+        $pct  = $current_step > 0 ? round( ( $i / $current_step ) * 100 ) : 0;
+        $gradient_stops[] = "$c {$pct}%";
+    }
+    $line_gradient = count( $gradient_stops ) > 1
+        ? 'linear-gradient(to right, ' . implode( ', ', $gradient_stops ) . ')'
+        : ( $gradient_stops[0] ?? '#e2e8f0' );
+
+    ob_start();
+    ?>
+    <div class="fc-pedido-wrap">
+
+        <div class="fc-pedido-shop-header">
+            <h1>Rastreo de pedido</h1>
+            <p>Estado de tu pedido</p>
+        </div>
+
+        <?php if ( ! $pedido ) : ?>
+        <div class="fc-not-found">
+            <h2>Pedido no encontrado</h2>
+            <p>No pudimos encontrar un pedido con ese código. Por favor verifica el link o contacta a la florería.</p>
+            <br>
+            <a href="<?php echo esc_url( $catalog_url ); ?>" class="fc-back-link">&#8592; Volver al catálogo</a>
+        </div>
+        <?php else : ?>
+
+        <?php if ( $nota_floreria ) : ?>
+        <div class="fc-nota-floreria-box">
+            <h3>&#128233; Mensaje de la florería</h3>
+            <p><?php echo nl2br( esc_html( $nota_floreria ) ); ?></p>
+        </div>
+        <?php endif; ?>
+
+        <?php if ( $status === 'entregado' && $entrega_entry ) : ?>
+        <div class="fc-entrega-box entregado">
+            <h3>&#10003; Pedido entregado</h3>
+            <?php if ( ! empty( $entrega_entry['quien_recibio'] ) ) : ?>
+            <p><strong>Recibió:</strong> <?php echo esc_html( $entrega_entry['quien_recibio'] ); ?></p>
+            <?php endif; ?>
+            <?php if ( ! empty( $entrega_entry['nota_entrega'] ) ) : ?>
+            <p><?php echo nl2br( esc_html( $entrega_entry['nota_entrega'] ) ); ?></p>
+            <?php endif; ?>
+        </div>
+        <?php elseif ( $status === 'no_entregado' && $entrega_entry ) : ?>
+        <div class="fc-entrega-box no_entregado">
+            <h3>&#x26A0; No pudimos entregar tu pedido</h3>
+            <?php if ( ! empty( $entrega_entry['nota_situacion'] ) ) : ?>
+            <p><?php echo nl2br( esc_html( $entrega_entry['nota_situacion'] ) ); ?></p>
+            <?php endif; ?>
+            <p>Por favor contáctanos para coordinar una nueva entrega.</p>
+        </div>
+        <?php endif; ?>
+
+        <div class="fc-pedido-card">
+            <div class="fc-pedido-card-header" style="background:<?php echo esc_attr( $line_color ); ?>;">
+                <h2>Número de pedido</h2>
+                <div class="fc-pedido-numero"><?php echo esc_html( $numero ); ?></div>
+            </div>
+
+            <div class="fc-progress-wrap">
+                <div class="fc-progress-steps">
+                    <div class="fc-progress-line">
+                        <div class="fc-progress-line-fill" style="width:<?php echo esc_attr( $fill_pct ); ?>%;background:<?php echo esc_attr( $line_gradient ); ?>;"></div>
+                    </div>
+                    <?php
+                    $icons = [
+                        'aceptado'          => '&#10003;',
+                        'en_preparacion'    => '&#9878;',
+                        'en_camino'         => '&#x1F4E6;',
+                        'listo_recoleccion' => '&#x1F3EA;',
+                        'entregado'         => '&#x2665;',
+                        'no_entregado'      => '&#x2715;',
+                    ];
+                    foreach ( $all_statuses as $step_idx => $step_status ) :
+                        $step_class  = '';
+                        if ( $step_idx < $current_step )      $step_class = 'done';
+                        elseif ( $step_idx === $current_step ) $step_class = 'current';
+                        $step_label = $status_labels_map[ $step_status ] ?? $step_status;
+                        $icon       = $icons[ $step_status ] ?? ( $step_idx + 1 );
+                    ?>
+                    <div class="fc-progress-step <?php echo esc_attr( $step_class ); ?> step-<?php echo esc_attr( $step_status ); ?>">
+                        <div class="fc-progress-dot">
+                            <?php echo $step_idx < $current_step ? '&#10003;' : $icon; ?>
+                        </div>
+                        <span class="fc-progress-label"><?php echo esc_html( $step_label ); ?></span>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <div class="fc-pedido-details">
+
+                <?php if ( $single_item ) : ?>
+                <?php if ( $first_item['imagen_url'] ) : ?>
+                <div class="fc-arreglo-photo-wrap">
+                    <img src="<?php echo esc_url( $first_item['imagen_url'] ); ?>"
+                         alt="<?php echo esc_attr( $first_item['arreglo_nombre'] ); ?>"
+                         class="fc-arreglo-photo fc-item-lb-trigger"
+                         data-src="<?php echo esc_url( $first_item['imagen_url'] ); ?>" />
+                </div>
+                <?php endif; ?>
+                <div class="fc-detail-section">
+                    <h3>Arreglo</h3>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Nombre</span>
+                        <span class="fc-detail-value"><?php echo esc_html( $first_item['arreglo_nombre'] ); ?></span>
+                    </div>
+                    <?php if ( $first_item['tamano'] ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Tamaño</span>
+                        <span class="fc-detail-value"><?php echo esc_html( $first_item['tamano'] ); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ( $first_item['color'] ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Color</span>
+                        <span class="fc-detail-value"><?php echo esc_html( $first_item['color'] ); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ( $first_item['notas'] ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Modificaciones</span>
+                        <span class="fc-detail-value fc-item-modificaciones-value"><?php echo nl2br( esc_html( $first_item['notas'] ) ); ?></span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <?php else : ?>
+                <div class="fc-detail-section">
+                    <h3>Arreglos (<?php echo count( $items ); ?>)</h3>
+                    <div class="fc-items-list">
+                    <?php foreach ( $items as $it ) : ?>
+                    <div class="fc-item-card">
+                        <?php if ( $it['imagen_url'] ) : ?>
+                        <div class="fc-item-card-thumb">
+                            <img src="<?php echo esc_url( $it['imagen_url'] ); ?>"
+                                 alt="<?php echo esc_attr( $it['arreglo_nombre'] ); ?>"
+                                 class="fc-item-lb-trigger"
+                                 data-src="<?php echo esc_url( $it['imagen_url'] ); ?>" />
+                        </div>
+                        <?php else : ?>
+                        <div class="fc-item-card-no-img">🌸</div>
+                        <?php endif; ?>
+                        <div class="fc-item-card-info">
+                            <span class="fc-item-card-nombre"><?php echo esc_html( $it['arreglo_nombre'] ); ?></span>
+                            <?php $sub = array_filter( [ $it['tamano'], $it['color'] ] ); if ( $sub ) : ?>
+                            <span class="fc-item-card-sub"><?php echo esc_html( implode( ' · ', $sub ) ); ?></span>
+                            <?php endif; ?>
+                            <?php if ( $it['notas'] ) : ?>
+                            <span class="fc-item-modificaciones-value"><?php echo nl2br( esc_html( $it['notas'] ) ); ?></span>
+                            <?php endif; ?>
+                            <?php if ( $it['destinatario'] ) : ?>
+                            <span class="fc-item-card-dest">Para: <?php echo esc_html( $it['destinatario'] ); ?><?php echo $it['destinatario_telefono'] ? ' · ' . esc_html( $it['destinatario_telefono'] ) : ''; ?><?php echo $it['destinatario_telefono2'] ? ' · ' . esc_html( $it['destinatario_telefono2'] ) : ''; ?></span>
+                            <?php endif; ?>
+                            <?php if ( $it['mensaje_tarjeta'] ) : ?>
+                            <span class="fc-item-card-tarjeta">"<?php echo esc_html( $it['mensaje_tarjeta'] ); ?>"</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                <hr class="fc-divider" />
+
+                <div class="fc-detail-section">
+                    <h3>Entrega</h3>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Tipo</span>
+                        <span class="fc-detail-value"><?php echo esc_html( $tipo === 'envio' ? 'Envío a domicilio' : 'Recolección en tienda' ); ?></span>
+                    </div>
+                    <?php if ( $fecha_display ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Fecha</span>
+                        <span class="fc-detail-value"><?php echo esc_html( $fecha_display ); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ( $tipo === 'envio' && $horario ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Horario</span>
+                        <span class="fc-detail-value"><?php echo esc_html( $horario ); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ( $tipo === 'recoleccion' && $hora_recoleccion ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Hora</span>
+                        <span class="fc-detail-value"><?php echo esc_html( $hora_recoleccion ); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ( $tipo === 'envio' && $direccion ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Dirección</span>
+                        <span class="fc-detail-value"><?php echo esc_html( $direccion ); ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ( $referencias ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Referencias</span>
+                        <span class="fc-detail-value"><?php echo nl2br( esc_html( $referencias ) ); ?></span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <?php if ( $single_item && ( $first_item['destinatario'] || $first_item['mensaje_tarjeta'] || $nota ) ) : ?>
+                <hr class="fc-divider" />
+                <div class="fc-detail-section">
+                    <h3>Detalles del regalo</h3>
+                    <?php if ( $first_item['destinatario'] ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Para</span>
+                        <span class="fc-detail-value"><?php echo esc_html( $first_item['destinatario'] ); ?><?php echo $first_item['destinatario_telefono'] ? ' · ' . esc_html( $first_item['destinatario_telefono'] ) : ''; ?><?php echo $first_item['destinatario_telefono2'] ? ' · ' . esc_html( $first_item['destinatario_telefono2'] ) : ''; ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ( $first_item['mensaje_tarjeta'] ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Tarjeta</span>
+                        <span class="fc-detail-value">"<?php echo esc_html( $first_item['mensaje_tarjeta'] ); ?>"</span>
+                    </div>
+                    <?php endif; ?>
+                    <?php if ( $nota ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Nota especial</span>
+                        <span class="fc-detail-value"><?php echo esc_html( $nota ); ?></span>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php elseif ( ! $single_item && $nota ) : ?>
+                <hr class="fc-divider" />
+                <div class="fc-detail-section">
+                    <h3>Nota especial</h3>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-value"><?php echo esc_html( $nota ); ?></span>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+            </div>
+        </div>
+
+        <a href="<?php echo esc_url( $catalog_url ); ?>" class="fc-back-link">&#8592; Volver al catálogo</a>
+
+        <?php endif; // $pedido ?>
+
+    </div>
+
+    <?php if ( $any_thumb ) : ?>
+    <div class="fc-lb-overlay" id="fc-lb-overlay" role="dialog" aria-modal="true" aria-label="Imagen del arreglo">
+        <button class="fc-lb-close" id="fc-lb-close" aria-label="Cerrar">&times;</button>
+        <img class="fc-lb-img" id="fc-lb-img" src="" alt="Foto del arreglo" />
+    </div>
+    <script>
+    (function () {
+        var overlay  = document.getElementById('fc-lb-overlay');
+        var lbImg    = document.getElementById('fc-lb-img');
+        var closeBtn = document.getElementById('fc-lb-close');
+        function openLb(src) { lbImg.src = src; overlay.classList.add('open'); }
+        function closeLb()   { overlay.classList.remove('open'); }
+        document.querySelectorAll('.fc-item-lb-trigger').forEach(function(el) {
+            el.addEventListener('click', function() { openLb(el.dataset.src || el.src); });
+        });
+        if (closeBtn) closeBtn.addEventListener('click', closeLb);
+        if (overlay)  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeLb(); });
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeLb(); });
+    })();
+    </script>
+    <?php endif; ?>
+    <?php
+    return ob_get_clean();
 }

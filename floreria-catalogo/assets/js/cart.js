@@ -819,6 +819,8 @@
     document.addEventListener('DOMContentLoaded', function () {
         // No mostrar el carrito en el panel de floristas
         if (document.querySelector('.fc-panel-body')) return;
+        // No mostrar si la página está desactivada en Configuración
+        if (typeof fcCartData !== 'undefined' && fcCartData.hideCart) return;
         createFab();
         updateFab();
     });

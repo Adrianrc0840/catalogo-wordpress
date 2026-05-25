@@ -33,6 +33,11 @@ add_action( 'wp_enqueue_scripts', 'fc_enqueue_frontend' );
 function fc_enqueue_frontend() {
     wp_enqueue_style( 'fc-catalogo', FC_URL . 'assets/css/catalogo.css', [], FC_VERSION );
 
+    // CSS de rastreo de pedido (query var directo o wrapper Elementor)
+    if ( get_query_var( 'fc_pedido_ref' ) || ! empty( $GLOBALS['fc_is_rastreo_pedido'] ) ) {
+        wp_enqueue_style( 'fc-pedido', FC_URL . 'assets/css/pedido.css', [], FC_VERSION );
+    }
+
     // Google Maps Places (si hay key configurada)
     $gmaps_key  = get_option( 'fc_gmaps_key', '' );
     $cart_deps  = [];
@@ -51,6 +56,11 @@ function fc_enqueue_frontend() {
     wp_enqueue_style(  'fc-cart', FC_URL . 'assets/css/cart.css', [], FC_VERSION );
     wp_enqueue_script( 'fc-cart', FC_URL . 'assets/js/cart.js', $cart_deps, FC_VERSION, true );
     // Localize schedule/whatsapp data to cart script (always fresh, no stale localStorage)
+    // Verificar si el carrito debe ocultarse en la página actual
+    $cart_disabled_pages = get_option( 'fc_cart_disabled_pages', [] );
+    $current_page_id     = get_queried_object_id();
+    $hide_cart           = is_array( $cart_disabled_pages ) && in_array( $current_page_id, array_map( 'intval', $cart_disabled_pages ) );
+
     wp_localize_script( 'fc-cart', 'fcCartData', [
         'ajaxurl'          => admin_url( 'admin-ajax.php' ),
         'whatsappNonce'    => wp_create_nonce( 'fc_whatsapp_pedido' ),
@@ -59,6 +69,7 @@ function fc_enqueue_frontend() {
         'fechasCerradas'   => fc_get_fechas_cerradas(),
         'whatsapp'         => get_option( 'fc_whatsapp', '' ),
         'gmapsKey'         => $gmaps_key,
+        'hideCart'         => $hide_cart,
     ] );
 
     // Detectar página de detalle de arreglo: ya sea URL directa (/arreglos/nombre/)
@@ -153,6 +164,41 @@ function fc_arreglo_wrapper_redirect() {
     // A partir de aquí, is_singular('arreglo') = false → Elementor carga la
     // página wrapper con su canvas/nav/footer.  El shortcode [floreria_detalle_arreglo]
     // dentro de esa página usa $GLOBALS['fc_arreglo_id'] para saber qué mostrar.
+}
+
+// ── Wrapper de Elementor para rastreo de pedido ──────────────────────────────
+// Cuando el cliente entra a /pedido/TOKEN, si hay una página wrapper configurada,
+// se cambia la query principal para que WordPress (y Elementor) carguen esa página.
+// La URL visible no cambia. El shortcode [floreria_rastreo_pedido] dentro de la
+// página wrapper usa $GLOBALS['fc_pedido_ref'] para saber qué pedido mostrar.
+// Prioridad 1 → corre antes de que Elementor registre su propio template_include.
+add_action( 'template_redirect', 'fc_rastreo_wrapper_redirect', 1 );
+function fc_rastreo_wrapper_redirect() {
+    $ref = get_query_var( 'fc_pedido_ref' );
+    if ( ! $ref ) return;
+
+    $wrapper_id = (int) get_option( 'fc_rastreo_wrapper_page_id', 0 );
+    if ( ! $wrapper_id ) return;
+
+    $wrapper = get_post( $wrapper_id );
+    if ( ! $wrapper || $wrapper->post_status !== 'publish' ) return;
+
+    global $wp_query, $post;
+
+    $GLOBALS['fc_pedido_ref']        = sanitize_text_field( $ref );
+    $GLOBALS['fc_is_rastreo_pedido'] = true;
+
+    $post                        = $wrapper;
+    $wp_query->posts             = [ $wrapper ];
+    $wp_query->post              = $wrapper;
+    $wp_query->queried_object    = $wrapper;
+    $wp_query->queried_object_id = $wrapper_id;
+    $wp_query->found_posts       = 1;
+    $wp_query->post_count        = 1;
+    $wp_query->is_singular       = true;
+    $wp_query->is_page           = true;
+    $wp_query->is_single         = false;
+    setup_postdata( $post );
 }
 
 add_filter( 'template_include', 'fc_template_include' );
