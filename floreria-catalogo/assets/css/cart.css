@@ -270,7 +270,10 @@
     font-family: inherit;
     -webkit-appearance: none;
     appearance: none;
-    line-height: normal !important;
+}
+.fc-cart-delivery select {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 
 .fc-cart-delivery input:focus,

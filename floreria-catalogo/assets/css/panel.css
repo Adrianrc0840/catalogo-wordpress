@@ -96,7 +96,10 @@
     background: #fff;
     transition: border-color 0.2s, box-shadow 0.2s;
     outline: none;
-    line-height: normal !important;
+}
+.fc-form-group select {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 
 .fc-form-group input:focus,
@@ -409,7 +412,7 @@
 
 .fc-status-row select {
     flex: 1;
-    padding: 7px 10px;
+    padding: 0 10px;
     border: 1.5px solid #e2e8f0;
     border-radius: 7px;
     font-size: 13px;
@@ -417,7 +420,6 @@
     background: #fff;
     outline: none;
     cursor: pointer;
-    line-height: normal !important;
 }
 
 .fc-btn-update {
@@ -684,7 +686,6 @@
 .fc-modal-body select,
 .fc-modal-body textarea {
     font-size: 16px !important;
-    line-height: normal !important;
 }
 
 .fc-modal-footer {
@@ -1064,7 +1065,7 @@
 }
 
 .fc-sort-wrap select {
-    padding: 7px 10px;
+    padding: 0 10px;
     border: 1.5px solid #e2e8f0;
     border-radius: 8px;
     font-size: 13px;
@@ -1073,7 +1074,6 @@
     cursor: pointer;
     outline: none;
     transition: border-color 0.2s;
-    line-height: normal !important;
 }
 
 .fc-sort-wrap select:focus {

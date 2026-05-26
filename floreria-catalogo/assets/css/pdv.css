@@ -79,7 +79,10 @@ body.fc-pdv-page input[type="number"] { -moz-appearance: textfield; appearance: 
     background: #fff;
     transition: border-color .15s;
     outline: none;
-    line-height: normal !important;
+}
+.fc-pdv-form-group select {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 .fc-pdv-form-group input:focus,
 .fc-pdv-form-group select:focus,
