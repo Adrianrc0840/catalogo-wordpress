@@ -96,6 +96,7 @@
     background: #fff;
     transition: border-color 0.2s, box-shadow 0.2s;
     outline: none;
+    line-height: normal;
 }
 
 .fc-form-group input:focus,
@@ -416,6 +417,7 @@
     background: #fff;
     outline: none;
     cursor: pointer;
+    line-height: normal;
 }
 
 .fc-btn-update {
@@ -682,6 +684,7 @@
 .fc-modal-body select,
 .fc-modal-body textarea {
     font-size: 16px !important;
+    line-height: normal !important;
 }
 
 .fc-modal-footer {
@@ -1070,6 +1073,7 @@
     cursor: pointer;
     outline: none;
     transition: border-color 0.2s;
+    line-height: normal;
 }
 
 .fc-sort-wrap select:focus {
