@@ -3,7 +3,7 @@
  * Plugin Name: Florería Monarca
  * Plugin URI:  https://github.com/Adrianrc0840/catalogo-wordpress
  * Description: Sistema completo para florerías: catálogo, pedidos por WhatsApp, punto de venta, panel de floristas y gestión de caja.
- * Version:     4.0
+ * Version:     4.1
  * Author:      Adrián Rodríguez
  * Text Domain: floreria-catalogo
  */
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FC_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'FC_URL',     plugin_dir_url( __FILE__ ) );
-define( 'FC_VERSION', '4.0' );
+define( 'FC_VERSION', '4.1' );
 
 require_once FC_PATH . 'includes/cpt.php';
 require_once FC_PATH . 'includes/meta-boxes.php';
@@ -58,8 +58,15 @@ function fc_enqueue_frontend() {
     // Localize schedule/whatsapp data to cart script (always fresh, no stale localStorage)
     // Verificar si el carrito debe ocultarse en la página actual
     $cart_disabled_pages = get_option( 'fc_cart_disabled_pages', [] );
-    $current_page_id     = get_queried_object_id();
-    $hide_cart           = is_array( $cart_disabled_pages ) && in_array( $current_page_id, array_map( 'intval', $cart_disabled_pages ) );
+    if ( ! is_array( $cart_disabled_pages ) ) $cart_disabled_pages = [];
+    $cart_disabled_pages = array_map( 'intval', $cart_disabled_pages );
+    $current_page_id     = (int) get_queried_object_id();
+    $hide_cart           = $current_page_id > 0 && in_array( $current_page_id, $cart_disabled_pages, true );
+
+    // Respaldo CSS: oculta el FAB aunque el JS esté cacheado en el navegador
+    if ( $hide_cart ) {
+        wp_add_inline_style( 'fc-cart', '.fc-cart-fab{display:none!important;}' );
+    }
 
     wp_localize_script( 'fc-cart', 'fcCartData', [
         'ajaxurl'          => admin_url( 'admin-ajax.php' ),
