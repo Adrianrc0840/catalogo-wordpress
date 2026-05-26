@@ -796,6 +796,20 @@
                 });
             });
 
+            // iOS fix: scroll a y=0 en el primer keystroke (capture phase),
+            // antes de que Google abra el diálogo full-window.
+            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                var iosKdHandler = function (e) {
+                    var path = e.composedPath ? e.composedPath() : [];
+                    if (path.indexOf(pac) === -1) return;
+                    document.removeEventListener('keydown', iosKdHandler, true);
+                    window.scrollTo(0, 0);
+                };
+                pac.addEventListener('touchend', function () {
+                    document.addEventListener('keydown', iosKdHandler, true);
+                }, { passive: true });
+            }
+
             var syncSi = function () {
                 var si = pac.shadowRoot && pac.shadowRoot.querySelector('input');
                 if (si) {

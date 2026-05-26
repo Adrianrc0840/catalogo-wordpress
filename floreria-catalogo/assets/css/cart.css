@@ -272,8 +272,8 @@
     appearance: none;
 }
 .fc-cart-delivery select {
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
 }
 
 .fc-cart-delivery input:focus,

@@ -98,8 +98,8 @@
     outline: none;
 }
 .fc-form-group select {
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
 }
 
 .fc-form-group input:focus,
@@ -412,7 +412,7 @@
 
 .fc-status-row select {
     flex: 1;
-    padding: 0 10px;
+    padding: 3px 10px;
     border: 1.5px solid #e2e8f0;
     border-radius: 7px;
     font-size: 13px;
@@ -1065,7 +1065,7 @@
 }
 
 .fc-sort-wrap select {
-    padding: 0 10px;
+    padding: 3px 10px;
     border: 1.5px solid #e2e8f0;
     border-radius: 8px;
     font-size: 13px;

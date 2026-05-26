@@ -437,6 +437,13 @@
                 direccionEl.parentNode.insertBefore(pacDet, direccionEl);
                 direccionEl.style.display = 'none';
 
+                // ── iOS fix ───────────────────────────────────────────────────
+                // El <dialog> full-window de Google Maps se posiciona en y=0 del
+                // documento. Si la página está scrolleada queda fuera de la vista.
+                // Escuchamos keydown en capture phase (antes de que llegue al shadow
+                // DOM) para scrollear a y=0 justo antes de que Google abra el diálogo.
+                var iosIsActive = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
                 pacDet.addEventListener('gmp-select', function (event) {
                     var pred = event.placePrediction;
                     if (!pred) return;
@@ -449,6 +456,19 @@
                         checkFormReady();
                     });
                 });
+
+                if (iosIsActive) {
+                    var iosKeydownHandler = function (e) {
+                        var path = e.composedPath ? e.composedPath() : [];
+                        if (path.indexOf(pacDet) === -1) return;
+                        document.removeEventListener('keydown', iosKeydownHandler, true);
+                        window.scrollTo(0, 0);
+                    };
+
+                    pacDet.addEventListener('touchend', function () {
+                        document.addEventListener('keydown', iosKeydownHandler, true);
+                    }, { passive: true });
+                }
 
                 var syncDetSi = function () {
                     var si = pacDet.shadowRoot && pacDet.shadowRoot.querySelector('input');
