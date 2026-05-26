@@ -1355,7 +1355,8 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 .fc-pdv-toast {
     position: fixed;
     bottom: 24px;
-    right: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
     background: #1a202c;
     color: #fff;
     padding: 12px 18px;
@@ -1369,7 +1370,7 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
     transition: opacity .2s, transform .2s;
     max-width: 320px;
 }
-.fc-pdv-toast.show { opacity: 1; transform: translateY(0); }
+.fc-pdv-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .fc-pdv-toast.success { background: var(--pdv-accent); }
 .fc-pdv-toast.error   { background: var(--pdv-danger); }
 
