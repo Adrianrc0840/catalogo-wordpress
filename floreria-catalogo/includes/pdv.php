@@ -363,6 +363,9 @@ function fc_ajax_pdv_crear_venta() {
         'timestamp' => $ts,
     ] ] ) );
 
+    // Notificación push de nuevo pedido (igual que desde el panel de floristas)
+    do_action( 'fc_pedido_creado', $post_id );
+
     wp_send_json_success( [
         'message'    => 'Venta registrada.',
         'numero'     => $numero,
