@@ -8,6 +8,43 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * Helper de debug temporal: guarda mensajes en wp_options para verlos en el admin.
+ * Se limpia automáticamente después de 10 minutos o al hacer clic en "Limpiar debug".
+ */
+function fc_push_debug( $msg ) {
+    $log   = get_option( 'fc_push_debug_log', [] );
+    $log[] = '[' . current_time( 'H:i:s' ) . '] ' . $msg;
+    update_option( 'fc_push_debug_log', $log, false );
+}
+
+// Mostrar el debug log como aviso en la página de pedidos
+add_action( 'admin_notices', function () {
+    if ( ! isset( $_GET['page'] ) || $_GET['page'] !== 'fc-pedidos' ) return;
+    if ( ! current_user_can( 'manage_options' ) ) return;
+
+    // Limpiar log si se solicitó
+    if ( isset( $_GET['fc_clear_debug'] ) && check_admin_referer( 'fc_clear_debug' ) ) {
+        delete_option( 'fc_push_debug_log' );
+        return;
+    }
+
+    $log = get_option( 'fc_push_debug_log', [] );
+    if ( empty( $log ) ) return;
+
+    $clear_url = wp_nonce_url(
+        add_query_arg( 'fc_clear_debug', '1', admin_url( 'edit.php?post_type=arreglo&page=fc-pedidos' ) ),
+        'fc_clear_debug'
+    );
+    echo '<div class="notice notice-info" style="font-family:monospace;font-size:13px;">';
+    echo '<p><strong>🔍 FC Push Debug</strong> &nbsp; <a href="' . esc_url( $clear_url ) . '">Limpiar</a></p>';
+    echo '<ul style="margin:0 0 8px 16px;list-style:disc;">';
+    foreach ( $log as $line ) {
+        echo '<li>' . esc_html( $line ) . '</li>';
+    }
+    echo '</ul></div>';
+} );
+
+/**
  * Envía una notificación push a todos los suscriptores via OneSignal REST API.
  *
  * @param string $title   Título de la notificación.
@@ -56,7 +93,7 @@ function fc_onesignal_send( $title, $message, $url = '' ) {
  */
 add_action( 'fc_pedido_creado', 'fc_onesignal_nuevo_pedido' );
 function fc_onesignal_nuevo_pedido( $post_id ) {
-    error_log( 'FC_PUSH: fc_onesignal_nuevo_pedido llamada para pedido ' . $post_id );
+    fc_push_debug( 'fc_onesignal_nuevo_pedido llamada para pedido ' . $post_id );
     $numero   = get_post_meta( $post_id, '_fc_pedido_numero',           true );
     $tipo     = get_post_meta( $post_id, '_fc_pedido_tipo',             true );
     $horario  = get_post_meta( $post_id, '_fc_pedido_horario',          true );
@@ -79,7 +116,7 @@ function fc_onesignal_nuevo_pedido( $post_id ) {
     $message = $tipo_label . ( $hora_str ? ' · ' . $hora_str : '' ) . ( $fecha ? ' · ' . $fecha : '' );
 
     $result = fc_onesignal_send( $title, $message );
-    error_log( 'FC_PUSH: resultado OneSignal para pedido ' . $post_id . ': ' . print_r( $result, true ) );
+    fc_push_debug( 'Resultado OneSignal pedido ' . $post_id . ': ' . ( is_string( $result ) ? $result : wp_json_encode( $result ) ) );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
