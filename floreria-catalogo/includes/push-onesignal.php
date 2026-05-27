@@ -56,6 +56,7 @@ function fc_onesignal_send( $title, $message, $url = '' ) {
  */
 add_action( 'fc_pedido_creado', 'fc_onesignal_nuevo_pedido' );
 function fc_onesignal_nuevo_pedido( $post_id ) {
+    error_log( 'FC_PUSH: fc_onesignal_nuevo_pedido llamada para pedido ' . $post_id );
     $numero   = get_post_meta( $post_id, '_fc_pedido_numero',           true );
     $tipo     = get_post_meta( $post_id, '_fc_pedido_tipo',             true );
     $horario  = get_post_meta( $post_id, '_fc_pedido_horario',          true );
@@ -77,7 +78,8 @@ function fc_onesignal_nuevo_pedido( $post_id ) {
     $title   = '🌸 Nuevo pedido' . ( $numero ? ' #' . $numero : '' );
     $message = $tipo_label . ( $hora_str ? ' · ' . $hora_str : '' ) . ( $fecha ? ' · ' . $fecha : '' );
 
-    fc_onesignal_send( $title, $message );
+    $result = fc_onesignal_send( $title, $message );
+    error_log( 'FC_PUSH: resultado OneSignal para pedido ' . $post_id . ': ' . print_r( $result, true ) );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

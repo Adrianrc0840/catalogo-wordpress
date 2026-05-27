@@ -610,7 +610,9 @@ function fc_handle_pedido_admin_actions() {
             ];
             update_post_meta( $pedido_id, '_fc_pedido_historial', maybe_serialize( $historial ) );
             // Notificación push de nuevo pedido (pedido pendiente aceptado)
+            error_log( 'FC_PUSH: disparando fc_pedido_creado para pedido ' . $pedido_id );
             do_action( 'fc_pedido_creado', $pedido_id );
+            error_log( 'FC_PUSH: do_action completado para pedido ' . $pedido_id );
         }
         wp_safe_redirect( add_query_arg( 'accepted', '1', $base ) );
         exit;
