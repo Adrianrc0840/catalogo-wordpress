@@ -609,6 +609,8 @@ function fc_handle_pedido_admin_actions() {
                 'timestamp' => current_time( 'mysql' ),
             ];
             update_post_meta( $pedido_id, '_fc_pedido_historial', maybe_serialize( $historial ) );
+            // Notificación push de nuevo pedido (pedido pendiente aceptado)
+            do_action( 'fc_pedido_creado', $pedido_id );
         }
         wp_safe_redirect( add_query_arg( 'accepted', '1', $base ) );
         exit;
