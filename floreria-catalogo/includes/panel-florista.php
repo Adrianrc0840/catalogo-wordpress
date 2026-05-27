@@ -887,6 +887,11 @@ function fc_ajax_actualizar_status() {
     $historial[] = $entry;
     update_post_meta( $pedido_id, '_fc_pedido_historial', maybe_serialize( $historial ) );
 
+    // Notificación push cuando se acepta un pedido pendiente
+    if ( $old_status === 'pendiente' && $new_status === 'aceptado' ) {
+        do_action( 'fc_pedido_creado', $pedido_id );
+    }
+
     wp_send_json_success( [
         'message'     => 'Estado actualizado.',
         'new_status'  => $new_status,
