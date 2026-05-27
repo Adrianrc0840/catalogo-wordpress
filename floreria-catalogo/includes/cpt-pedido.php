@@ -596,10 +596,14 @@ function fc_handle_pedido_admin_actions() {
     if ( isset( $_POST['fc_admin_aceptar_pendiente'], $_POST['pedido_id'] ) && check_admin_referer( 'fc_admin_aceptar_pendiente' ) ) {
         $pedido_id = (int) $_POST['pedido_id'];
         if ( $pedido_id && get_post_type( $pedido_id ) === 'pedido' ) {
-            $current_user = wp_get_current_user();
-            $token        = fc_generar_token();
+            $current_user  = wp_get_current_user();
+            $token         = fc_generar_token();
+            $fecha_pedido  = get_post_meta( $pedido_id, '_fc_pedido_fecha', true );
+            $numero_fl     = fc_generar_numero_pedido( $fecha_pedido );
+            update_post_meta( $pedido_id, '_fc_pedido_numero', $numero_fl );
             update_post_meta( $pedido_id, '_fc_pedido_token',  $token );
             update_post_meta( $pedido_id, '_fc_pedido_status', 'aceptado' );
+            wp_update_post( [ 'ID' => $pedido_id, 'post_title' => $numero_fl ] );
             $historial   = maybe_unserialize( get_post_meta( $pedido_id, '_fc_pedido_historial', true ) );
             $historial   = is_array( $historial ) ? $historial : [];
             $historial[] = [
