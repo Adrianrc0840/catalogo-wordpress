@@ -721,10 +721,12 @@
 
             if (opts.teleport) {
                 // Teleportar al body para evitar clipping por overflow/stacking context del carrito
-                inputEl.style.opacity = '0';
-                pac.style.position   = 'fixed';
-                pac.style.zIndex     = '10000';
-                pac.style.display    = 'none';
+                inputEl.style.opacity    = '0';
+                pac.style.position       = 'fixed';
+                pac.style.zIndex         = '10000';
+                pac.style.display        = 'none';
+                pac.style.backgroundColor = '#ffffff';
+                pac.style.colorScheme    = 'light';
                 document.body.appendChild(pac);
 
                 function positionPac() {
@@ -776,7 +778,17 @@
 
                 var cartBody = document.getElementById('fc-cart-body');
                 if (cartBody) cartBody.addEventListener('scroll', function() {
-                    if (pac.style.display !== 'none') positionPac();
+                    if (pac.style.display !== 'none') {
+                        var r     = inputEl.getBoundingClientRect();
+                        var bodyR = cartBody.getBoundingClientRect();
+                        // Si el campo salió del área visible del carrito, ocultar el pac
+                        if (r.bottom < bodyR.top || r.top > bodyR.bottom) {
+                            pac.style.visibility = 'hidden';
+                        } else {
+                            pac.style.visibility = '';
+                            positionPac();
+                        }
+                    }
                 });
 
             } else {
@@ -838,6 +850,7 @@
         createFab();
         updateFab();
     });
+
 
     /* ── Public API ── */
     window.fcCart = {

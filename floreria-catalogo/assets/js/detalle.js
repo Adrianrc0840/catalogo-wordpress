@@ -667,7 +667,6 @@
 
             if (window.fcCart) {
                 window.fcCart.add(item);
-                window.fcCart.open();
             }
         });
     }
