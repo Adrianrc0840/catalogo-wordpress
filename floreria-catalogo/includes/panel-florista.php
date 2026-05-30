@@ -633,10 +633,7 @@ function fc_ajax_search_pedidos() {
 add_action( 'wp_ajax_nopriv_fc_crear_pedido_whatsapp', 'fc_ajax_crear_pedido_whatsapp' );
 add_action( 'wp_ajax_fc_crear_pedido_whatsapp',        'fc_ajax_crear_pedido_whatsapp' );
 function fc_ajax_crear_pedido_whatsapp() {
-    $nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
-    if ( ! wp_verify_nonce( $nonce, 'fc_whatsapp_pedido' ) ) {
-        wp_send_json_error( [ 'message' => 'Nonce inválido.' ], 403 );
-    }
+    // Endpoint público — no requiere nonce para evitar fallos con páginas cacheadas
 
     $fecha_entrega = sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) );
     $numero        = fc_generar_numero_pendiente( $fecha_entrega ); // Número temporal P-
