@@ -206,10 +206,19 @@ $status_labels = fc_pedido_status_labels();
                 <!-- Envío section -->
                 <div id="fc-modal-envio-section">
                     <div class="fc-form-group">
-                        <label for="fc-modal-horario">Horario de entrega</label>
+                        <label>Horario de entrega</label>
+                        <div class="fc-tipo-toggle">
+                            <button type="button" class="fc-tipo-option fc-horario-modo active" data-modo="bloques">Por bloques</button>
+                            <button type="button" class="fc-tipo-option fc-horario-modo" data-modo="personalizado">Personalizado</button>
+                        </div>
+                    </div>
+                    <div class="fc-form-group" id="fc-modal-horario-bloques-wrap">
                         <select id="fc-modal-horario" name="horario">
                             <option value="">-- Selecciona fecha primero --</option>
                         </select>
+                    </div>
+                    <div class="fc-form-group" id="fc-modal-horario-custom-wrap" style="display:none;">
+                        <input type="time" id="fc-modal-horario-custom" />
                     </div>
                     <div class="fc-form-group">
                         <label for="fc-modal-direccion">Dirección de entrega</label>
