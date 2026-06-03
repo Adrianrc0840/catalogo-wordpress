@@ -273,10 +273,32 @@
         /* ── Fecha → horario ── */
         var fechaInput = drawerEl.querySelector('#fc-cart-fecha');
         var today      = new Date();
-        fechaInput.min = today.getFullYear() + '-' +
+        var todayMin   = today.getFullYear() + '-' +
                          String(today.getMonth() + 1).padStart(2, '0') + '-' +
                          String(today.getDate()).padStart(2, '0');
+        fechaInput.min = todayMin;
         fechaInput.addEventListener('change', updateCartHorario);
+
+        /* iOS: type="date" y type="time" no soportan placeholder — cambiar a text
+           con placeholder y volver al tipo original al hacer focus */
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+            var iosDateFix = function (input, tipo, placeholder) {
+                input.type        = 'text';
+                input.placeholder = placeholder;
+                input.addEventListener('focus', function () {
+                    this.type = tipo;
+                    if (tipo === 'date') this.min = todayMin;
+                });
+                input.addEventListener('blur', function () {
+                    if (!this.value) {
+                        this.type        = 'text';
+                        this.placeholder = placeholder;
+                    }
+                });
+            };
+            iosDateFix(fechaInput, 'date', 'DD/MM/AAAA');
+            iosDateFix(drawerEl.querySelector('#fc-cart-hora-recol'), 'time', 'HH:MM');
+        }
 
         /* ── Google Places en dirección ── */
         initPlacesOnInput(document.getElementById('fc-cart-direccion'), { teleport: true });
