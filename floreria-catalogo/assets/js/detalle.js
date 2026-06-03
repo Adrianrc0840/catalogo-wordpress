@@ -48,6 +48,118 @@
         return h * 60 + m;
     }
 
+    // ── Códigos de país para WhatsApp ──
+    var PAISES = [
+        ['+52','México'],['+1','Estados Unidos'],['+1','Canadá'],
+        ['+54','Argentina'],['+591','Bolivia'],['+55','Brasil'],['+56','Chile'],
+        ['+57','Colombia'],['+506','Costa Rica'],['+53','Cuba'],['+1809','Rep. Dominicana'],
+        ['+593','Ecuador'],['+503','El Salvador'],['+502','Guatemala'],['+504','Honduras'],
+        ['+505','Nicaragua'],['+507','Panamá'],['+595','Paraguay'],['+51','Perú'],
+        ['+1787','Puerto Rico'],['+598','Uruguay'],['+58','Venezuela'],
+        ['+376','Andorra'],['+971','Emiratos Árabes'],['+93','Afganistán'],['+1268','Antigua y Barbuda'],
+        ['+355','Albania'],['+374','Armenia'],['+244','Angola'],['+54','Argentina'],
+        ['+43','Austria'],['+61','Australia'],['+994','Azerbaiyán'],['+387','Bosnia'],
+        ['+1246','Barbados'],['+880','Bangladesh'],['+32','Bélgica'],['+226','Burkina Faso'],
+        ['+359','Bulgaria'],['+973','Bahréin'],['+257','Burundi'],['+229','Benín'],
+        ['+673','Brunéi'],['+975','Bután'],['+267','Botsuana'],['+375','Bielorrusia'],
+        ['+501','Belice'],['+243','Congo (RDC)'],['+236','Rep. Centroafricana'],['+242','Congo'],
+        ['+41','Suiza'],['+225','Costa de Marfil'],['+682','Cook'],['+56','Chile'],
+        ['+237','Camerún'],['+86','China'],['+57','Colombia'],['+506','Costa Rica'],
+        ['+53','Cuba'],['+238','Cabo Verde'],['+357','Chipre'],['+420','Rep. Checa'],
+        ['+49','Alemania'],['+253','Yibuti'],['+45','Dinamarca'],['+1767','Dominica'],
+        ['+213','Argelia'],['+593','Ecuador'],['+372','Estonia'],['+20','Egipto'],
+        ['+291','Eritrea'],['+34','España'],['+251','Etiopía'],['+358','Finlandia'],
+        ['+679','Fiyi'],['+500','Malvinas'],['+691','Micronesia'],['+298','Islas Feroe'],
+        ['+33','Francia'],['+241','Gabón'],['+44','Reino Unido'],['+1473','Granada'],
+        ['+995','Georgia'],['+233','Ghana'],['+350','Gibraltar'],['+299','Groenlandia'],
+        ['+220','Gambia'],['+224','Guinea'],['+240','Guinea Ecuatorial'],['+30','Grecia'],
+        ['+502','Guatemala'],['+1671','Guam'],['+245','Guinea-Bisáu'],['+592','Guyana'],
+        ['+852','Hong Kong'],['+504','Honduras'],['+385','Croacia'],['+509','Haití'],
+        ['+36','Hungría'],['+62','Indonesia'],['+353','Irlanda'],['+972','Israel'],
+        ['+91','India'],['+246','Diego García'],['+964','Irak'],['+98','Irán'],
+        ['+354','Islandia'],['+39','Italia'],['+1876','Jamaica'],['+962','Jordania'],
+        ['+81','Japón'],['+254','Kenia'],['+996','Kirguistán'],['+855','Camboya'],
+        ['+686','Kiribati'],['+269','Comoras'],['+1869','San Cristóbal'],['+850','Corea del Norte'],
+        ['+82','Corea del Sur'],['+965','Kuwait'],['+1345','Islas Caimán'],['+7','Kazajistán'],
+        ['+856','Laos'],['+961','Líbano'],['+1758','Santa Lucía'],['+423','Liechtenstein'],
+        ['+94','Sri Lanka'],['+231','Liberia'],['+266','Lesoto'],['+370','Lituania'],
+        ['+352','Luxemburgo'],['+371','Letonia'],['+218','Libia'],['+212','Marruecos'],
+        ['+377','Mónaco'],['+373','Moldavia'],['+261','Madagascar'],['+692','Marshall'],
+        ['+389','Macedonia'],['+223','Mali'],['+95','Myanmar'],['+976','Mongolia'],
+        ['+853','Macao'],['+1670','Mariana del Norte'],['+596','Martinica'],['+222','Mauritania'],
+        ['+1664','Montserrat'],['+356','Malta'],['+230','Mauricio'],['+960','Maldivas'],
+        ['+265','Malaui'],['+60','Malasia'],['+258','Mozambique'],['+264','Namibia'],
+        ['+687','Nueva Caledonia'],['+227','Níger'],['+672','Norfolk'],['+234','Nigeria'],
+        ['+505','Nicaragua'],['+31','Países Bajos'],['+47','Noruega'],['+977','Nepal'],
+        ['+674','Nauru'],['+683','Niue'],['+64','Nueva Zelanda'],['+968','Omán'],
+        ['+507','Panamá'],['+51','Perú'],['+689','Polinesia Francesa'],['+675','Papúa'],
+        ['+63','Filipinas'],['+92','Pakistán'],['+48','Polonia'],['+508','San Pedro'],
+        ['+1787','Puerto Rico'],['+970','Palestina'],['+351','Portugal'],['+680','Palaos'],
+        ['+595','Paraguay'],['+974','Catar'],['+262','Reunión'],['+40','Rumanía'],
+        ['+381','Serbia'],['+7','Rusia'],['+250','Ruanda'],['+966','Arabia Saudí'],
+        ['+677','Salomón'],['+248','Seychelles'],['+249','Sudán'],['+46','Suecia'],
+        ['+65','Singapur'],['+290','Santa Elena'],['+386','Eslovenia'],['+47','Svalbard'],
+        ['+421','Eslovaquia'],['+232','Sierra Leona'],['+378','San Marino'],['+221','Senegal'],
+        ['+252','Somalia'],['+597','Surinam'],['+239','Santo Tomé'],['+503','El Salvador'],
+        ['+963','Siria'],['+268','Suazilandia'],['+1649','Turcos y Caicos'],['+235','Chad'],
+        ['+228','Togo'],['+66','Tailandia'],['+992','Tayikistán'],['+690','Tokelau'],
+        ['+670','Timor Oriental'],['+993','Turkmenistán'],['+216','Túnez'],['+676','Tonga'],
+        ['+90','Turquía'],['+1868','Trinidad y Tobago'],['+688','Tuvalu'],['+886','Taiwán'],
+        ['+255','Tanzania'],['+380','Ucrania'],['+256','Uganda'],['+1','EE. UU.'],
+        ['+598','Uruguay'],['+998','Uzbekistán'],['+39','Vaticano'],['+1784','San Vicente'],
+        ['+58','Venezuela'],['+1284','Islas Vírgenes Británicas'],['+1340','Islas Vírgenes EE.UU.'],
+        ['+678','Vanuatu'],['+681','Wallis'],['+685','Samoa'],['+967','Yemen'],
+        ['+27','Sudáfrica'],['+260','Zambia'],['+263','Zimbabue']
+    ];
+
+    function poblarSelectPaises(selectEl) {
+        PAISES.forEach(function (p) {
+            var opt = document.createElement('option');
+            opt.value       = p[0];
+            opt.textContent = p[0] + ' ' + p[1];
+            selectEl.appendChild(opt);
+        });
+
+        // Al cerrar el select, mostrar solo el código (+52)
+        // Al abrir, restaurar código + nombre para que el usuario encuentre su país
+        function contraer() {
+            var sel = selectEl.options[selectEl.selectedIndex];
+            if (sel) sel.textContent = selectEl.value;
+        }
+        function expandir() {
+            Array.from(selectEl.options).forEach(function (opt, i) {
+                opt.textContent = PAISES[i][0] + ' ' + PAISES[i][1];
+            });
+        }
+
+        contraer(); // estado inicial: solo código
+        selectEl.addEventListener('mousedown',  expandir);
+        selectEl.addEventListener('touchstart', expandir, { passive: true });
+        selectEl.addEventListener('change',     contraer);
+        selectEl.addEventListener('blur',       contraer);
+    }
+
+    function setupWaNumInput(inputEl) {
+        inputEl.addEventListener('input', function () {
+            // Solo dígitos
+            var digits = this.value.replace(/\D/g, '');
+            // Máximo 15 dígitos (estándar E.164)
+            if (digits.length > 15) digits = digits.slice(0, 15);
+            this.value = digits;
+            checkFormReady();
+        });
+    }
+
+    var waCodeEnvioEl  = document.getElementById('fc-wa-code-envio');
+    var waNumEnvioEl   = document.getElementById('fc-wa-numero-envio');
+    var waCodeRecolEl  = document.getElementById('fc-wa-code-recol');
+    var waNumRecolEl   = document.getElementById('fc-wa-numero-recol');
+
+    if (waCodeEnvioEl) poblarSelectPaises(waCodeEnvioEl);
+    if (waCodeRecolEl) poblarSelectPaises(waCodeRecolEl);
+    if (waNumEnvioEl)  setupWaNumInput(waNumEnvioEl);
+    if (waNumRecolEl)  setupWaNumInput(waNumRecolEl);
+
     var anticipacionEl     = document.getElementById('fc-anticipacion');
     var politicasCb        = document.getElementById('fc-politicas-cb');
     var direccionHint      = document.getElementById('fc-direccion-hint');
@@ -140,6 +252,7 @@
             var horario      = horarioEl      ? horarioEl.value.trim()      : '';
             var direccion    = direccionEl    ? direccionEl.value.trim()    : '';
             var destinatario = destinatarioEl ? destinatarioEl.value.trim() : '';
+            var waNumEnvio   = waNumEnvioEl   ? waNumEnvioEl.value.trim()   : '';
             var dirValida    = esDireccionValida(direccion);
 
             // Mostrar/ocultar hint y borde de error solo si el usuario ya escribió algo
@@ -151,11 +264,12 @@
                 if (direccionEl)   direccionEl.classList.remove('fc-input-error');
             }
 
-            listo = fecha !== '' && horario !== '' && dirValida && destinatario !== '' && diaDisponible && fechaValida && politicas;
+            listo = fecha !== '' && horario !== '' && dirValida && destinatario !== '' && waNumEnvio.length >= 7 && diaDisponible && fechaValida && politicas;
         } else {
-            var hora    = horaRecoleccionEl    ? horaRecoleccionEl.value.trim()    : '';
-            var nombre  = nombreRecoleccionEl  ? nombreRecoleccionEl.value.trim()  : '';
-            listo = fecha !== '' && hora !== '' && nombre !== '' && diaDisponible && fechaValida && politicas;
+            var hora       = horaRecoleccionEl ? horaRecoleccionEl.value.trim() : '';
+            var nombre     = nombreRecoleccionEl ? nombreRecoleccionEl.value.trim() : '';
+            var waNumRecol = waNumRecolEl ? waNumRecolEl.value.trim() : '';
+            listo = fecha !== '' && hora !== '' && nombre !== '' && waNumRecol.length >= 7 && diaDisponible && fechaValida && politicas;
         }
 
         if (waBtn) waBtn.classList.toggle('fc-btn-disabled', !listo);
@@ -518,6 +632,8 @@
     if (horaRecoleccionEl)     horaRecoleccionEl.addEventListener('input',  onHoraRecoleccionChange);
     if (destinatarioEl)        destinatarioEl.addEventListener('input',     checkFormReady);
     if (nombreRecoleccionEl)   nombreRecoleccionEl.addEventListener('input', checkFormReady);
+    if (waNumEnvioEl)          waNumEnvioEl.addEventListener('input',        checkFormReady);
+    if (waNumRecolEl)          waNumRecolEl.addEventListener('input',        checkFormReady);
 
     // ── Botón WhatsApp ──
     if (waBtn) {
@@ -570,6 +686,9 @@
                 var horario      = horarioEl      ? horarioEl.value.trim()      : '';
                 var direccion    = direccionEl    ? direccionEl.value.trim()    : '';
                 var destinatario = destinatarioEl ? destinatarioEl.value.trim() : '';
+                var waCodeEnvio  = waCodeEnvioEl  ? waCodeEnvioEl.value         : '+52';
+                var waNumEnvio   = waNumEnvioEl   ? waNumEnvioEl.value.trim()   : '';
+                var waEnvio      = waCodeEnvio + ' ' + waNumEnvio;
                 mensaje =
                     'Hola! Me interesa ordenar un arreglo.\n\n' +
                     '*Arreglo:* '      + titulo       + '\n' +
@@ -580,11 +699,15 @@
                     '*Horario:* '      + horario      + '\n' +
                     '*Direccion:* '    + direccion    + '\n' +
                     (destinatario ? '*Destinatario:* ' + destinatario + '\n' : '') +
+                    (waNumEnvio   ? '*WhatsApp:* '     + waEnvio      + '\n' : '') +
                     '*Link:* '         + permalink    + '\n\n' +
                     'Esta disponible?';
             } else {
-                var horaRaw          = horaRecoleccionEl   ? horaRecoleccionEl.value        : '';
-                var nombreRecoleccion= nombreRecoleccionEl ? nombreRecoleccionEl.value.trim(): '';
+                var horaRaw           = horaRecoleccionEl   ? horaRecoleccionEl.value        : '';
+                var nombreRecoleccion = nombreRecoleccionEl ? nombreRecoleccionEl.value.trim(): '';
+                var waCodeRecol       = waCodeRecolEl ? waCodeRecolEl.value : '+52';
+                var waNumRecol        = waNumRecolEl  ? waNumRecolEl.value.trim() : '';
+                var waRecol           = waCodeRecol + ' ' + waNumRecol;
                 var horaStr = horaRaw;
                 if (horaRaw) {
                     var parts = horaRaw.split(':');
@@ -601,7 +724,8 @@
                     '*Tipo:* Recoleccion en tienda\n' +
                     '*Fecha:* '    + fechaStr     + '\n' +
                     '*Hora:* '     + horaStr      + '\n' +
-                    (nombreRecoleccion ? '*Nombre:* ' + nombreRecoleccion + '\n' : '') +
+                    (nombreRecoleccion ? '*Nombre:* '   + nombreRecoleccion + '\n' : '') +
+                    (waNumRecol        ? '*WhatsApp:* ' + waRecol           + '\n' : '') +
                     '*Link:* '     + permalink    + '\n\n' +
                     'Esta disponible?';
             }
@@ -637,6 +761,9 @@
                     horario:          modoTipo === 'envio' ? (horarioEl ? horarioEl.value.trim() : '') : '',
                     direccion:        modoTipo === 'envio' ? (direccionEl ? direccionEl.value.trim() : '') : '',
                     hora_recoleccion: modoTipo === 'recoleccion' ? (horaRecoleccionEl ? horaRecoleccionEl.value : '') : '',
+                    canal_contacto:   modoTipo === 'envio'
+                                        ? (waCodeEnvio + ' ' + waNumEnvio).trim()
+                                        : (waCodeRecol + ' ' + waNumRecol).trim(),
                     items_json:       JSON.stringify(itemPayload),
                 });
                 fetch(ajaxurl, { method: 'POST', body: bodyDet }).catch(function () {});

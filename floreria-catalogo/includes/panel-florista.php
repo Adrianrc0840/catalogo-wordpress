@@ -681,7 +681,7 @@ function fc_ajax_crear_pedido_whatsapp() {
         '_fc_pedido_hora_recoleccion'        => sanitize_text_field(   $_POST['hora_recoleccion'] ?? '' ),
         '_fc_pedido_canal'                   => 'whatsapp',
         '_fc_pedido_canal_nombre'            => '',
-        '_fc_pedido_canal_contacto'          => '',
+        '_fc_pedido_canal_contacto'          => sanitize_text_field( $_POST['canal_contacto'] ?? '' ),
         '_fc_pedido_nota'                    => sanitize_textarea_field( $_POST['nota']           ?? '' ),
         // Legacy single-item fields for backward compat
         '_fc_pedido_arreglo_id'              => $first['arreglo_id']            ?? 0,

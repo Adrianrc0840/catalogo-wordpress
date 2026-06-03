@@ -192,6 +192,13 @@ while ( have_posts() ) : the_post();
                         </div>
                     </div>
                     <div>
+                        <label for="fc-wa-numero-envio">Tu WhatsApp (para confirmación)</label>
+                        <div class="fc-wa-phone-wrap">
+                            <select id="fc-wa-code-envio" class="fc-wa-code-select"></select>
+                            <input type="tel" id="fc-wa-numero-envio" class="fc-wa-numero-input" placeholder="Número de WhatsApp" inputmode="numeric" autocomplete="tel" required />
+                        </div>
+                    </div>
+                    <div>
                         <label for="fc-direccion">Dirección de entrega</label>
                         <div class="fc-direccion-wrap">
                             <input type="text" id="fc-direccion" name="fc_direccion" placeholder="Escribe tu dirección o pega un link de Google Maps..." autocomplete="off" />
@@ -207,6 +214,13 @@ while ( have_posts() ) : the_post();
                         <label for="fc-nombre-recoleccion">Nombre para el pedido</label>
                         <div class="fc-text-input-wrap">
                             <input type="text" id="fc-nombre-recoleccion" name="fc_nombre_recoleccion" placeholder="¿A nombre de quién está el pedido?" autocomplete="off" required />
+                        </div>
+                    </div>
+                    <div>
+                        <label for="fc-wa-numero-recol">Tu WhatsApp (para confirmación)</label>
+                        <div class="fc-wa-phone-wrap">
+                            <select id="fc-wa-code-recol" class="fc-wa-code-select"></select>
+                            <input type="tel" id="fc-wa-numero-recol" class="fc-wa-numero-input" placeholder="Número de WhatsApp" inputmode="numeric" autocomplete="tel" required />
                         </div>
                     </div>
                     <div>
