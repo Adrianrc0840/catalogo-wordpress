@@ -654,9 +654,18 @@
                     <div id="pdv-co-envio-wrap" style="${tipoPedido === 'envio' ? '' : 'display:none'}">
                         <div class="fc-pdv-form-group">
                             <label>Horario de entrega</label>
+                            <div class="fc-pdv-tipo-btns" style="margin-bottom:8px;">
+                                <button type="button" class="fc-pdv-tipo-btn active fc-pdv-horario-modo" data-modo="bloques" style="flex:1">Por bloques</button>
+                                <button type="button" class="fc-pdv-tipo-btn fc-pdv-horario-modo" data-modo="personalizado" style="flex:1">Personalizado</button>
+                            </div>
+                        </div>
+                        <div class="fc-pdv-form-group" id="pdv-co-horario-bloques-wrap">
                             <select id="pdv-co-horario">
                                 <option value="">— Selecciona fecha primero —</option>
                             </select>
+                        </div>
+                        <div class="fc-pdv-form-group" id="pdv-co-horario-custom-wrap" style="display:none;">
+                            <input type="time" id="pdv-co-horario-custom" />
                         </div>
                         <div class="fc-pdv-form-group">
                             <label>Dirección de entrega <span style="color:#ef4444">*</span></label>
@@ -712,9 +721,9 @@
         fechaInputEl?.addEventListener('input',  () => updateHorariosModal(backdrop));
 
         // Tipo toggle
-        $$('.fc-pdv-tipo-btn', backdrop).forEach(btn => {
+        $$('.fc-pdv-tipo-btn[data-tipo]', backdrop).forEach(btn => {
             btn.addEventListener('click', () => {
-                $$('.fc-pdv-tipo-btn', backdrop).forEach(b => b.classList.remove('active'));
+                $$('.fc-pdv-tipo-btn[data-tipo]', backdrop).forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 tipoPedido = btn.dataset.tipo;
                 const isEnvio = tipoPedido === 'envio';
@@ -729,6 +738,19 @@
                 $$('.pdv-co-dest-tel', backdrop).forEach(inp => { inp.style.borderColor = ''; });
                 // Rebuild horarios for new tipo
                 updateHorariosModal(backdrop);
+            });
+        });
+
+        // Modo horario toggle (bloques / personalizado)
+        $$('.fc-pdv-horario-modo', backdrop).forEach(btn => {
+            btn.addEventListener('click', () => {
+                $$('.fc-pdv-horario-modo', backdrop).forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const modo = btn.dataset.modo;
+                const bloquesWrap = $('#pdv-co-horario-bloques-wrap', backdrop);
+                const customWrap  = $('#pdv-co-horario-custom-wrap',  backdrop);
+                if (bloquesWrap) bloquesWrap.style.display = modo === 'bloques' ? '' : 'none';
+                if (customWrap)  customWrap.style.display  = modo === 'personalizado' ? '' : 'none';
             });
         });
 
@@ -895,7 +917,7 @@
                 const data = await ajax('fc_pdv_crear_venta', {
                     tipo:            tipoPedido,
                     fecha,
-                    horario:         $('#pdv-co-horario', backdrop)?.value          || '',
+                    horario:         ($('.fc-pdv-horario-modo[data-modo="personalizado"].active', backdrop) ? $('#pdv-co-horario-custom', backdrop)?.value : $('#pdv-co-horario', backdrop)?.value) || '',
                     hora_recoleccion:$('#pdv-co-hora-recoleccion', backdrop)?.value || '',
                     direccion:       $('#pdv-co-direccion', backdrop)?.value         || '',
                     forma_pago:      formaPago,

@@ -1544,6 +1544,19 @@
             });
         });
 
+        // Modo horario toggle (bloques / personalizado)
+        $$('.fc-horario-modo[data-modo]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.closest('.fc-tipo-toggle').querySelectorAll('.fc-horario-modo').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const modo = btn.dataset.modo;
+                const bloquesWrap  = $('#fc-modal-horario-bloques-wrap');
+                const customWrap   = $('#fc-modal-horario-custom-wrap');
+                if (bloquesWrap)  bloquesWrap.style.display  = modo === 'bloques' ? '' : 'none';
+                if (customWrap)   customWrap.style.display   = modo === 'personalizado' ? '' : 'none';
+            });
+        });
+
         // Fecha → poblar horarios
         const fechaInput = $('#fc-modal-fecha');
         if (fechaInput) {
@@ -1741,9 +1754,26 @@
         // Fecha y horario
         const fechaInput = $('#fc-modal-fecha');
         if (fechaInput) { fechaInput.value = pedido.fecha || ''; updateHorarioSelect(pedido.fecha || ''); }
+
+        // Detectar si el horario guardado es personalizado (HH:MM) o por bloques
+        const isCustomHorario = pedido.horario && /^\d{1,2}:\d{2}$/.test(pedido.horario.trim());
+        $$('.fc-horario-modo[data-modo]').forEach(b => b.classList.remove('active'));
+        const modoTarget = isCustomHorario ? 'personalizado' : 'bloques';
+        const modoBtn = $(`.fc-horario-modo[data-modo="${modoTarget}"]`);
+        if (modoBtn) modoBtn.classList.add('active');
+        const bloquesWrapEdit = $('#fc-modal-horario-bloques-wrap');
+        const customWrapEdit  = $('#fc-modal-horario-custom-wrap');
+        if (bloquesWrapEdit) bloquesWrapEdit.style.display = isCustomHorario ? 'none' : '';
+        if (customWrapEdit)  customWrapEdit.style.display  = isCustomHorario ? '' : 'none';
+
         requestAnimationFrame(() => {
-            const horarioEl = $('#fc-modal-horario');
-            if (horarioEl && pedido.horario) horarioEl.value = pedido.horario;
+            if (isCustomHorario) {
+                const customEl = $('#fc-modal-horario-custom');
+                if (customEl) customEl.value = pedido.horario;
+            } else {
+                const horarioEl = $('#fc-modal-horario');
+                if (horarioEl && pedido.horario) horarioEl.value = pedido.horario;
+            }
         });
 
         // Canal de contacto
@@ -1831,6 +1861,17 @@
         const horarioSelect = $('#fc-modal-horario');
         if (horarioSelect) horarioSelect.innerHTML = '<option value="">-- Selecciona fecha primero --</option>';
 
+        // Reset modo horario → bloques
+        $$('.fc-horario-modo[data-modo]').forEach(b => b.classList.remove('active'));
+        const modoBloquesBtn = $('.fc-horario-modo[data-modo="bloques"]');
+        if (modoBloquesBtn) modoBloquesBtn.classList.add('active');
+        const bloquesWrapReset = $('#fc-modal-horario-bloques-wrap');
+        const customWrapReset  = $('#fc-modal-horario-custom-wrap');
+        if (bloquesWrapReset) bloquesWrapReset.style.display = '';
+        if (customWrapReset)  customWrapReset.style.display  = 'none';
+        const customInputReset = $('#fc-modal-horario-custom');
+        if (customInputReset) customInputReset.value = '';
+
         const canalSel = $('#fc-modal-canal');
         if (canalSel) { canalSel.value = ''; updateCanalField(''); }
 
@@ -1884,7 +1925,7 @@
         const payload = {
             tipo,
             fecha:            $('#fc-modal-fecha')?.value            || '',
-            horario:          $('#fc-modal-horario')?.value          || '',
+            horario:          ($('.fc-horario-modo[data-modo="personalizado"].active') ? $('#fc-modal-horario-custom')?.value : $('#fc-modal-horario')?.value) || '',
             hora_recoleccion: $('#fc-modal-hora-recoleccion')?.value || '',
             direccion:        $('#fc-modal-direccion')?.value        || '',
             canal:            canalVal,
