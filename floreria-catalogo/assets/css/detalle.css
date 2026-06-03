@@ -595,6 +595,54 @@ gmp-place-autocomplete {
     pointer-events: none;
 }
 
+/* ── Campo WhatsApp con selector de código de país ── */
+.fc-wa-phone-wrap {
+    display: flex;
+    gap: 8px;
+}
+
+.fc-wa-code-select {
+    flex: 0 0 100px;
+    width: 100px;
+    padding: 10px 4px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    color: #1e293b;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    outline: none;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.fc-wa-code-select:focus {
+    border-color: var(--fc-primary);
+}
+
+.fc-wa-numero-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    color: #1e293b;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    outline: none;
+    min-width: 0;
+}
+
+.fc-wa-numero-input:focus {
+    border-color: var(--fc-primary);
+}
+
+.fc-wa-numero-input.fc-input-error {
+    border-color: #c44;
+}
+
 /* ── Botón WhatsApp ── */
 .fc-whatsapp-btn {
     display: flex;
