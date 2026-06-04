@@ -761,12 +761,15 @@
 
                 function positionPac() {
                     var r          = inputEl.getBoundingClientRect();
+                    var header     = document.querySelector('.fc-cart-header');
                     var footer     = document.querySelector('.fc-cart-footer');
-                    var footerTop  = footer ? footer.getBoundingClientRect().top : window.innerHeight;
-                    pac.style.top       = r.top + 'px';
+                    var headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+                    var footerTop    = footer ? footer.getBoundingClientRect().top    : window.innerHeight;
+                    var clampedTop   = Math.max(r.top, headerBottom);
+                    pac.style.top       = clampedTop + 'px';
                     pac.style.left      = r.left + 'px';
                     pac.style.width     = r.width + 'px';
-                    pac.style.maxHeight = Math.max(0, footerTop - r.top) + 'px';
+                    pac.style.maxHeight = Math.max(0, footerTop - clampedTop) + 'px';
                     pac.style.overflow  = 'hidden';
                 }
 
