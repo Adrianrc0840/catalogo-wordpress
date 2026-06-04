@@ -798,13 +798,15 @@
                     if (pac.style.display !== 'none') positionPac();
                 });
 
-                var cartBody = document.getElementById('fc-cart-body');
+                var cartBody   = document.getElementById('fc-cart-body');
+                var cartFooter = document.querySelector('.fc-cart-footer');
                 if (cartBody) cartBody.addEventListener('scroll', function() {
                     if (pac.style.display !== 'none') {
-                        var r     = inputEl.getBoundingClientRect();
-                        var bodyR = cartBody.getBoundingClientRect();
-                        // Si el campo salió del área visible del carrito, ocultar el pac
-                        if (r.bottom < bodyR.top || r.top > bodyR.bottom) {
+                        var r       = inputEl.getBoundingClientRect();
+                        var bodyR   = cartBody.getBoundingClientRect();
+                        var footerT = cartFooter ? cartFooter.getBoundingClientRect().top : Infinity;
+                        // Ocultar si el campo salió del área visible o está tapado por el footer
+                        if (r.bottom < bodyR.top || r.top > bodyR.bottom || r.top >= footerT) {
                             pac.style.visibility = 'hidden';
                         } else {
                             pac.style.visibility = '';
