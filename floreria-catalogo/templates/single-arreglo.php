@@ -62,6 +62,35 @@ while ( have_posts() ) : the_post();
                 <span class="fc-img-hint">&#128269; Toca para ver completa</span>
                 <?php endif; ?>
             </div>
+
+            <!-- Políticas compactas (solo desktop) -->
+            <?php
+            $pol_tabs = fc_get_politicas_tabs();
+            if ( ! empty( $pol_tabs ) ) : ?>
+            <div class="fc-pol-detalle">
+                <div class="fc-pol-tabs" role="tablist">
+                    <?php foreach ( $pol_tabs as $i => $tab ) : ?>
+                    <button class="fc-pol-tab <?php echo $i === 0 ? 'active' : ''; ?>"
+                            data-tab="<?php echo $i; ?>"
+                            role="tab"
+                            aria-selected="<?php echo $i === 0 ? 'true' : 'false'; ?>">
+                        <?php echo esc_html( $tab['titulo'] ); ?>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+                <div class="fc-pol-contenido">
+                    <?php foreach ( $pol_tabs as $i => $tab ) : ?>
+                    <div class="fc-pol-panel <?php echo $i === 0 ? 'active' : ''; ?>"
+                         data-panel="<?php echo $i; ?>"
+                         role="tabpanel">
+                        <div class="fc-politicas">
+                            <?php echo wp_kses_post( $tab['contenido'] ); ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- Parte superior info: título, categorías, descripción -->

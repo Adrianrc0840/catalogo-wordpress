@@ -43,6 +43,8 @@
 .fc-col-imagen {
     grid-column: 1;
     grid-row: 1 / 3;
+    display: flex;
+    flex-direction: column;
 }
 
 .fc-col-info-top {
@@ -106,6 +108,124 @@
 @media (max-width: 392px) {
     .fc-desc-nuevo-parrafo {
         margin-top: 15px;
+    }
+}
+
+/* ── Políticas compactas en detalle (solo desktop) ── */
+.fc-pol-detalle {
+    margin-top: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    gap: 10px;
+}
+
+.fc-pol-detalle .fc-pol-tabs {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.fc-pol-detalle .fc-pol-tab {
+    flex: 1;
+    padding: 9px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #aaa;
+    background: #fff;
+    border: 1.5px solid var(--fc-border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+    text-align: center;
+    line-height: 1.3;
+}
+
+.fc-pol-detalle .fc-pol-tab:hover {
+    color: var(--fc-primary);
+    border-color: var(--fc-primary);
+}
+
+.fc-pol-detalle .fc-pol-tab.active {
+    color: #fff;
+    border-color: var(--fc-primary);
+    background: var(--fc-primary);
+    font-weight: 700;
+}
+
+.fc-pol-detalle .fc-pol-contenido {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border: 1.5px solid #f4b8d0;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 2px 12px rgba(200, 24, 90, 0.06);
+    overflow: hidden;
+}
+
+.fc-pol-detalle .fc-pol-panel {
+    display: none;
+    padding: 18px 20px;
+    overflow-y: auto;
+    flex: 1;
+    background: #fef7fa;
+}
+
+.fc-pol-detalle .fc-pol-panel.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Scrollbar custom */
+.fc-pol-detalle .fc-pol-panel::-webkit-scrollbar {
+    width: 5px;
+}
+
+.fc-pol-detalle .fc-pol-panel::-webkit-scrollbar-track {
+    background: var(--fc-light-bg);
+    border-radius: 10px;
+}
+
+.fc-pol-detalle .fc-pol-panel::-webkit-scrollbar-thumb {
+    background: var(--fc-border);
+    border-radius: 10px;
+}
+
+.fc-pol-detalle .fc-pol-panel::-webkit-scrollbar-thumb:hover {
+    background: var(--fc-primary);
+}
+
+.fc-pol-detalle .fc-politicas {
+    font-size: 14px;
+    color: #444;
+    font-weight: 500;
+    line-height: 1.7;
+}
+
+.fc-pol-detalle .fc-politicas ul {
+    padding-left: 16px;
+    margin: 4px 0;
+}
+
+.fc-pol-detalle .fc-politicas li {
+    margin-bottom: 8px;
+}
+
+.fc-pol-detalle .fc-politicas p {
+    margin: 0 0 10px;
+}
+
+.fc-pol-detalle .fc-politicas strong {
+    color: var(--fc-primary);
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .fc-pol-detalle {
+        display: none;
     }
 }
 
