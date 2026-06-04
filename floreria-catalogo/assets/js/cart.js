@@ -237,6 +237,14 @@
             setCollapsed(deliveryBody, deliveryArrow, deliveryCollapsed);
         });
 
+        /* ── Evitar scroll de fondo en header y footer ── */
+        ['fc-cart-header', 'fc-cart-footer'].forEach(function(cls) {
+            var el = drawerEl.querySelector('.' + cls);
+            if (!el) return;
+            el.addEventListener('wheel',     function(e) { e.preventDefault(); }, { passive: false });
+            el.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+        });
+
         /* ── Backdrop / close ── */
         drawerEl.querySelector('#fc-cart-backdrop').addEventListener('click', closeDrawer);
         drawerEl.querySelector('#fc-cart-close').addEventListener('click', closeDrawer);

@@ -122,7 +122,8 @@ function fc_enqueue_frontend() {
         wp_enqueue_script( 'fc-catalogo', FC_URL . 'assets/js/catalogo.js', [], FC_VERSION, true );
     }
 
-    if ( has_shortcode( get_post()->post_content ?? '', 'floreria_politicas' ) || is_singular( 'arreglo' ) ) {
+    $post_content = get_post()->post_content ?? '';
+    if ( has_shortcode( $post_content, 'floreria_politicas' ) || has_shortcode( $post_content, 'floreria_detalle_arreglo' ) || is_singular( 'arreglo' ) ) {
         wp_enqueue_script( 'fc-politicas', FC_URL . 'assets/js/politicas.js', [], FC_VERSION, true );
     }
 }
