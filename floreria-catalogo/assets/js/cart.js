@@ -760,10 +760,14 @@
                 document.body.appendChild(pac);
 
                 function positionPac() {
-                    var r = inputEl.getBoundingClientRect();
-                    pac.style.top   = r.top + 'px';
-                    pac.style.left  = r.left + 'px';
-                    pac.style.width = r.width + 'px';
+                    var r          = inputEl.getBoundingClientRect();
+                    var footer     = document.querySelector('.fc-cart-footer');
+                    var footerTop  = footer ? footer.getBoundingClientRect().top : window.innerHeight;
+                    pac.style.top       = r.top + 'px';
+                    pac.style.left      = r.left + 'px';
+                    pac.style.width     = r.width + 'px';
+                    pac.style.maxHeight = Math.max(0, footerTop - r.top) + 'px';
+                    pac.style.overflow  = 'hidden';
                 }
 
                 // Mostrar/ocultar con el carrito
