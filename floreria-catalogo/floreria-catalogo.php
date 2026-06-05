@@ -6,6 +6,9 @@
  * Version:     4.5
  * Author:      Adrián Rodríguez
  * Text Domain: floreria-catalogo
+ * Requires at least: 6.0
+ * Tested up to:      6.8
+ * Requires PHP:      8.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
