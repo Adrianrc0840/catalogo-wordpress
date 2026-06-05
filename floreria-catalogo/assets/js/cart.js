@@ -420,14 +420,22 @@
         var deliveryArrow = document.getElementById('fc-delivery-arrow');
         if (deliveryBody && deliveryArrow) setCollapsed(deliveryBody, deliveryArrow, deliveryCollapsed);
         drawerEl.classList.add('fc-cart-drawer--open');
-        document.body.style.overflow = 'hidden';
+        var scrollY = window.scrollY || window.pageYOffset;
+        document.body.style.position = 'fixed';
+        document.body.style.top      = '-' + scrollY + 'px';
+        document.body.style.width    = '100%';
+        document.body.dataset.scrollY = scrollY;
         isOpen = true;
     }
 
     function closeDrawer() {
         if (!drawerEl) return;
         drawerEl.classList.remove('fc-cart-drawer--open');
-        document.body.style.overflow = '';
+        var scrollY = parseInt(document.body.dataset.scrollY || '0', 10);
+        document.body.style.position = '';
+        document.body.style.top      = '';
+        document.body.style.width    = '';
+        window.scrollTo(0, scrollY);
         isOpen = false;
     }
 
