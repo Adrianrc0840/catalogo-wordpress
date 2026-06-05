@@ -759,17 +759,31 @@
                 pac.style.colorScheme    = 'light';
                 document.body.appendChild(pac);
 
+                // Bloquear scroll de fondo cuando el mouse/dedo está sobre el PAC
+                pac.addEventListener('wheel',     function(e) { e.preventDefault(); }, { passive: false });
+                pac.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+
                 function positionPac() {
-                    var r          = inputEl.getBoundingClientRect();
-                    var header     = document.querySelector('.fc-cart-header');
-                    var footer     = document.querySelector('.fc-cart-footer');
+                    var r            = inputEl.getBoundingClientRect();
+                    var header       = document.querySelector('.fc-cart-header');
+                    var footer       = document.querySelector('.fc-cart-footer');
                     var headerBottom = header ? header.getBoundingClientRect().bottom : 0;
                     var footerTop    = footer ? footer.getBoundingClientRect().top    : window.innerHeight;
                     var clampedTop   = Math.max(r.top, headerBottom);
+                    // Espacio hasta el footer desde donde empieza el PAC
+                    var spaceToFooter = footerTop - clampedTop;
+                    // Porción del input visible por debajo del header
+                    var visibleBelowHeader = r.bottom - headerBottom;
+                    var availableHeight = Math.max(0, Math.min(spaceToFooter, visibleBelowHeader));
+                    if (availableHeight < 20) {
+                        pac.style.visibility = 'hidden';
+                        return;
+                    }
+                    pac.style.visibility = '';
                     pac.style.top       = clampedTop + 'px';
                     pac.style.left      = r.left + 'px';
                     pac.style.width     = r.width + 'px';
-                    pac.style.maxHeight = Math.max(0, footerTop - clampedTop) + 'px';
+                    pac.style.maxHeight = availableHeight + 'px';
                     pac.style.overflow  = 'hidden';
                 }
 
@@ -813,20 +827,11 @@
                     if (pac.style.display !== 'none') positionPac();
                 });
 
-                var cartBody   = document.getElementById('fc-cart-body');
-                var cartFooter = document.querySelector('.fc-cart-footer');
+                var cartBody = document.getElementById('fc-cart-body');
                 if (cartBody) cartBody.addEventListener('scroll', function() {
                     if (pac.style.display !== 'none') {
-                        var r       = inputEl.getBoundingClientRect();
-                        var bodyR   = cartBody.getBoundingClientRect();
-                        var footerT = cartFooter ? cartFooter.getBoundingClientRect().top : Infinity;
-                        // Ocultar si el campo salió del área visible o está tapado por el footer
-                        if (r.bottom < bodyR.top || r.top > bodyR.bottom || r.top >= footerT) {
-                            pac.style.visibility = 'hidden';
-                        } else {
-                            pac.style.visibility = '';
-                            positionPac();
-                        }
+                        pac.style.visibility = '';
+                        positionPac();
                     }
                 });
 
