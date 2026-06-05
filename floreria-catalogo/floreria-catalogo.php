@@ -6,13 +6,16 @@
  * Version:     4.5
  * Author:      Adrián Rodríguez
  * Text Domain: floreria-catalogo
+ * Requires at least: 6.0
+ * Tested up to:      6.8
+ * Requires PHP:      8.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FC_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'FC_URL',     plugin_dir_url( __FILE__ ) );
-define( 'FC_VERSION', '4.5' );
+define( 'FC_VERSION', '4.5.1' );
 
 require_once FC_PATH . 'includes/cpt.php';
 require_once FC_PATH . 'includes/meta-boxes.php';
@@ -122,7 +125,8 @@ function fc_enqueue_frontend() {
         wp_enqueue_script( 'fc-catalogo', FC_URL . 'assets/js/catalogo.js', [], FC_VERSION, true );
     }
 
-    if ( has_shortcode( get_post()->post_content ?? '', 'floreria_politicas' ) ) {
+    $post_content = get_post()->post_content ?? '';
+    if ( has_shortcode( $post_content, 'floreria_politicas' ) || has_shortcode( $post_content, 'floreria_detalle_arreglo' ) || is_singular( 'arreglo' ) ) {
         wp_enqueue_script( 'fc-politicas', FC_URL . 'assets/js/politicas.js', [], FC_VERSION, true );
     }
 }

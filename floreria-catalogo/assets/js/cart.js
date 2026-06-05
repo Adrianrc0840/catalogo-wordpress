@@ -237,6 +237,14 @@
             setCollapsed(deliveryBody, deliveryArrow, deliveryCollapsed);
         });
 
+        /* ── Evitar scroll de fondo en header y footer ── */
+        ['fc-cart-header', 'fc-cart-footer'].forEach(function(cls) {
+            var el = drawerEl.querySelector('.' + cls);
+            if (!el) return;
+            el.addEventListener('wheel',     function(e) { e.preventDefault(); }, { passive: false });
+            el.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+        });
+
         /* ── Backdrop / close ── */
         drawerEl.querySelector('#fc-cart-backdrop').addEventListener('click', closeDrawer);
         drawerEl.querySelector('#fc-cart-close').addEventListener('click', closeDrawer);
@@ -412,14 +420,22 @@
         var deliveryArrow = document.getElementById('fc-delivery-arrow');
         if (deliveryBody && deliveryArrow) setCollapsed(deliveryBody, deliveryArrow, deliveryCollapsed);
         drawerEl.classList.add('fc-cart-drawer--open');
-        document.body.style.overflow = 'hidden';
+        var scrollY = window.scrollY || window.pageYOffset;
+        document.body.style.position = 'fixed';
+        document.body.style.top      = '-' + scrollY + 'px';
+        document.body.style.width    = '100%';
+        document.body.dataset.scrollY = scrollY;
         isOpen = true;
     }
 
     function closeDrawer() {
         if (!drawerEl) return;
         drawerEl.classList.remove('fc-cart-drawer--open');
-        document.body.style.overflow = '';
+        var scrollY = parseInt(document.body.dataset.scrollY || '0', 10);
+        document.body.style.position = '';
+        document.body.style.top      = '';
+        document.body.style.width    = '';
+        window.scrollTo(0, scrollY);
         isOpen = false;
     }
 
@@ -751,11 +767,32 @@
                 pac.style.colorScheme    = 'light';
                 document.body.appendChild(pac);
 
+                // Bloquear scroll de fondo cuando el mouse/dedo está sobre el PAC
+                pac.addEventListener('wheel',     function(e) { e.preventDefault(); }, { passive: false });
+                pac.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+
                 function positionPac() {
-                    var r = inputEl.getBoundingClientRect();
-                    pac.style.top   = r.top + 'px';
-                    pac.style.left  = r.left + 'px';
-                    pac.style.width = r.width + 'px';
+                    var r            = inputEl.getBoundingClientRect();
+                    var header       = document.querySelector('.fc-cart-header');
+                    var footer       = document.querySelector('.fc-cart-footer');
+                    var headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+                    var footerTop    = footer ? footer.getBoundingClientRect().top    : window.innerHeight;
+                    var clampedTop   = Math.max(r.top, headerBottom);
+                    // Espacio hasta el footer desde donde empieza el PAC
+                    var spaceToFooter = footerTop - clampedTop;
+                    // Porción del input visible por debajo del header
+                    var visibleBelowHeader = r.bottom - headerBottom;
+                    var availableHeight = Math.max(0, Math.min(spaceToFooter, visibleBelowHeader));
+                    if (availableHeight < 20) {
+                        pac.style.visibility = 'hidden';
+                        return;
+                    }
+                    pac.style.visibility = '';
+                    pac.style.top       = clampedTop + 'px';
+                    pac.style.left      = r.left + 'px';
+                    pac.style.width     = r.width + 'px';
+                    pac.style.maxHeight = availableHeight + 'px';
+                    pac.style.overflow  = 'hidden';
                 }
 
                 // Mostrar/ocultar con el carrito
@@ -801,15 +838,8 @@
                 var cartBody = document.getElementById('fc-cart-body');
                 if (cartBody) cartBody.addEventListener('scroll', function() {
                     if (pac.style.display !== 'none') {
-                        var r     = inputEl.getBoundingClientRect();
-                        var bodyR = cartBody.getBoundingClientRect();
-                        // Si el campo salió del área visible del carrito, ocultar el pac
-                        if (r.bottom < bodyR.top || r.top > bodyR.bottom) {
-                            pac.style.visibility = 'hidden';
-                        } else {
-                            pac.style.visibility = '';
-                            positionPac();
-                        }
+                        pac.style.visibility = '';
+                        positionPac();
                     }
                 });
 

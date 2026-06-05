@@ -114,6 +114,7 @@
     flex-direction: column;
     box-shadow: -4px 0 32px rgba(0,0,0,.18);
     animation: fc-slide-in .22s ease-out both;
+    overscroll-behavior: contain;
 }
 
 @keyframes fc-slide-in {
@@ -129,6 +130,7 @@
     padding: 18px 20px;
     border-bottom: 1px solid #f0e0e8;
     flex-shrink: 0;
+    overscroll-behavior: contain;
 }
 
 .fc-cart-header h2 {
@@ -158,6 +160,7 @@
 .fc-cart-body {
     flex: 1;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 20px;
     display: flex;
     flex-direction: column;
@@ -485,6 +488,7 @@
     padding: 16px 20px;
     flex-shrink: 0;
     background: #fff;
+    overscroll-behavior: contain;
 }
 
 .fc-cart-total-row {
