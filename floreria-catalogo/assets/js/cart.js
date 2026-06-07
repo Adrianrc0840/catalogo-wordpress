@@ -694,6 +694,7 @@
             if (item.precio) {
                 lines.push('  Precio: $' + parseFloat(item.precio).toLocaleString('es-MX', { minimumFractionDigits: 0 }));
             }
+            lines.push('');
             if (item.destinatario)            lines.push('  Para: '           + item.destinatario);
             if (item.destinatario_telefono)  lines.push('  Tel. destino: '   + item.destinatario_telefono);
             if (item.destinatario_telefono2) lines.push('  Tel. destino 2: ' + item.destinatario_telefono2);
@@ -792,7 +793,6 @@
                     pac.style.left      = r.left + 'px';
                     pac.style.width     = r.width + 'px';
                     pac.style.maxHeight = availableHeight + 'px';
-                    pac.style.overflow  = 'hidden';
                 }
 
                 // Mostrar/ocultar con el carrito

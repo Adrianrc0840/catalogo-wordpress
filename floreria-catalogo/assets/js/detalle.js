@@ -694,12 +694,14 @@
                     '*Arreglo:* '      + titulo       + '\n' +
                     '*Tamano:* '       + tamanoNombre + ' (' + precio + ')\n' +
                     (colorNombre ? '*Color:* '       + colorNombre  + '\n' : '') +
+                    '\n' +
                     '*Tipo:* Envio a domicilio\n' +
                     '*Fecha:* '        + fechaStr     + '\n' +
                     '*Horario:* '      + horario      + '\n' +
                     '*Direccion:* '    + direccion    + '\n' +
                     (destinatario ? '*Destinatario:* ' + destinatario + '\n' : '') +
                     (waNumEnvio   ? '*WhatsApp:* '     + waEnvio      + '\n' : '') +
+                    '\n' +
                     '*Link:* '         + permalink    + '\n\n' +
                     'Esta disponible?';
             } else {
@@ -721,11 +723,13 @@
                     '*Arreglo:* '  + titulo       + '\n' +
                     '*Tamano:* '   + tamanoNombre + ' (' + precio + ')\n' +
                     (colorNombre ? '*Color:* '   + colorNombre  + '\n' : '') +
+                    '\n' +
                     '*Tipo:* Recoleccion en tienda\n' +
                     '*Fecha:* '    + fechaStr     + '\n' +
                     '*Hora:* '     + horaStr      + '\n' +
                     (nombreRecoleccion ? '*Nombre:* '   + nombreRecoleccion + '\n' : '') +
                     (waNumRecol        ? '*WhatsApp:* ' + waRecol           + '\n' : '') +
+                    '\n' +
                     '*Link:* '     + permalink    + '\n\n' +
                     'Esta disponible?';
             }
