@@ -57,6 +57,17 @@
         return h * 60 + m;
     }
 
+    function parseSlotEndMinutes(slot) {
+        var end   = slot.split('–')[1].trim();
+        var isPm  = /pm$/i.test(end);
+        var parts = end.replace(/[apm]/gi, '').split(':');
+        var h = parseInt(parts[0]);
+        var m = parseInt(parts[1]) || 0;
+        if (isPm && h !== 12) h += 12;
+        if (!isPm && h === 12) h = 0;
+        return h * 60 + m;
+    }
+
     function getNowTijuana() {
         var str = new Date().toLocaleString('en-US', { timeZone: 'America/Tijuana' });
         return new Date(str);
@@ -200,6 +211,7 @@
                                         '<label for="fc-cart-hora-recol">Hora de recolección</label>' +
                                         '<input type="time" id="fc-cart-hora-recol" />' +
                                     '</div>' +
+                                    '<p id="fc-cart-recol-aviso" class="fc-cart-especial-aviso"></p>' +
                                 '</div>' +
                             '</div>' +
                         '</div>' +
@@ -270,12 +282,20 @@
             tipoRecol.classList.remove('active');
             envioFlds.style.display = '';
             recolFlds.style.display = 'none';
+            // Limpiar aviso de recolección al salir del modo
+            var ra = document.getElementById('fc-cart-recol-aviso');
+            if (ra) { ra.textContent = ''; ra.dataset.error = ''; ra.classList.remove('fc-aviso-visible'); }
+            var hr2 = document.getElementById('fc-cart-hora-recol');
+            if (hr2) hr2.disabled = false;
         });
         tipoRecol.addEventListener('click', function () {
             tipoRecol.classList.add('active');
             tipoEnvio.classList.remove('active');
             envioFlds.style.display = 'none';
             recolFlds.style.display = '';
+            // Re-evaluar con la fecha ya seleccionada
+            var hr2 = document.getElementById('fc-cart-hora-recol');
+            updateRecolAviso(fechaInput.value, hr2 ? hr2.value : '');
         });
 
         /* ── Fecha → horario ── */
@@ -286,6 +306,16 @@
                          String(today.getDate()).padStart(2, '0');
         fechaInput.min = todayMin;
         fechaInput.addEventListener('change', updateCartHorario);
+        fechaInput.addEventListener('change', function () {
+            var hr = document.getElementById('fc-cart-hora-recol');
+            updateRecolAviso(fechaInput.value, hr ? hr.value : '');
+        });
+        var horaRecolInput = drawerEl.querySelector('#fc-cart-hora-recol');
+        if (horaRecolInput) {
+            horaRecolInput.addEventListener('change', function () {
+                updateRecolAviso(fechaInput.value, this.value);
+            });
+        }
 
         /* iOS: type="date" y type="time" no soportan placeholder — cambiar a text
            con placeholder y volver al tipo original al hacer focus */
@@ -410,6 +440,77 @@
         });
 
         checkEspecialAviso(val);
+    }
+
+    function updateRecolAviso(fechaVal, horaVal) {
+        var avisoEl   = document.getElementById('fc-cart-recol-aviso');
+        var horaInput = document.getElementById('fc-cart-hora-recol');
+        if (!avisoEl) return;
+
+        function setError(msg) {
+            avisoEl.textContent   = msg;
+            avisoEl.dataset.error = '1';
+            avisoEl.classList.add('fc-aviso-visible');
+            if (horaInput) { horaInput.disabled = true; horaInput.value = ''; }
+        }
+        function clearAviso() {
+            avisoEl.textContent   = '';
+            avisoEl.dataset.error = '';
+            avisoEl.classList.remove('fc-aviso-visible');
+            if (horaInput) horaInput.disabled = false;
+        }
+
+        if (!fechaVal) { clearAviso(); return; }
+
+        var schedules        = getSchedules();
+        var fechasEspeciales = getFechasEspeciales();
+        var fechasCerradas   = getFechasCerradas();
+
+        if (fechasCerradas.indexOf(fechaVal) !== -1) {
+            setError('😔 Ese día ya no tenemos disponibilidad. ¡Elige otra fecha!');
+            return;
+        }
+
+        var date     = new Date(fechaVal + 'T12:00:00');
+        var dayKey   = String(date.getDay());
+        var daySlots = schedules[dayKey] || [];
+
+        if (dayKey === '0') {
+            var mo   = String(date.getMonth() + 1).padStart(2, '0');
+            var dy   = String(date.getDate()).padStart(2, '0');
+            var ddmm = dy + '/' + mo;
+            if (fechasEspeciales.indexOf(ddmm) === -1) { daySlots = []; }
+        }
+
+        if (daySlots.length === 0) {
+            setError('😔 Los domingos no abrimos. ¡Elige otro día!');
+            return;
+        }
+
+        // Día válido — habilitar hora
+        if (horaInput) horaInput.disabled = false;
+
+        if (horaVal) {
+            var hp      = horaVal.split(':');
+            var horaMin = parseInt(hp[0]) * 60 + (parseInt(hp[1]) || 0);
+            var openMin  = Math.min.apply(null, daySlots.map(parseSlotStartMinutes));
+            var closeMin = Math.max.apply(null, daySlots.map(parseSlotEndMinutes));
+
+            if (horaMin < openMin || horaMin >= closeMin) {
+                var fmt = function (m) {
+                    var h = Math.floor(m / 60), mn = m % 60;
+                    var ap = h >= 12 ? 'pm' : 'am';
+                    h = h % 12 || 12;
+                    return h + (mn ? ':' + String(mn).padStart(2, '0') : '') + ap;
+                };
+                avisoEl.textContent   = '🕐 Puedes pasar a recoger entre ' + fmt(openMin) + ' y ' + fmt(closeMin) + '. ¡Elige una hora en ese rango!';
+                avisoEl.dataset.error = '1';
+                avisoEl.classList.add('fc-aviso-visible');
+                return;
+            }
+        }
+
+        clearAviso();
     }
 
     function openDrawer() {
@@ -637,6 +738,14 @@
         if (isEnvio && !horario) { alert('Por favor selecciona el horario de entrega.'); return; }
         if (isEnvio && !dir)     { alert('Por favor escribe la dirección de entrega.');  return; }
         if (!isEnvio && !hora)   { alert('Por favor escribe la hora de recolección.');   return; }
+        if (!isEnvio) {
+            updateRecolAviso(fecha, hora);
+            var recolAvisoEl = document.getElementById('fc-cart-recol-aviso');
+            if (recolAvisoEl && recolAvisoEl.dataset.error === '1') {
+                alert(recolAvisoEl.textContent.replace('⚠ ', ''));
+                return;
+            }
+        }
 
         /* ── Validar nombre y teléfono del destinatario (obligatorios) ── */
         for (var vi = 0; vi < cart.length; vi++) {
