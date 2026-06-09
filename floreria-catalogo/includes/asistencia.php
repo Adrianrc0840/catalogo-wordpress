@@ -325,12 +325,6 @@ function fc_asistencia_render_content() {
     <?php
 }
 
-// Sin admin bar en el kiosco
-add_filter( 'show_admin_bar', function( $show ) {
-    if ( get_query_var( 'fc_asistencia' ) ) return false;
-    return $show;
-} );
-
 // Sin caché en el kiosco
 add_action( 'plugins_loaded', 'fc_asistencia_disable_cache', 1 );
 function fc_asistencia_disable_cache() {
