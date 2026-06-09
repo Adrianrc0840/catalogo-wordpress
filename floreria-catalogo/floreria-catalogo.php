@@ -31,6 +31,7 @@ require_once FC_PATH . 'includes/panel-florista.php';
 require_once FC_PATH . 'includes/cpt-caja.php';
 require_once FC_PATH . 'includes/pdv.php';
 require_once FC_PATH . 'includes/push-onesignal.php';
+require_once FC_PATH . 'includes/asistencia.php';
 
 add_action( 'wp_enqueue_scripts', 'fc_enqueue_frontend' );
 function fc_enqueue_frontend() {
@@ -131,13 +132,25 @@ function fc_enqueue_frontend() {
     }
 }
 
-// Ocultar barra de administrador en PDV y panel de floristas
+// Ocultar barra de administrador en PDV y panel de floristas (no en asistencia)
 add_filter( 'show_admin_bar', function( $show ) {
     if ( get_query_var( 'fc_pdv' ) || get_query_var( 'fc_panel_florista' ) ) {
         return false;
     }
     return $show;
 } );
+
+// Asistencia: noindex + ocultar carrito
+add_action( 'wp_head', function() {
+    if ( ! get_query_var( 'fc_asistencia' ) && empty( $GLOBALS['fc_is_asistencia_wrapper'] ) ) return;
+    echo '<meta name="robots" content="noindex, nofollow">' . "\n";
+} );
+add_action( 'wp_enqueue_scripts', function() {
+    global $post;
+    $tiene_shortcode = is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, 'floreria_kiosco_asistencia' );
+    if ( ! get_query_var( 'fc_asistencia' ) && empty( $GLOBALS['fc_is_asistencia_wrapper'] ) && ! $tiene_shortcode ) return;
+    wp_add_inline_style( 'fc-cart', '.fc-cart-fab{display:none!important;}' );
+}, 99 );
 
 // ── Wrapper de Elementor para detalle de arreglo ──────────────────────────────
 // Cuando el visitante entra a /arreglos/nombre-del-arreglo/, si hay una página
@@ -198,6 +211,39 @@ function fc_rastreo_wrapper_redirect() {
 
     $GLOBALS['fc_pedido_ref']        = sanitize_text_field( $ref );
     $GLOBALS['fc_is_rastreo_pedido'] = true;
+
+    $post                        = $wrapper;
+    $wp_query->posts             = [ $wrapper ];
+    $wp_query->post              = $wrapper;
+    $wp_query->queried_object    = $wrapper;
+    $wp_query->queried_object_id = $wrapper_id;
+    $wp_query->found_posts       = 1;
+    $wp_query->post_count        = 1;
+    $wp_query->is_singular       = true;
+    $wp_query->is_page           = true;
+    $wp_query->is_single         = false;
+    setup_postdata( $post );
+}
+
+// ── Wrapper de Elementor para kiosco de asistencia ───────────────────────────
+// Cuando alguien entra a /asistencia/, si hay una página wrapper configurada,
+// se cambia la query principal para que el tema/Elementor carguen esa página.
+// La URL visible no cambia. El shortcode [floreria_kiosco_asistencia] dentro de
+// esa página renderiza el login o el kiosco según el estado de la sesión.
+// Prioridad 1 → corre antes de que Elementor registre su propio template_include.
+add_action( 'template_redirect', 'fc_asistencia_wrapper_redirect', 1 );
+function fc_asistencia_wrapper_redirect() {
+    if ( ! get_query_var( 'fc_asistencia' ) ) return;
+
+    $wrapper_id = (int) get_option( 'fc_asistencia_wrapper_page_id', 0 );
+    if ( ! $wrapper_id ) return;
+
+    $wrapper = get_post( $wrapper_id );
+    if ( ! $wrapper || $wrapper->post_status !== 'publish' ) return;
+
+    global $wp_query, $post;
+
+    $GLOBALS['fc_is_asistencia_wrapper'] = true;
 
     $post                        = $wrapper;
     $wp_query->posts             = [ $wrapper ];

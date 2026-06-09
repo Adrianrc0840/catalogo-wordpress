@@ -1,0 +1,415 @@
+/* ─────────────────────────────────────────────
+   Florería Monarca — Kiosco de Asistencia
+   ───────────────────────────────────────────── */
+
+/* ── Login ── */
+.fc-asist-login-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    width: 100%;
+}
+
+.fc-asist-login-card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 8px 40px rgba(180,60,100,.18);
+}
+
+.fc-asist-login-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 28px;
+}
+.fc-asist-login-logo img  { width: 130px !important; max-width: 60vw !important; object-fit: contain !important; margin: 0 auto 10px auto !important; display: block !important; float: none !important; }
+.fc-asist-login-logo span { font-size: 44px; display: block; margin-bottom: 8px; }
+.fc-asist-login-logo h1   { font-size: 22px; font-weight: 800; color: #4a1228; }
+.fc-asist-login-logo p    { font-size: 13px; color: #b06080; margin-top: 4px; }
+
+.fc-asist-login-card h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #4a1228;
+    margin-bottom: 20px;
+}
+
+.fc-asist-field { margin-bottom: 16px; }
+.fc-asist-field label {
+    display: block;
+    font-size: 13px;
+    color: #7a3050;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+.fc-asist-field input {
+    width: 100%;
+    padding: 12px 14px;
+    background: #fdf4f7;
+    border: 1px solid #e8c0d0;
+    border-radius: 10px;
+    color: #4a1228;
+    font-size: 15px;
+    outline: none;
+    transition: border-color .2s;
+}
+.fc-asist-field input::placeholder { color: #c8a0b4; }
+.fc-asist-field input:focus { border-color: #c8185a; }
+
+.fc-asist-login-btn {
+    width: 100%;
+    padding: 14px;
+    background: #c8185a;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: background .15s, transform .1s;
+}
+.fc-asist-login-btn:hover    { background: #a8134a; }
+.fc-asist-login-btn:active   { transform: scale(.98); }
+.fc-asist-login-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+.fc-asist-login-error {
+    text-align: center;
+    font-size: 13px;
+    color: #c0392b;
+    margin-top: 12px;
+    min-height: 18px;
+}
+
+/* ── Botón logout ── */
+#fc-asist-logout {
+    position: fixed;
+    top: calc(32px + 10px); /* 32px = admin bar desktop */
+    right: 14px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+    color: rgba(255,255,255,.35);
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s;
+    z-index: 10;
+}
+#fc-asist-logout:hover { color: #fff; background: rgba(255,255,255,.15); }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+.fc-asist-page {
+    min-height: 100vh;
+    background: #fce8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #4a1228;
+    overflow: hidden;
+}
+/* Fondo rosa en html y body para no dejar franja blanca con el admin bar */
+body.fc-asistencia-body { background: #fce8f0 !important; }
+
+/* Dejar espacio al admin bar de WordPress (32px desktop, 46px móvil) */
+body.admin-bar .fc-asist-page {
+    min-height: calc(100vh - 32px);
+    margin-top: 32px;
+}
+@media (max-width: 782px) {
+    body.admin-bar .fc-asist-page {
+        min-height: calc(100vh - 46px);
+        margin-top: 46px;
+    }
+}
+
+#fc-asist-app {
+    width: 100%;
+    max-width: 420px;
+    padding: 24px 20px;
+}
+
+.fc-step { width: 100%; }
+
+/* ── Header del kiosco ── */
+.fc-kiosk-header { text-align: center; margin-bottom: 28px; }
+.fc-kiosk-logo        { display: flex; justify-content: center; margin-bottom: 10px; }
+.fc-kiosk-logo img    { width: 160px; max-width: 65vw; object-fit: contain; display: block !important; float: none !important; margin: 0 auto !important; }
+.fc-kiosk-header h1 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #4a1228;
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
+}
+.fc-kiosk-header p {
+    font-size: 13px;
+    color: #b06080;
+    margin-top: 2px;
+}
+
+/* ── Display PIN ── */
+.fc-pin-display {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 12px;
+}
+
+.fc-pin-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #d4a0b8;
+    background: transparent;
+    transition: background .15s, border-color .15s, transform .15s;
+}
+
+.fc-pin-dot.filled {
+    background: #c8185a;
+    border-color: #c8185a;
+    transform: scale(1.15);
+}
+
+.fc-pin-label {
+    text-align: center;
+    font-size: 14px;
+    color: #b06080;
+    margin-bottom: 24px;
+    transition: color .2s;
+    min-height: 20px;
+}
+
+.fc-pin-label.error { color: #d32f2f; }
+
+/* ── Shake animation ── */
+@keyframes fc-shake {
+    0%,100% { transform: translateX(0); }
+    20%      { transform: translateX(-10px); }
+    40%      { transform: translateX(10px); }
+    60%      { transform: translateX(-8px); }
+    80%      { transform: translateX(8px); }
+}
+.fc-pin-display.shake { animation: fc-shake .5s ease; }
+
+/* ── Numpad ── */
+.fc-numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.fc-num-btn {
+    background: #fff;
+    border: none;
+    border-radius: 16px;
+    color: #4a1228;
+    font-size: 26px;
+    font-weight: 600;
+    padding: 20px 0;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(180,60,100,.12);
+    transition: background .12s, transform .1s, box-shadow .12s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.fc-num-btn:hover  { background: #fff0f5; box-shadow: 0 4px 14px rgba(180,60,100,.18); }
+.fc-num-btn:active { background: #fce0ea; transform: scale(.95); box-shadow: none; }
+
+.fc-del-btn { font-size: 22px; }
+
+/* ── Tarjeta empleada ── */
+.fc-emp-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: #fff;
+    border-radius: 24px;
+    padding: 36px 28px 28px;
+    box-shadow: 0 8px 32px rgba(180,60,100,.15);
+}
+
+.fc-emp-foto-wrap {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #c8185a;
+    margin-bottom: 18px;
+    flex-shrink: 0;
+}
+
+.fc-emp-foto-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.fc-emp-avatar {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    background: #fce8f0;
+}
+
+.fc-emp-card h2   { font-size: 22px; font-weight: 800; color: #4a1228; margin-bottom: 4px; }
+.fc-emp-pos       { font-size: 14px; color: #b06080; margin-bottom: 24px; }
+.fc-emp-question  { font-size: 15px; color: #7a3050; margin-bottom: 20px; }
+
+.fc-action-btns {
+    display: flex;
+    gap: 14px;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.fc-btn-entrada,
+.fc-btn-salida {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 12px;
+    border: none;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .1s, filter .15s;
+    -webkit-tap-highlight-color: transparent;
+    color: #fff;
+}
+
+.fc-btn-entrada { background: linear-gradient(135deg, #16a34a, #15803d); }
+.fc-btn-salida  { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+
+.fc-btn-entrada:hover,
+.fc-btn-salida:hover   { filter: brightness(1.08); }
+.fc-btn-entrada:active,
+.fc-btn-salida:active  { transform: scale(.96); }
+.fc-btn-entrada:disabled,
+.fc-btn-salida:disabled { opacity: .4; cursor: not-allowed; }
+
+.fc-btn-icon { font-size: 22px; }
+
+.fc-btn-cancelar {
+    background: none;
+    border: 1px solid #d4a0b8;
+    color: #b06080;
+    padding: 10px 28px;
+    border-radius: 10px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .15s;
+}
+.fc-btn-cancelar:hover { border-color: #c8185a; color: #c8185a; }
+
+/* ── Confirmación ── */
+.fc-confirm-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: #fff;
+    border-radius: 24px;
+    padding: 40px 28px 32px;
+    box-shadow: 0 8px 32px rgba(180,60,100,.15);
+}
+
+.fc-confirm-check {
+    font-size: 52px;
+    font-weight: 900;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.fc-confirm-check.entrada { background: #dcfce7; color: #16a34a; }
+.fc-confirm-check.salida  { background: #fee2e2; color: #dc2626; }
+
+.fc-confirm-card h2 {
+    font-size: 24px;
+    font-weight: 800;
+    color: #4a1228;
+    margin-bottom: 10px;
+}
+
+.fc-confirm-tipo {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.fc-confirm-tipo.entrada { color: #16a34a; }
+.fc-confirm-tipo.salida  { color: #dc2626; }
+
+.fc-confirm-hora {
+    font-size: 32px;
+    font-weight: 800;
+    color: #4a1228;
+    margin-bottom: 28px;
+    letter-spacing: -1px;
+}
+
+/* Barra de cuenta regresiva */
+.fc-confirm-timer {
+    width: 100%;
+    height: 4px;
+    background: #f0d0dc;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.fc-timer-bar {
+    height: 100%;
+    background: #c8185a;
+    width: 100%;
+    border-radius: 2px;
+}
+
+/* ── Logout ── */
+#fc-asist-logout {
+    background: rgba(200,24,90,.08);
+    border: 1px solid rgba(200,24,90,.2);
+    color: rgba(200,24,90,.4);
+}
+#fc-asist-logout:hover { color: #c8185a; background: rgba(200,24,90,.15); }
+
+/* ── Responsive ── */
+@media (max-width: 400px) {
+    #fc-asist-app { padding: 16px 14px; }
+    .fc-num-btn { font-size: 22px; padding: 17px 0; }
+    .fc-emp-card { padding: 28px 18px 22px; }
+}
+
+/* Admin bar en móvil mide 46px */
+@media (max-width: 782px) {
+    #fc-asist-logout { top: calc(46px + 10px); }
+}
+
+@media (min-height: 800px) {
+    .fc-kiosk-header { margin-bottom: 36px; }
+    .fc-numpad { gap: 14px; }
+    .fc-num-btn { padding: 24px 0; }
+}
