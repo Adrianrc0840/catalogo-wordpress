@@ -132,13 +132,25 @@ function fc_enqueue_frontend() {
     }
 }
 
-// Ocultar barra de administrador en PDV y panel de floristas
+// Ocultar barra de administrador en PDV y panel de floristas (no en asistencia)
 add_filter( 'show_admin_bar', function( $show ) {
-    if ( get_query_var( 'fc_pdv' ) || get_query_var( 'fc_panel_florista' ) || get_query_var( 'fc_asistencia' ) ) {
+    if ( get_query_var( 'fc_pdv' ) || get_query_var( 'fc_panel_florista' ) ) {
         return false;
     }
     return $show;
 } );
+
+// Asistencia: noindex + ocultar carrito
+add_action( 'wp_head', function() {
+    if ( ! get_query_var( 'fc_asistencia' ) && empty( $GLOBALS['fc_is_asistencia_wrapper'] ) ) return;
+    echo '<meta name="robots" content="noindex, nofollow">' . "\n";
+} );
+add_action( 'wp_enqueue_scripts', function() {
+    global $post;
+    $tiene_shortcode = is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, 'floreria_kiosco_asistencia' );
+    if ( ! get_query_var( 'fc_asistencia' ) && empty( $GLOBALS['fc_is_asistencia_wrapper'] ) && ! $tiene_shortcode ) return;
+    wp_add_inline_style( 'fc-cart', '.fc-cart-fab{display:none!important;}' );
+}, 99 );
 
 // ── Wrapper de Elementor para detalle de arreglo ──────────────────────────────
 // Cuando el visitante entra a /arreglos/nombre-del-arreglo/, si hay una página
