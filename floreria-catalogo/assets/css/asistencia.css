@@ -86,7 +86,7 @@
 /* ── Botón logout ── */
 #fc-asist-logout {
     position: fixed;
-    top: 14px;
+    top: calc(32px + 10px); /* 32px = admin bar desktop */
     right: 14px;
     background: rgba(255,255,255,.08);
     border: 1px solid rgba(255,255,255,.12);
@@ -384,6 +384,11 @@
     #fc-asist-app { padding: 16px 14px; }
     .fc-num-btn { font-size: 22px; padding: 17px 0; }
     .fc-emp-card { padding: 28px 18px 22px; }
+}
+
+/* Admin bar en móvil mide 46px */
+@media (max-width: 782px) {
+    #fc-asist-logout { top: calc(46px + 10px); }
 }
 
 @media (min-height: 800px) {
