@@ -21,10 +21,13 @@
 }
 
 .fc-asist-login-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
     margin-bottom: 28px;
 }
-.fc-asist-login-logo img  { width: 130px; max-width: 60vw; object-fit: contain; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
+.fc-asist-login-logo img  { width: 130px; max-width: 60vw; object-fit: contain; margin-bottom: 10px; display: block; float: none; margin-left: auto; margin-right: auto; }
 .fc-asist-login-logo span { font-size: 44px; display: block; margin-bottom: 8px; }
 .fc-asist-login-logo h1   { font-size: 22px; font-weight: 800; color: #4a1228; }
 .fc-asist-login-logo p    { font-size: 13px; color: #b06080; margin-top: 4px; }
