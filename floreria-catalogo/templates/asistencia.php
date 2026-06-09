@@ -12,7 +12,8 @@ nocache_headers();
     <meta name="apple-mobile-web-app-capable" content="yes">
     <?php wp_head(); ?>
 </head>
-<body>
+<body <?php body_class(); ?>>
+<?php wp_body_open(); ?>
 
 <?php fc_asistencia_render_content(); ?>
 

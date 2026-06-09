@@ -119,6 +119,17 @@
     color: #4a1228;
     overflow: hidden;
 }
+/* Dejar espacio al admin bar de WordPress (32px desktop, 46px móvil) */
+body.admin-bar .fc-asist-page {
+    min-height: calc(100vh - 32px);
+    margin-top: 32px;
+}
+@media (max-width: 782px) {
+    body.admin-bar .fc-asist-page {
+        min-height: calc(100vh - 46px);
+        margin-top: 46px;
+    }
+}
 
 #fc-asist-app {
     width: 100%;
