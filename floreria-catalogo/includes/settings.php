@@ -19,8 +19,9 @@ function fc_render_settings_page() {
         update_option( 'fc_catalog_page_url',        esc_url_raw(         $_POST['fc_catalog_page_url']        ?? '' ) );
         update_option( 'fc_politicas_url',           esc_url_raw(         $_POST['fc_politicas_url']           ?? '' ) );
         update_option( 'fc_gmaps_key',               sanitize_text_field( $_POST['fc_gmaps_key']              ?? '' ) );
-        update_option( 'fc_arreglo_wrapper_page_id', (int)                ( $_POST['fc_arreglo_wrapper_page_id'] ?? 0 ) );
-        update_option( 'fc_rastreo_wrapper_page_id', (int)               ( $_POST['fc_rastreo_wrapper_page_id']  ?? 0 ) );
+        update_option( 'fc_arreglo_wrapper_page_id',    (int) ( $_POST['fc_arreglo_wrapper_page_id']    ?? 0 ) );
+        update_option( 'fc_rastreo_wrapper_page_id',    (int) ( $_POST['fc_rastreo_wrapper_page_id']    ?? 0 ) );
+        update_option( 'fc_asistencia_wrapper_page_id', (int) ( $_POST['fc_asistencia_wrapper_page_id'] ?? 0 ) );
         update_option( 'fc_onesignal_app_id',        sanitize_text_field( $_POST['fc_onesignal_app_id']       ?? '' ) );
         update_option( 'fc_onesignal_api_key',       sanitize_text_field( $_POST['fc_onesignal_api_key']      ?? '' ) );
         $disabled_pages = isset( $_POST['fc_cart_disabled_pages'] ) ? array_map( 'intval', (array) $_POST['fc_cart_disabled_pages'] ) : [];
@@ -42,8 +43,9 @@ function fc_render_settings_page() {
     $catalog_url     = get_option( 'fc_catalog_page_url',        '' );
     $politicas_url   = get_option( 'fc_politicas_url',           '' );
     $gmaps_key       = get_option( 'fc_gmaps_key',               '' );
-    $wrapper_page_id        = (int) get_option( 'fc_arreglo_wrapper_page_id',  0 );
-    $rastreo_wrapper_page_id = (int) get_option( 'fc_rastreo_wrapper_page_id', 0 );
+    $wrapper_page_id           = (int) get_option( 'fc_arreglo_wrapper_page_id',    0 );
+    $rastreo_wrapper_page_id   = (int) get_option( 'fc_rastreo_wrapper_page_id',    0 );
+    $asistencia_wrapper_page_id = (int) get_option( 'fc_asistencia_wrapper_page_id', 0 );
     $os_app_id       = get_option( 'fc_onesignal_app_id',        '' );
     $os_api_key      = get_option( 'fc_onesignal_api_key',       '' );
     ?>
@@ -122,6 +124,58 @@ function fc_render_settings_page() {
                             Esa página debe contener el shortcode <code>[floreria_rastreo_pedido]</code> donde quieras mostrar el contenido.<br>
                             Si dejas <em>Sin página wrapper</em>, se usará el template propio del plugin (sin tu nav/footer de Elementor).
                         </p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th><label for="fc_asistencia_wrapper_page_id">Página del kiosco de asistencia</label></th>
+                    <td>
+                        <?php $pages3 = get_pages( [ 'post_status' => 'publish', 'sort_column' => 'post_title' ] ); ?>
+                        <select name="fc_asistencia_wrapper_page_id" id="fc_asistencia_wrapper_page_id">
+                            <option value="0">— Sin página wrapper (usar template del plugin) —</option>
+                            <?php foreach ( $pages3 as $p ) : ?>
+                            <option value="<?php echo $p->ID; ?>" <?php selected( $asistencia_wrapper_page_id, $p->ID ); ?>>
+                                <?php echo esc_html( $p->post_title ); ?> (ID <?php echo $p->ID; ?>)
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="description">
+                            Selecciona la página de Elementor que usarás como plantilla para el kiosco de asistencia.<br>
+                            Esa página debe contener el shortcode <code>[floreria_kiosco_asistencia]</code> donde quieras mostrar el kiosco.<br>
+                            Si dejas <em>Sin página wrapper</em>, se usará el template propio del plugin (sin tu nav/footer de Elementor).
+                        </p>
+                    </td>
+                </tr>
+
+                <!-- ── Accesos rápidos ── -->
+                <tr>
+                    <th colspan="2"><h2 style="margin:0;padding:16px 0 4px;">Accesos rápidos</h2></th>
+                </tr>
+                <tr>
+                    <th>Panel Floristas</th>
+                    <td>
+                        <a href="<?php echo esc_url( home_url( '/panel-florista/' ) ); ?>" target="_blank" class="button button-secondary">
+                            Abrir Panel Floristas ↗
+                        </a>
+                        <p class="description">Panel front-end para gestión de pedidos.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Punto de Venta</th>
+                    <td>
+                        <a href="<?php echo esc_url( home_url( '/pdv/' ) ); ?>" target="_blank" class="button button-secondary">
+                            Abrir PDV ↗
+                        </a>
+                        <p class="description">Pantalla de punto de venta en tienda.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Kiosco de Asistencia</th>
+                    <td>
+                        <a href="<?php echo esc_url( home_url( '/asistencia/' ) ); ?>" target="_blank" class="button button-secondary">
+                            Abrir Kiosco ↗
+                        </a>
+                        <p class="description">Pantalla de registro de entrada y salida para empleadas.</p>
                     </td>
                 </tr>
 
