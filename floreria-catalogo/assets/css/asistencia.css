@@ -119,6 +119,9 @@
     color: #4a1228;
     overflow: hidden;
 }
+/* Fondo rosa en html y body para no dejar franja blanca con el admin bar */
+body.fc-asistencia-body { background: #fce8f0 !important; }
+
 /* Dejar espacio al admin bar de WordPress (32px desktop, 46px móvil) */
 body.admin-bar .fc-asist-page {
     min-height: calc(100vh - 32px);
@@ -141,8 +144,8 @@ body.admin-bar .fc-asist-page {
 
 /* ── Header del kiosco ── */
 .fc-kiosk-header { text-align: center; margin-bottom: 28px; }
-.fc-kiosk-logo        { margin-bottom: 10px; }
-.fc-kiosk-logo img    { width: 160px; max-width: 65vw; object-fit: contain; }
+.fc-kiosk-logo        { display: flex; justify-content: center; margin-bottom: 10px; }
+.fc-kiosk-logo img    { width: 160px; max-width: 65vw; object-fit: contain; display: block !important; float: none !important; margin: 0 auto !important; }
 .fc-kiosk-header h1 {
     font-size: 22px;
     font-weight: 800;
