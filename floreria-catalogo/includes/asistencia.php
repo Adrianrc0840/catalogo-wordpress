@@ -100,7 +100,7 @@ function fc_calcular_dia( array $registros ) {
             // Si ya había una entrada sin salida, la descartamos (registros inconsistentes)
             $ent_pendiente = $r['timestamp'];
         } elseif ( $r['tipo'] === 'salida' && $ent_pendiente !== null ) {
-            $dur = (int) round( ( strtotime( $r['timestamp'] ) - strtotime( $ent_pendiente ) ) / 60 );
+            $dur = (int) floor( ( strtotime( $r['timestamp'] ) - strtotime( $ent_pendiente ) ) / 60 );
             if ( $dur > 0 ) {
                 $pares[]    = [ 'ent' => $ent_pendiente, 'sal' => $r['timestamp'], 'min' => $dur ];
                 $total_min += $dur;
