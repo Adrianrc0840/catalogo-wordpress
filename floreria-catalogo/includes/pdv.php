@@ -335,6 +335,9 @@ function fc_ajax_pdv_crear_venta() {
         '_fc_pedido_registrado_por'          => get_current_user_id(),
         '_fc_pedido_monto'                   => (float) ( $_POST['monto_total']   ?? 0 ),
         '_fc_pedido_forma_pago'              => sanitize_key( $_POST['forma_pago'] ?? 'efectivo' ),
+        '_fc_pedido_factura_tipo'            => sanitize_key( $_POST['factura_tipo'] ?? '' ),
+        '_fc_pedido_factura_iva'             => (float) ( $_POST['factura_iva']  ?? 0 ),
+        '_fc_pedido_factura_isr'             => (float) ( $_POST['factura_isr']  ?? 0 ),
         '_fc_pedido_caja_id'                 => $caja_id,
         '_fc_pedido_fecha_venta'             => $ts,
         // Legacy single-item

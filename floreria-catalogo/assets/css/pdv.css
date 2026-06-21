@@ -1183,6 +1183,40 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 .fc-pdv-cambio-row span:first-child { color: var(--pdv-muted); font-weight: 500; }
 .fc-pdv-cambio-row span:last-child  { color: var(--pdv-accent); }
 
+/* Facturación */
+.fc-pdv-check-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: 500;
+}
+.fc-pdv-desglose {
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.fc-pdv-desglose-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--pdv-muted);
+}
+.fc-pdv-desglose-iva span:last-child { color: #c8185a; font-weight: 600; }
+.fc-pdv-desglose-isr span:last-child { color: #e07000; font-weight: 600; }
+.fc-pdv-desglose-total {
+    border-top: 1.5px solid #e2e8f0;
+    margin-top: 4px;
+    padding-top: 8px;
+    font-size: 15px;
+    color: var(--pdv-text);
+}
+
 /* Item form in add-to-cart modal */
 .fc-pdv-tamano-select { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
 .fc-pdv-tamano-chip {

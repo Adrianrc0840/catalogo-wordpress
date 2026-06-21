@@ -19,6 +19,7 @@
     let cajasData    = { abiertas: [], cerradas: [] };
     let tipoPedido   = 'recoleccion';
     let formaPago    = 'efectivo';
+    let facturaTipo  = '';   // '' | 'fisica' | 'moral'
 
     // ── Helpers ──
     function escHtml(str) {
@@ -687,6 +688,41 @@
                     <div class="fc-pdv-section-title">Detalles por arreglo</div>
                     ${itemsCheckoutHtml}
 
+                    <div class="fc-pdv-section-title">Facturación</div>
+                    <div class="fc-pdv-form-group">
+                        <label class="fc-pdv-check-label">
+                            <input type="checkbox" id="pdv-co-factura-check" style="width:auto;margin:0;">
+                            Requiere factura
+                        </label>
+                    </div>
+                    <div id="pdv-co-factura-tipo-wrap" style="display:none">
+                        <div class="fc-pdv-form-group">
+                            <label>Tipo de persona</label>
+                            <select id="pdv-co-factura-tipo">
+                                <option value="">— Seleccionar —</option>
+                                <option value="fisica">Persona Física (+8% IVA)</option>
+                                <option value="moral">Persona Moral (+8% IVA − 1.25% ISR)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="pdv-co-desglose" class="fc-pdv-desglose">
+                        <div class="fc-pdv-desglose-row">
+                            <span>Subtotal</span><span id="pdv-dsg-subtotal"></span>
+                        </div>
+                        <div id="pdv-dsg-envio-row" class="fc-pdv-desglose-row" style="display:none">
+                            <span>Envío</span><span id="pdv-dsg-envio"></span>
+                        </div>
+                        <div id="pdv-dsg-iva-row" class="fc-pdv-desglose-row fc-pdv-desglose-iva" style="display:none">
+                            <span>IVA 8%</span><span id="pdv-dsg-iva"></span>
+                        </div>
+                        <div id="pdv-dsg-isr-row" class="fc-pdv-desglose-row fc-pdv-desglose-isr" style="display:none">
+                            <span>ISR 1.25%</span><span id="pdv-dsg-isr"></span>
+                        </div>
+                        <div class="fc-pdv-desglose-row fc-pdv-desglose-total">
+                            <strong>Total</strong><strong id="pdv-dsg-total"></strong>
+                        </div>
+                    </div>
+
                     <div class="fc-pdv-section-title">Forma de pago</div>
                     <div class="fc-pdv-pago-btns">
                         <button class="fc-pdv-pago-btn efectivo ${formaPago === 'efectivo' ? 'active' : ''}" data-pago="efectivo">💵 Efectivo</button>
@@ -753,6 +789,59 @@
                 if (customWrap)  customWrap.style.display  = modo === 'personalizado' ? '' : 'none';
             });
         });
+
+        // Factura — helpers
+        function getSubtotal() {
+            return cartTotal() + parseFloat($('#pdv-co-costo-envio', backdrop)?.value || 0);
+        }
+        function calcMontoTotal() {
+            const sub = getSubtotal();
+            const iva = facturaTipo ? sub * 0.08 : 0;
+            const isr = facturaTipo === 'moral' ? sub * 0.0125 : 0;
+            return sub + iva - isr;
+        }
+        function updateDesglose() {
+            const productos  = cartTotal();
+            const envio      = parseFloat($('#pdv-co-costo-envio', backdrop)?.value || 0);
+            const subtotal   = productos + envio;
+            const hasFactura = facturaTipo === 'fisica' || facturaTipo === 'moral';
+            const iva        = hasFactura ? subtotal * 0.08 : 0;
+            const isr        = facturaTipo === 'moral' ? subtotal * 0.0125 : 0;
+            const total      = subtotal + iva - isr;
+
+            $('#pdv-dsg-subtotal',  backdrop).textContent = fmt(productos);
+            $('#pdv-dsg-envio',     backdrop).textContent = fmt(envio);
+            $('#pdv-dsg-iva',       backdrop).textContent = '+' + fmt(iva);
+            $('#pdv-dsg-isr',       backdrop).textContent = '−' + fmt(isr);
+            $('#pdv-dsg-total',     backdrop).textContent = fmt(total);
+
+            $('#pdv-dsg-envio-row', backdrop).style.display = envio > 0 ? '' : 'none';
+            $('#pdv-dsg-iva-row',   backdrop).style.display = hasFactura ? '' : 'none';
+            $('#pdv-dsg-isr-row',   backdrop).style.display = facturaTipo === 'moral' ? '' : 'none';
+
+            // Actualizar placeholder de monto recibido con el total real
+            const mr = $('#pdv-co-monto-recibido', backdrop);
+            if (mr) mr.placeholder = total.toFixed(2);
+        }
+
+        $('#pdv-co-factura-check', backdrop)?.addEventListener('change', function() {
+            const wrap = $('#pdv-co-factura-tipo-wrap', backdrop);
+            if ( wrap ) wrap.style.display = this.checked ? '' : 'none';
+            if ( ! this.checked ) {
+                facturaTipo = '';
+                const sel = $('#pdv-co-factura-tipo', backdrop);
+                if (sel) sel.value = '';
+            }
+            updateDesglose();
+        });
+
+        $('#pdv-co-factura-tipo', backdrop)?.addEventListener('change', function() {
+            facturaTipo = this.value;
+            updateDesglose();
+        });
+
+        // Inicializar desglose al abrir el modal
+        updateDesglose();
 
         // Pago toggle
         $$('.fc-pdv-pago-btn', backdrop).forEach(btn => {
@@ -824,11 +913,10 @@
         if (montoInput) {
             montoInput.addEventListener('wheel', e => e.preventDefault(), { passive: false });
             montoInput.addEventListener('input', () => {
-                const recibido   = parseFloat(montoInput.value || 0);
-                const costoEnvio = parseFloat($('#pdv-co-costo-envio', backdrop)?.value || 0);
-                const cambio     = recibido - (cartTotal() + costoEnvio);
-                const row        = $('#pdv-co-cambio-row', backdrop);
-                const val        = $('#pdv-co-cambio-val', backdrop);
+                const recibido = parseFloat(montoInput.value || 0);
+                const cambio   = recibido - calcMontoTotal();
+                const row      = $('#pdv-co-cambio-row', backdrop);
+                const val      = $('#pdv-co-cambio-val', backdrop);
                 if (recibido > 0 && row && val) {
                     row.style.display = '';
                     val.textContent   = fmt(Math.max(0, cambio));
@@ -841,18 +929,16 @@
         if (costoEnvioInput) {
             costoEnvioInput.addEventListener('wheel', e => e.preventDefault(), { passive: false });
             costoEnvioInput.addEventListener('input', () => {
-                const costo  = parseFloat(costoEnvioInput.value || 0);
-                const total  = cartTotal() + costo;
+                updateDesglose();
+                const total = calcMontoTotal();
                 // Actualizar título del modal
                 const h3 = $('.fc-pdv-modal-header h3', backdrop);
                 if (h3) h3.textContent = `Cobrar — ${fmt(total)}`;
-                // Actualizar placeholder de monto recibido
-                const mr = $('#pdv-co-monto-recibido', backdrop);
-                if (mr) mr.placeholder = total.toFixed(2);
                 // Recalcular cambio si ya hay monto ingresado
+                const mr       = $('#pdv-co-monto-recibido', backdrop);
                 const recibido = parseFloat(mr?.value || 0);
-                const row = $('#pdv-co-cambio-row', backdrop);
-                const val = $('#pdv-co-cambio-val', backdrop);
+                const row      = $('#pdv-co-cambio-row', backdrop);
+                const val      = $('#pdv-co-cambio-val', backdrop);
                 if (recibido > 0 && row && val) {
                     row.style.display = '';
                     val.textContent   = fmt(Math.max(0, recibido - total));
@@ -861,7 +947,7 @@
         }
 
         // Close
-        const close = () => backdrop.remove();
+        const close = () => { facturaTipo = ''; backdrop.remove(); };
         $('.fc-pdv-modal-close', backdrop).addEventListener('click', close);
         $('.fc-pdv-modal-cancel', backdrop).addEventListener('click', close);
         backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
@@ -906,7 +992,10 @@
             }));
 
             const costoEnvio = parseFloat($('#pdv-co-costo-envio', backdrop)?.value || 0);
-            const montoTotal = cartTotal() + costoEnvio;
+            const subtotal   = cartTotal() + costoEnvio;
+            const ivaAmt     = facturaTipo ? subtotal * 0.08 : 0;
+            const isrAmt     = facturaTipo === 'moral' ? subtotal * 0.0125 : 0;
+            const montoTotal = calcMontoTotal();
             const recibido   = parseFloat($('#pdv-co-monto-recibido', backdrop)?.value || 0);
             const cambio     = formaPago === 'efectivo' && recibido > 0 ? Math.max(0, recibido - montoTotal) : 0;
 
@@ -924,6 +1013,9 @@
                     costo_envio:     costoEnvio,
                     referencias:     ($('#pdv-co-referencias', backdrop)?.value || '').trim(),
                     monto_total:     montoTotal,
+                    factura_tipo:    facturaTipo,
+                    factura_iva:     ivaAmt,
+                    factura_isr:     isrAmt,
                     items_json:      JSON.stringify(itemsFinal),
                 });
 

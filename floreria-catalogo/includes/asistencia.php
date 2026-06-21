@@ -100,7 +100,7 @@ function fc_calcular_dia( array $registros ) {
             // Si ya había una entrada sin salida, la descartamos (registros inconsistentes)
             $ent_pendiente = $r['timestamp'];
         } elseif ( $r['tipo'] === 'salida' && $ent_pendiente !== null ) {
-            $dur = (int) round( ( strtotime( $r['timestamp'] ) - strtotime( $ent_pendiente ) ) / 60 );
+            $dur = (int) floor( ( strtotime( $r['timestamp'] ) - strtotime( $ent_pendiente ) ) / 60 );
             if ( $dur > 0 ) {
                 $pares[]    = [ 'ent' => $ent_pendiente, 'sal' => $r['timestamp'], 'min' => $dur ];
                 $total_min += $dur;
@@ -637,7 +637,8 @@ function fc_asistencia_admin_page() {
     .fc-rep-table th small { display:block; font-weight:400; color:#888; font-size:11px; margin-top:1px; }
     .fc-rep-table td { padding: 10px 14px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
     .fc-rep-table tbody tr:hover td { background:#fafafa; }
-    .fc-extra  { color:#c8185a; font-weight:700; }
+    .fc-extra   { color:#c8185a; font-weight:700; }
+    .fc-deficit { color:#e07000; font-weight:700; }
     .fc-falta  { color:#bbb; font-size:16px; }
     .fc-rep-titulo { font-size:16px; font-weight:700; margin-bottom:8px; color:#111; }
     .fc-rep-nota   { font-size:11px; color:#888; margin-top:8px; }
@@ -1347,7 +1348,7 @@ function fc_ajax_asistencia_reporte() {
             <?php if ( $es_un_dia ) :
                 $regs_dia = $emp_datos[ $fechas[0] ] ?? [];
                 $calc     = $regs_dia ? fc_calcular_dia( $regs_dia ) : [ 'total_min'=>0,'pares'=>[],'en_tienda'=>false,'ent_abierta'=>null,'prueba'=>false ];
-                $extra    = max( 0, $calc['total_min'] - $min_req );
+                $diff     = $calc['total_min'] - $min_req;
             ?>
                 <td>
                     <?php if ( $regs_dia ) : ?>
@@ -1376,7 +1377,11 @@ function fc_ajax_asistencia_reporte() {
                             title="Editar registros">✏️</button>
                 </td>
                 <td><?php echo $calc['total_min'] > 0 ? '<strong>'.esc_html(fc_fmt_minutos($calc['total_min'])).'</strong>' : '<span class="fc-falta">—</span>'; ?></td>
-                <td><?php echo $extra > 0 ? '<span class="fc-extra">+'.esc_html(fc_fmt_minutos($extra)).'</span>' : '<span style="color:#bbb;">—</span>'; ?></td>
+                <td><?php
+                    if ( $diff > 0 )      echo '<span class="fc-extra">+'.esc_html(fc_fmt_minutos($diff)).'</span>';
+                    elseif ( $diff < 0 )  echo '<span class="fc-deficit">'.esc_html(fc_fmt_minutos(abs($diff))).'</span>';
+                    else                  echo '<span style="color:#bbb;">—</span>';
+                ?></td>
 
             <?php else :
                 foreach ( $fechas as $f ) :
@@ -1384,7 +1389,7 @@ function fc_ajax_asistencia_reporte() {
                     $calc     = $regs_dia ? fc_calcular_dia( $regs_dia ) : [ 'total_min'=>0,'pares'=>[],'en_tienda'=>false,'ent_abierta'=>null,'prueba'=>false ];
                     if ( $calc['total_min'] ) {
                         $total_min += $calc['total_min'];
-                        $total_ext += max( 0, $calc['total_min'] - $min_req );
+                        $total_ext += $calc['total_min'] - $min_req;
                     }
                 ?>
                 <td>
@@ -1415,7 +1420,11 @@ function fc_ajax_asistencia_reporte() {
                 </td>
                 <?php endforeach; ?>
                 <td><?php echo $total_min > 0 ? '<strong style="font-size:15px;">'.esc_html(fc_fmt_minutos($total_min)).'</strong>' : '<span class="fc-falta">—</span>'; ?></td>
-                <td><?php echo $total_ext > 0 ? '<span class="fc-extra">+'.esc_html(fc_fmt_minutos($total_ext)).'</span>' : '<span style="color:#bbb;">—</span>'; ?></td>
+                <td><?php
+                    if ( $total_ext > 0 )      echo '<span class="fc-extra">+'.esc_html(fc_fmt_minutos($total_ext)).'</span>';
+                    elseif ( $total_ext < 0 )  echo '<span class="fc-deficit">'.esc_html(fc_fmt_minutos(abs($total_ext))).'</span>';
+                    else                       echo '<span style="color:#bbb;">—</span>';
+                ?></td>
             <?php endif; ?>
         </tr>
         <?php endforeach; ?>
@@ -1725,7 +1734,7 @@ function fc_print_asistencia_page() {
         if ( ! $regs ) continue;
         $c = fc_calcular_dia( $regs );
         $total_min += $c['total_min'];
-        $total_ext += max( 0, $c['total_min'] - $min_req );
+        $total_ext += $c['total_min'] - $min_req;
     }
 ?>
 <div class="fc-doc">
@@ -1764,6 +1773,8 @@ function fc_print_asistencia_page() {
                     <div class="fc-emp-total-val"><?php echo esc_html( fc_fmt_minutos( $total_min ) ); ?></div>
                     <?php if ( $total_ext > 0 ) : ?>
                         <div class="fc-emp-extra">+<?php echo esc_html( fc_fmt_minutos( $total_ext ) ); ?> extra</div>
+                    <?php elseif ( $total_ext < 0 ) : ?>
+                        <div class="fc-emp-extra" style="color:#e07000;">−<?php echo esc_html( fc_fmt_minutos( abs($total_ext) ) ); ?> falta</div>
                     <?php endif; ?>
                 <?php else : ?>
                     <div class="fc-emp-sinreg">Sin registros</div>
@@ -1788,7 +1799,7 @@ function fc_print_asistencia_page() {
                 $mes_lbl = $meses_es[ (int) $dt->format( 'n' ) - 1 ];
                 $regs    = $emp_datos[ $f ] ?? [];
                 $calc    = $regs ? fc_calcular_dia( $regs ) : [ 'total_min'=>0,'pares'=>[],'en_tienda'=>false,'ent_abierta'=>null,'prueba'=>false ];
-                $extra   = max( 0, $calc['total_min'] - $min_req );
+                $diff    = $calc['total_min'] - $min_req;
                 $is_dom  = $dow_num === 0;
             ?>
             <tr<?php echo $is_dom ? ' class="fc-domingo"' : ''; ?>>
@@ -1827,8 +1838,10 @@ function fc_print_asistencia_page() {
                 <td style="text-align:right;vertical-align:top;">
                     <?php if ( $calc['total_min'] > 0 ) : ?>
                         <div class="fc-dia-total"><?php echo esc_html( fc_fmt_minutos( $calc['total_min'] ) ); ?></div>
-                        <?php if ( $extra > 0 ) : ?>
-                            <div class="fc-dia-extra">+<?php echo esc_html( fc_fmt_minutos( $extra ) ); ?></div>
+                        <?php if ( $diff > 0 ) : ?>
+                            <div class="fc-dia-extra">+<?php echo esc_html( fc_fmt_minutos( $diff ) ); ?></div>
+                        <?php elseif ( $diff < 0 ) : ?>
+                            <div class="fc-dia-extra" style="color:#e07000;">−<?php echo esc_html( fc_fmt_minutos( abs($diff) ) ); ?></div>
                         <?php else : ?>
                             <div class="fc-dia-deficit">—</div>
                         <?php endif; ?>
