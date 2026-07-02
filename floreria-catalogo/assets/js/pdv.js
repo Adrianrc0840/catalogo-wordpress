@@ -688,6 +688,37 @@
                     <div class="fc-pdv-section-title">Detalles por arreglo</div>
                     ${itemsCheckoutHtml}
 
+                    <div class="fc-pdv-section-title">Extras y anticipo</div>
+                    <div class="fc-pdv-form-group">
+                        <label class="fc-pdv-check-label">
+                            <input type="checkbox" id="pdv-co-extras-check" style="width:auto;margin:0;">
+                            Lleva extras
+                        </label>
+                    </div>
+                    <div id="pdv-co-extras-wrap" style="display:none">
+                        <div id="pdv-co-extras-list" class="fc-extras-list"></div>
+                        <div class="fc-extras-add-row">
+                            <input type="text" id="pdv-co-extras-input" placeholder="Ej: Globo, Caja de chocolates…">
+                            <button type="button" id="pdv-co-extras-add-btn" class="fc-pdv-btn-sm">+ Agregar</button>
+                        </div>
+                        <input type="hidden" id="pdv-co-extras-json" value="[]">
+                    </div>
+                    <div class="fc-pdv-form-group" style="margin-top:8px">
+                        <label class="fc-pdv-check-label">
+                            <input type="checkbox" id="pdv-co-anticipo-check" style="width:auto;margin:0;">
+                            El cliente dio anticipo
+                        </label>
+                    </div>
+                    <div id="pdv-co-anticipo-wrap" style="display:none">
+                        <div class="fc-pdv-form-group">
+                            <label>Anticipo recibido</label>
+                            <input type="number" id="pdv-co-anticipo" min="0" step="0.01" placeholder="0.00">
+                        </div>
+                        <div class="fc-anticipo-saldo" id="pdv-co-saldo-row" style="display:none">
+                            Saldo pendiente: <strong id="pdv-co-saldo-val"></strong>
+                        </div>
+                    </div>
+
                     <div class="fc-pdv-section-title">Facturación</div>
                     <div class="fc-pdv-form-group">
                         <label class="fc-pdv-check-label">
@@ -824,6 +855,59 @@
             if (mr) mr.placeholder = total.toFixed(2);
         }
 
+        // Extras PDV
+        let pdvExtrasArr = [];
+        function pdvRenderExtras() {
+            const list = $('#pdv-co-extras-list', backdrop);
+            if (!list) return;
+            list.innerHTML = pdvExtrasArr.map((ex, i) =>
+                `<span class="fc-extra-chip">${escHtml(ex)}<button type="button" class="fc-extra-chip-remove" data-i="${i}">×</button></span>`
+            ).join('');
+            list.querySelectorAll('.fc-extra-chip-remove').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    pdvExtrasArr.splice(parseInt(btn.dataset.i), 1);
+                    const h = $('#pdv-co-extras-json', backdrop);
+                    if (h) h.value = JSON.stringify(pdvExtrasArr);
+                    pdvRenderExtras();
+                });
+            });
+        }
+        $('#pdv-co-extras-check', backdrop)?.addEventListener('change', function() {
+            const wrap = $('#pdv-co-extras-wrap', backdrop);
+            if (wrap) wrap.style.display = this.checked ? '' : 'none';
+            if (!this.checked) { pdvExtrasArr = []; const h = $('#pdv-co-extras-json', backdrop); if (h) h.value = '[]'; pdvRenderExtras(); }
+        });
+        $('#pdv-co-extras-add-btn', backdrop)?.addEventListener('click', () => {
+            const inp = $('#pdv-co-extras-input', backdrop);
+            const val = (inp?.value || '').trim();
+            if (!val) return;
+            pdvExtrasArr.push(val);
+            const h = $('#pdv-co-extras-json', backdrop);
+            if (h) h.value = JSON.stringify(pdvExtrasArr);
+            pdvRenderExtras();
+            if (inp) inp.value = '';
+        });
+        $('#pdv-co-extras-input', backdrop)?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); $('#pdv-co-extras-add-btn', backdrop)?.click(); }
+        });
+
+        // Anticipo PDV
+        function pdvUpdateSaldo() {
+            const total    = calcMontoTotal();
+            const anticipo = parseFloat($('#pdv-co-anticipo', backdrop)?.value || 0);
+            const row      = $('#pdv-co-saldo-row', backdrop);
+            const val      = $('#pdv-co-saldo-val', backdrop);
+            if (row && val) {
+                row.style.display = anticipo > 0 ? '' : 'none';
+                val.textContent   = '$' + Math.max(0, total - anticipo).toFixed(2);
+            }
+        }
+        $('#pdv-co-anticipo-check', backdrop)?.addEventListener('change', function() {
+            const wrap = $('#pdv-co-anticipo-wrap', backdrop);
+            if (wrap) wrap.style.display = this.checked ? '' : 'none';
+        });
+        $('#pdv-co-anticipo', backdrop)?.addEventListener('input', pdvUpdateSaldo);
+
         $('#pdv-co-factura-check', backdrop)?.addEventListener('change', function() {
             const wrap = $('#pdv-co-factura-tipo-wrap', backdrop);
             if ( wrap ) wrap.style.display = this.checked ? '' : 'none';
@@ -947,7 +1031,7 @@
         }
 
         // Close
-        const close = () => { facturaTipo = ''; backdrop.remove(); };
+        const close = () => { facturaTipo = ''; pdvExtrasArr = []; backdrop.remove(); };
         $('.fc-pdv-modal-close', backdrop).addEventListener('click', close);
         $('.fc-pdv-modal-cancel', backdrop).addEventListener('click', close);
         backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
@@ -1012,6 +1096,8 @@
                     forma_pago:      formaPago,
                     costo_envio:     costoEnvio,
                     referencias:     ($('#pdv-co-referencias', backdrop)?.value || '').trim(),
+                    extras_json:     JSON.stringify(pdvExtrasArr),
+                    anticipo:        parseFloat($('#pdv-co-anticipo', backdrop)?.value || 0),
                     monto_total:     montoTotal,
                     factura_tipo:    facturaTipo,
                     factura_iva:     ivaAmt,

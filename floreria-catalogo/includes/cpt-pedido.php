@@ -1503,6 +1503,8 @@ function fc_render_rastreo_pedido_sc() {
     $nota             = $pid ? get_post_meta( $pid, '_fc_pedido_nota',             true ) : '';
     $nota_floreria    = $pid ? get_post_meta( $pid, '_fc_pedido_nota_floreria',    true ) : '';
     $referencias      = $pid ? get_post_meta( $pid, '_fc_pedido_referencias',      true ) : '';
+    $extras_raw       = $pid ? get_post_meta( $pid, '_fc_pedido_extras',           true ) : '';
+    $extras           = $extras_raw ? ( json_decode( $extras_raw, true ) ?: [] ) : [];
 
     $catalog_url = get_option( 'fc_catalog_page_url', home_url() );
 
@@ -1752,6 +1754,12 @@ function fc_render_rastreo_pedido_sc() {
                         <span class="fc-detail-value fc-item-modificaciones-value"><?php echo nl2br( esc_html( $first_item['notas'] ) ); ?></span>
                     </div>
                     <?php endif; ?>
+                    <?php if ( ! empty( $extras ) ) : ?>
+                    <div class="fc-detail-row">
+                        <span class="fc-detail-label">Extras</span>
+                        <span class="fc-detail-value"><strong><?php echo esc_html( implode( ', ', array_map( 'strtoupper', $extras ) ) ); ?></strong></span>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <?php else : ?>
@@ -1788,6 +1796,12 @@ function fc_render_rastreo_pedido_sc() {
                     </div>
                     <?php endforeach; ?>
                     </div>
+                    <?php if ( ! empty( $extras ) ) : ?>
+                    <div class="fc-detail-row" style="margin-top:8px;">
+                        <span class="fc-detail-label">Extras</span>
+                        <span class="fc-detail-value"><strong><?php echo esc_html( implode( ', ', array_map( 'strtoupper', $extras ) ) ); ?></strong></span>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
 

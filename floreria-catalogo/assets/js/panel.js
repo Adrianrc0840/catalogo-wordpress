@@ -27,6 +27,24 @@
     let lbPhotos = [];
     let lbIndex  = 0;
 
+    // Extras nuevo-pedido state (shared between initNewOrderModal and resetNewOrderForm)
+    let extrasArr = [];
+    function renderExtras() {
+        const list = $('#fc-modal-extras-list');
+        if (!list) return;
+        list.innerHTML = extrasArr.map((ex, i) =>
+            `<span class="fc-extra-chip">${escHtml(ex)}<button type="button" class="fc-extra-chip-remove" data-i="${i}">×</button></span>`
+        ).join('');
+        list.querySelectorAll('.fc-extra-chip-remove').forEach(btn => {
+            btn.addEventListener('click', () => {
+                extrasArr.splice(parseInt(btn.dataset.i), 1);
+                const h = $('#fc-modal-extras-json');
+                if (h) h.value = JSON.stringify(extrasArr);
+                renderExtras();
+            });
+        });
+    }
+
     // ── DOM helpers ──
     const $ = (sel, ctx = document) => ctx.querySelector(sel);
     const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
@@ -111,14 +129,32 @@
 
     // ── Modal para datos extra al cambiar estado ──
     // Retorna Promise<extraData|null> — null si el usuario cancela
-    function showDeliveryModal(status) {
+    function showDeliveryModal(status, pedidoData = {}) {
         return new Promise((resolve) => {
             let title, desc, fields, confirmColor;
 
-            if (status === 'entregado') {
+            if ((status === 'en_camino' || status === 'listo_recoleccion') && pedidoData.extras?.length) {
+                title        = '¿Ya pusiste los extras?';
+                desc         = 'Este pedido lleva extras. Confirma que los vas a incluir antes de continuar.';
+                confirmColor = '#f59e0b';
+                const listaExtras = pedidoData.extras.map(e => `<li><strong>${escHtml(e.toUpperCase())}</strong></li>`).join('');
+                fields = `<ul class="fc-dm-extras-list">${listaExtras}</ul>`;
+            } else if (status === 'entregado') {
                 title        = '¿Quién recibió el pedido?';
                 desc         = 'Ingresa los datos de la entrega para que el cliente pueda verlos.';
                 confirmColor = '#10b981';
+                const saldo  = pedidoData.anticipo > 0 && !pedidoData.anticipo_liquidado
+                    ? (pedidoData.monto_total - pedidoData.anticipo)
+                    : 0;
+                const saldoRow = saldo > 0
+                    ? `<div class="fc-dm-field fc-dm-saldo-warn">
+                        <strong>⚠ Saldo pendiente: $${saldo.toFixed(2)}</strong>
+                        <label style="margin-top:8px;display:flex;gap:8px;align-items:center;cursor:pointer;">
+                            <input type="checkbox" id="fc-dm-anticipo-cobrado" style="width:auto;margin:0;">
+                            Confirmar que se cobró el saldo
+                        </label>
+                       </div>`
+                    : '';
                 fields = `
                     <div class="fc-dm-field">
                         <label>Quién recibió <span style="color:#ef4444">*</span></label>
@@ -127,7 +163,8 @@
                     <div class="fc-dm-field">
                         <label>Notas adicionales <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
                         <textarea id="fc-dm-nota" rows="2" placeholder="Alguna observación de la entrega..."></textarea>
-                    </div>`;
+                    </div>
+                    ${saldoRow}`;
             } else if (status === 'no_entregado') {
                 title        = '¿Qué pasó con la entrega?';
                 desc         = 'Describe la situación para informar al cliente.';
@@ -172,7 +209,9 @@
             const confirmBtn = backdrop.querySelector('.fc-dm-confirm');
             confirmBtn.addEventListener('click', () => {
                 let extraData = {};
-                if (status === 'entregado') {
+                if (status === 'en_preparacion') {
+                    // No extra data needed, just confirming
+                } else if (status === 'entregado') {
                     const quien = (backdrop.querySelector('#fc-dm-quien')?.value || '').trim();
                     if (!quien) {
                         backdrop.querySelector('#fc-dm-quien').focus();
@@ -181,6 +220,8 @@
                     }
                     extraData.quien_recibio = quien;
                     extraData.nota_entrega  = (backdrop.querySelector('#fc-dm-nota')?.value || '').trim();
+                    const cobradoCb = backdrop.querySelector('#fc-dm-anticipo-cobrado');
+                    if (cobradoCb?.checked) extraData.anticipo_liquidado = 1;
                 } else if (status === 'no_entregado') {
                     const situacion = (backdrop.querySelector('#fc-dm-situacion')?.value || '').trim();
                     if (!situacion) {
@@ -298,6 +339,9 @@
 
             <!-- Arreglos -->
             ${items.length ? `<div class="fc-card-items-list">${itemsHtml}</div>` : ''}
+            ${p.extras?.length ? `<div class="fc-card-row fc-extras-row"><span class="fc-label">Extras</span><span class="fc-value fc-extras-val"><strong>${p.extras.map(e => escHtml(e.toUpperCase())).join(' · ')}</strong></span></div>` : ''}
+            ${(p.anticipo > 0 && !p.anticipo_liquidado) ? `<div class="fc-card-row fc-saldo-row"><span class="fc-label">Saldo pendiente</span><span class="fc-value fc-saldo-val">$${(p.monto_total - p.anticipo).toFixed(2)}</span></div>` : ''}
+            ${(p.anticipo > 0 && p.anticipo_liquidado) ? `<div class="fc-card-row"><span class="fc-label">Anticipo</span><span class="fc-value" style="color:#10b981;">✔ Liquidado</span></div>` : ''}
 
         </div>
 
@@ -330,6 +374,8 @@
                 <button class="fc-btn-sm fc-btn-imprimir" data-id="${p.id}" style="background:#2d6a4f;">&#128424; Imprimir</button>
                 ${p.pdf_url ? `<a class="fc-btn-sm fc-btn-ver-pdf" href="${escAttr(p.pdf_url)}" target="_blank" rel="noopener" style="background:#7c3aed;text-decoration:none;">&#128196; Ver PDF</a>` : ''}
                 <button class="fc-btn-sm fc-btn-editar-pedido" style="background:#4a5568;">&#9998; Editar</button>
+                ${p.anticipo > 0 && !p.anticipo_liquidado ? `<button class="fc-btn-sm fc-btn-liquidar" data-id="${p.id}" style="background:#d97706;">&#10003; Liquidado</button>` : ''}
+                ${p.anticipo > 0 && p.anticipo_liquidado  ? `<button class="fc-btn-sm fc-btn-revertir-liquidado" data-id="${p.id}" style="background:#6b7280;">&#8635; Revertir liquidado</button>` : ''}
                 ${isAdmin ? `<button class="fc-btn-sm fc-btn-eliminar-pedido" style="background:#ef4444;">&#10005; Eliminar</button>` : ''}
             </div>
         </div>
@@ -422,10 +468,16 @@
                 sorted.sort((a, b) => (b.numero || '').localeCompare(a.numero || ''));
                 break;
             case 'hora-asc':
-                sorted.sort((a, b) => getPedidoMinutes(a) - getPedidoMinutes(b));
+                sorted.sort((a, b) => {
+                    const dateDiff = (a.fecha || '').localeCompare(b.fecha || '');
+                    return dateDiff !== 0 ? dateDiff : getPedidoMinutes(a) - getPedidoMinutes(b);
+                });
                 break;
             case 'hora-desc':
-                sorted.sort((a, b) => getPedidoMinutes(b) - getPedidoMinutes(a));
+                sorted.sort((a, b) => {
+                    const dateDiff = (b.fecha || '').localeCompare(a.fecha || '');
+                    return dateDiff !== 0 ? dateDiff : getPedidoMinutes(b) - getPedidoMinutes(a);
+                });
                 break;
         }
         return sorted;
@@ -616,6 +668,69 @@
             });
         });
 
+        // Liquidar anticipo
+        $$('.fc-btn-liquidar', grid).forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (!confirm('¿Confirmar que el saldo pendiente fue cobrado?')) return;
+                const pedidoId = btn.dataset.id;
+                btn.textContent = '...';
+                btn.disabled = true;
+                try {
+                    const data = await ajax('fc_panel_liquidar_anticipo', { pedido_id: pedidoId });
+                    if (data.success) {
+                        showToast('Anticipo liquidado', 'success');
+                        if (pedidoDataMap[pedidoId]) {
+                            pedidoDataMap[pedidoId].anticipo_liquidado = true;
+                        }
+                        btn.remove();
+                        const card = document.querySelector(`.fc-order-card[data-id="${pedidoId}"]`);
+                        const saldoRow = card?.querySelector('.fc-saldo-row');
+                        if (saldoRow) {
+                            saldoRow.querySelector('.fc-label').textContent = 'Anticipo';
+                            saldoRow.querySelector('.fc-saldo-val').style.color = '#10b981';
+                            saldoRow.querySelector('.fc-saldo-val').textContent = '✔ Liquidado';
+                            saldoRow.classList.remove('fc-saldo-row');
+                        }
+                    } else {
+                        showToast(data.data?.message || 'Error', 'error');
+                        btn.textContent = '✓ Liquidado';
+                        btn.disabled = false;
+                    }
+                } catch {
+                    showToast('Error de conexión', 'error');
+                    btn.textContent = '✓ Liquidado';
+                    btn.disabled = false;
+                }
+            });
+        });
+
+        // Revertir liquidado
+        $$('.fc-btn-revertir-liquidado', grid).forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (!confirm('¿Revertir el estado de liquidado? El saldo quedará como pendiente.')) return;
+                const pedidoId = btn.dataset.id;
+                btn.textContent = '...';
+                btn.disabled = true;
+                try {
+                    const data = await ajax('fc_panel_revertir_liquidado', { pedido_id: pedidoId });
+                    if (data.success) {
+                        showToast('Revertido — saldo pendiente', 'success');
+                        loadPedidos();
+                    } else {
+                        showToast(data.data?.message || 'Error', 'error');
+                        btn.textContent = '↺ Revertir liquidado';
+                        btn.disabled = false;
+                    }
+                } catch {
+                    showToast('Error de conexión', 'error');
+                    btn.textContent = '↺ Revertir liquidado';
+                    btn.disabled = false;
+                }
+            });
+        });
+
         // Collapse toggle
         $$('.fc-card-collapse-btn', grid).forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -683,10 +798,14 @@
                 const select   = $('.fc-select-status', card);
                 const status   = select.value;
 
-                // Para "entregado" y "no_entregado" pedir datos extra antes de enviar
+                // Para algunos estados pedir datos extra antes de enviar
                 let extraData = {};
-                if (status === 'entregado' || status === 'no_entregado') {
-                    const result = await showDeliveryModal(status);
+                const pedidoData = pedidoDataMap[pedidoId] || {};
+                const needsModal = status === 'entregado'
+                    || status === 'no_entregado'
+                    || ((status === 'en_camino' || status === 'listo_recoleccion') && pedidoData.extras?.length);
+                if (needsModal) {
+                    const result = await showDeliveryModal(status, pedidoData);
                     if (result === null) return; // usuario canceló
                     extraData = result;
                 }
@@ -1673,6 +1792,51 @@
                 await submitNewPedido();
             });
         }
+
+        // Extras (event listeners — funciones definidas en scope de módulo)
+
+        $('#fc-modal-extras-check')?.addEventListener('change', function() {
+            const wrap = $('#fc-modal-extras-wrap');
+            if (wrap) wrap.style.display = this.checked ? '' : 'none';
+            if (!this.checked) {
+                extrasArr = [];
+                const h = $('#fc-modal-extras-json');
+                if (h) h.value = '[]';
+                renderExtras();
+            }
+        });
+        $('#fc-modal-extras-add-btn')?.addEventListener('click', () => {
+            const inp = $('#fc-modal-extras-input');
+            const val = (inp?.value || '').trim();
+            if (!val) return;
+            extrasArr.push(val);
+            const h = $('#fc-modal-extras-json');
+            if (h) h.value = JSON.stringify(extrasArr);
+            renderExtras();
+            if (inp) inp.value = '';
+        });
+        $('#fc-modal-extras-input')?.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); $('#fc-modal-extras-add-btn')?.click(); }
+        });
+
+        // Anticipo
+        function updateSaldo() {
+            const total    = parseFloat($('#fc-modal-total')?.value || 0);
+            const anticipo = parseFloat($('#fc-modal-anticipo')?.value || 0);
+            const saldo    = total - anticipo;
+            const row      = $('#fc-modal-saldo-row');
+            const val      = $('#fc-modal-saldo-val');
+            if (row && val) {
+                row.style.display = (total > 0 && anticipo > 0) ? '' : 'none';
+                val.textContent   = '$' + Math.max(0, saldo).toFixed(2);
+            }
+        }
+        $('#fc-modal-anticipo-check')?.addEventListener('change', function() {
+            const wrap = $('#fc-modal-anticipo-wrap');
+            if (wrap) wrap.style.display = this.checked ? '' : 'none';
+        });
+        $('#fc-modal-total')?.addEventListener('input', updateSaldo);
+        $('#fc-modal-anticipo')?.addEventListener('input', updateSaldo);
     }
 
     async function addItemBlock(prefill = {}) {
@@ -1818,6 +1982,39 @@
             if (pdfAddBtn) pdfAddBtn.style.display  = '';
         }
 
+        // Extras
+        extrasArr = Array.isArray(pedido.extras) ? [...pedido.extras] : [];
+        const extrasCheck = $('#fc-modal-extras-check');
+        const extrasWrap  = $('#fc-modal-extras-wrap');
+        const extrasJson  = $('#fc-modal-extras-json');
+        if (extrasCheck) extrasCheck.checked = extrasArr.length > 0;
+        if (extrasWrap)  extrasWrap.style.display = extrasArr.length > 0 ? '' : 'none';
+        if (extrasJson)  extrasJson.value = JSON.stringify(extrasArr);
+        renderExtras();
+
+        // Anticipo
+        const antiCheck  = $('#fc-modal-anticipo-check');
+        const antiWrap   = $('#fc-modal-anticipo-wrap');
+        const totalInput = $('#fc-modal-total');
+        const antiInput  = $('#fc-modal-anticipo');
+        const hasAnticipo = pedido.anticipo > 0;
+        if (antiCheck)  antiCheck.checked = hasAnticipo;
+        if (antiWrap)   antiWrap.style.display = hasAnticipo ? '' : 'none';
+        if (totalInput) totalInput.value = hasAnticipo ? (pedido.monto_total || '') : '';
+        if (antiInput)  antiInput.value  = hasAnticipo ? (pedido.anticipo || '') : '';
+        // Trigger saldo display
+        if (hasAnticipo) {
+            const saldo   = (pedido.monto_total || 0) - (pedido.anticipo || 0);
+            const saldoRow = $('#fc-modal-saldo-row');
+            const saldoVal = $('#fc-modal-saldo-val');
+            if (saldoRow && saldo > 0 && !pedido.anticipo_liquidado) {
+                saldoRow.style.display = '';
+                if (saldoVal) saldoVal.textContent = '$' + saldo.toFixed(2);
+            } else if (saldoRow) {
+                saldoRow.style.display = 'none';
+            }
+        }
+
         // Items — clear container and populate from pedido.items
         const container = $('#fc-items-container');
         if (container) container.innerHTML = '';
@@ -1892,6 +2089,24 @@
         const recSection   = $('#fc-modal-recoleccion-section');
         if (envioSection)  envioSection.style.display  = '';
         if (recSection)    recSection.style.display    = 'none';
+
+        // Reset extras
+        extrasArr = [];
+        const extrasCheck = $('#fc-modal-extras-check');
+        const extrasWrap  = $('#fc-modal-extras-wrap');
+        const extrasJson  = $('#fc-modal-extras-json');
+        if (extrasCheck) extrasCheck.checked = false;
+        if (extrasWrap)  extrasWrap.style.display = 'none';
+        if (extrasJson)  extrasJson.value = '[]';
+        renderExtras();
+
+        // Reset anticipo
+        const antiCheck = $('#fc-modal-anticipo-check');
+        const antiWrap  = $('#fc-modal-anticipo-wrap');
+        const saldoRow  = $('#fc-modal-saldo-row');
+        if (antiCheck) antiCheck.checked = false;
+        if (antiWrap)  antiWrap.style.display = 'none';
+        if (saldoRow)  saldoRow.style.display = 'none';
     }
 
     async function submitNewPedido() {
@@ -1934,6 +2149,9 @@
             referencias:      $('#fc-modal-referencias')?.value      || '',
             pdf_url:          $('#fc-modal-pdf-url')?.value          || '',
             items_json:       JSON.stringify(items),
+            extras_json:      $('#fc-modal-extras-json')?.value      || '[]',
+            monto_total:      parseFloat($('#fc-modal-total')?.value || 0),
+            anticipo:         parseFloat($('#fc-modal-anticipo')?.value || 0),
         };
 
         if (isPendienteMode) payload.modo = 'pendiente';
