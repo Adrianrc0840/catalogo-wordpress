@@ -521,6 +521,10 @@ function fc_build_pedido_data( $p ) {
         'cliente_nombre'    => get_post_meta( $p->ID, '_fc_pedido_cliente_nombre',   true ),
         'cliente_telefono'  => get_post_meta( $p->ID, '_fc_pedido_cliente_telefono', true ),
         'pdf_url'           => get_post_meta( $p->ID, '_fc_pedido_pdf_url',          true ),
+        'extras'            => json_decode( get_post_meta( $p->ID, '_fc_pedido_extras',     true ) ?: '[]', true ) ?: [],
+        'monto_total'       => (float) get_post_meta( $p->ID, '_fc_pedido_monto_total',     true ),
+        'anticipo'          => (float) get_post_meta( $p->ID, '_fc_pedido_anticipo',        true ),
+        'anticipo_liquidado'=> (bool)  get_post_meta( $p->ID, '_fc_pedido_anticipo_liquidado', true ),
         'historial'         => $historial,
         'last_change'       => $last,
         'fecha_registro'    => (function( $p ) {
@@ -773,6 +777,11 @@ function fc_ajax_crear_pedido() {
         '_fc_pedido_canal_contacto'   => sanitize_text_field( $_POST['canal_contacto']  ?? '' ),
         '_fc_pedido_referencias'      => sanitize_textarea_field( $_POST['referencias']  ?? '' ),
         '_fc_pedido_registrado_por'   => get_current_user_id(),
+        '_fc_pedido_extras'           => wp_json_encode( array_values( array_map( 'sanitize_text_field',
+            json_decode( wp_unslash( $_POST['extras_json'] ?? '[]' ), true ) ?: []
+        ) ), JSON_UNESCAPED_UNICODE ),
+        '_fc_pedido_monto_total'      => (float) ( $_POST['monto_total'] ?? 0 ),
+        '_fc_pedido_anticipo'         => (float) ( $_POST['anticipo']    ?? 0 ),
         '_fc_pedido_pdf_url'          => esc_url_raw( $_POST['pdf_url'] ?? '' ),
         // Legacy single-item (first item) for backward compat
         '_fc_pedido_arreglo_id'              => $first['arreglo_id']            ?? 0,
@@ -879,6 +888,9 @@ function fc_ajax_actualizar_status() {
     if ( $new_status === 'entregado' ) {
         $entry['quien_recibio'] = sanitize_text_field( wp_unslash( $_POST['quien_recibio'] ?? '' ) );
         $entry['nota_entrega']  = sanitize_textarea_field( wp_unslash( $_POST['nota_entrega'] ?? '' ) );
+        if ( ! empty( $_POST['anticipo_liquidado'] ) ) {
+            update_post_meta( $pedido_id, '_fc_pedido_anticipo_liquidado', 1 );
+        }
     }
 
     $historial[] = $entry;
@@ -898,6 +910,43 @@ function fc_ajax_actualizar_status() {
         'nuevo_token'  => $nuevo_token,
         'nuevo_link'   => $nuevo_link,
     ] );
+}
+
+// ─────────────────────────────────────────────
+// AJAX: Liquidar anticipo
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_fc_panel_liquidar_anticipo', 'fc_ajax_liquidar_anticipo' );
+function fc_ajax_liquidar_anticipo() {
+    fc_panel_verify_nonce();
+    fc_panel_require_cap();
+
+    $pedido_id = (int) ( $_POST['pedido_id'] ?? 0 );
+    if ( ! $pedido_id ) wp_send_json_error( [ 'message' => 'ID inválido.' ] );
+
+    $post = get_post( $pedido_id );
+    if ( ! $post || $post->post_type !== 'pedido' ) {
+        wp_send_json_error( [ 'message' => 'Pedido no encontrado.' ] );
+    }
+
+    update_post_meta( $pedido_id, '_fc_pedido_anticipo_liquidado', 1 );
+    wp_send_json_success( [ 'message' => 'Anticipo liquidado.' ] );
+}
+
+add_action( 'wp_ajax_fc_panel_revertir_liquidado', 'fc_ajax_revertir_liquidado' );
+function fc_ajax_revertir_liquidado() {
+    fc_panel_verify_nonce();
+    fc_panel_require_cap();
+
+    $pedido_id = (int) ( $_POST['pedido_id'] ?? 0 );
+    if ( ! $pedido_id ) wp_send_json_error( [ 'message' => 'ID inválido.' ] );
+
+    $post = get_post( $pedido_id );
+    if ( ! $post || $post->post_type !== 'pedido' ) {
+        wp_send_json_error( [ 'message' => 'Pedido no encontrado.' ] );
+    }
+
+    delete_post_meta( $pedido_id, '_fc_pedido_anticipo_liquidado' );
+    wp_send_json_success( [ 'message' => 'Liquidado revertido.' ] );
 }
 
 // ─────────────────────────────────────────────
@@ -991,6 +1040,11 @@ function fc_ajax_actualizar_pedido_datos() {
         '_fc_pedido_canal_contacto'   => sanitize_text_field( $_POST['canal_contacto']  ?? '' ),
         '_fc_pedido_referencias'      => sanitize_textarea_field( $_POST['referencias'] ?? '' ),
         '_fc_pedido_pdf_url'          => esc_url_raw( $_POST['pdf_url'] ?? '' ),
+        '_fc_pedido_extras'           => wp_json_encode( array_values( array_map( 'sanitize_text_field',
+            json_decode( wp_unslash( $_POST['extras_json'] ?? '[]' ), true ) ?: []
+        ) ), JSON_UNESCAPED_UNICODE ),
+        '_fc_pedido_monto_total'      => (float) ( $_POST['monto_total'] ?? 0 ),
+        '_fc_pedido_anticipo'         => (float) ( $_POST['anticipo']    ?? 0 ),
         // Legacy single-item for backward compat
         '_fc_pedido_arreglo_id'              => $first['arreglo_id']            ?? 0,
         '_fc_pedido_arreglo_nombre'          => $first['arreglo_nombre']        ?? '',
@@ -1250,6 +1304,11 @@ function fc_print_pedido_page() {
     $canal_detalle   = implode( ' · ', array_filter( [ $canal_nombre, $canal_contacto ] ) );
     $nota        = get_post_meta( $pedido_id, '_fc_pedido_nota',             true );
     $nota_fl     = get_post_meta( $pedido_id, '_fc_pedido_nota_floreria',    true );
+    $extras_raw  = get_post_meta( $pedido_id, '_fc_pedido_extras',           true );
+    $extras      = $extras_raw ? ( json_decode( $extras_raw, true ) ?: [] ) : [];
+    $anticipo    = (float) get_post_meta( $pedido_id, '_fc_pedido_anticipo',      true );
+    $monto_total = (float) get_post_meta( $pedido_id, '_fc_pedido_monto_total',   true );
+    $ant_liq     = (bool)  get_post_meta( $pedido_id, '_fc_pedido_anticipo_liquidado', true );
     $shop_name   = 'Florería Monarca';
     $status_lbl  = fc_pedido_status_label( $status );
 
@@ -1666,6 +1725,7 @@ function fc_print_pedido_page() {
                 $item['tamano'] ?? '',
                 ( ! empty( $item['color'] ) && strpos( $item['color'], '--' ) !== 0 ) ? $item['color'] : '',
             ] );
+            $item_notas = $item['notas']                   ?? '';
             $item_dest  = $item['destinatario']           ?? '';
             $item_tel   = $item['destinatario_telefono']  ?? '';
             $item_tel2  = $item['destinatario_telefono2'] ?? '';
@@ -1684,6 +1744,9 @@ function fc_print_pedido_page() {
                 <?php if ( $item_sub ) : ?>
                 <div class="fc-item-print-sub"><?php echo esc_html( implode( ' · ', $item_sub ) ); ?></div>
                 <?php endif; ?>
+                <?php if ( $item_notas ) : ?>
+                <div class="fc-item-print-name" style="font-size:12px;"><?php echo nl2br( esc_html( strtoupper( $item_notas ) ) ); ?></div>
+                <?php endif; ?>
                 <?php if ( $item_dest ) : ?>
                 <div class="fc-item-print-dest">Para: <?php echo esc_html( $item_dest ); ?><?php echo $item_tel ? ' · ' . esc_html( $item_tel ) : ''; ?><?php echo $item_tel2 ? ' · ' . esc_html( $item_tel2 ) : ''; ?></div>
                 <?php endif; ?>
@@ -1694,6 +1757,41 @@ function fc_print_pedido_page() {
         </div>
         <?php endforeach; ?>
         </div>
+
+        <?php if ( ! empty( $extras ) || $anticipo > 0 ) : ?>
+        <hr class="fc-divider" />
+        <?php endif; ?>
+
+        <?php if ( ! empty( $extras ) ) : ?>
+        <div class="fc-section-title">Extras</div>
+        <div class="fc-row">
+            <span class="fc-row-value" style="font-weight:700;color:#9d174d;">
+                <?php echo esc_html( implode( ' · ', array_map( fn( $e ) => mb_strtoupper( $e, 'UTF-8' ), $extras ) ) ); ?>
+            </span>
+        </div>
+        <?php endif; ?>
+
+        <?php if ( $anticipo > 0 ) : ?>
+        <div class="fc-section-title" style="margin-top:<?php echo ! empty( $extras ) ? '10px' : '0'; ?>">Anticipo</div>
+        <?php if ( $monto_total > 0 ) : ?>
+        <div class="fc-row">
+            <span class="fc-row-label">Total</span>
+            <span class="fc-row-value">$<?php echo number_format( $monto_total, 2 ); ?></span>
+        </div>
+        <?php endif; ?>
+        <div class="fc-row">
+            <span class="fc-row-label">Anticipo</span>
+            <span class="fc-row-value">$<?php echo number_format( $anticipo, 2 ); ?></span>
+        </div>
+        <?php if ( $monto_total > 0 ) : ?>
+        <div class="fc-row">
+            <span class="fc-row-label">Saldo</span>
+            <span class="fc-row-value" style="font-weight:700;color:<?php echo $ant_liq ? '#10b981' : '#d97706'; ?>;">
+                <?php echo $ant_liq ? '✔ Liquidado' : '$' . number_format( $monto_total - $anticipo, 2 ) . ' pendiente'; ?>
+            </span>
+        </div>
+        <?php endif; ?>
+        <?php endif; ?>
 
     </div><!-- .fc-doc-body -->
 

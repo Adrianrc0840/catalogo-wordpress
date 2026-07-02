@@ -228,6 +228,9 @@
     color: #2d3748;
     word-break: break-word;
 }
+.fc-detail-value strong {
+    font-weight: 700 !important;
+}
 
 .fc-divider {
     border: none;

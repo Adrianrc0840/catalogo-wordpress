@@ -240,6 +240,43 @@ $status_labels = fc_pedido_status_labels();
                     <textarea id="fc-modal-referencias" name="referencias" rows="2" placeholder="Casa azul con portón negro, frente al OXXO…"></textarea>
                 </div>
 
+                <!-- ── Extras ── -->
+                <div class="fc-form-group">
+                    <label class="fc-check-label">
+                        <input type="checkbox" id="fc-modal-extras-check" style="width:auto;margin:0;">
+                        Lleva extras
+                    </label>
+                </div>
+                <div id="fc-modal-extras-wrap" style="display:none">
+                    <div id="fc-modal-extras-list" class="fc-extras-list"></div>
+                    <div class="fc-extras-add-row">
+                        <input type="text" id="fc-modal-extras-input" placeholder="Ej: Globo, Caja de chocolates…">
+                        <button type="button" id="fc-modal-extras-add-btn" class="fc-btn-sm">+ Agregar</button>
+                    </div>
+                    <input type="hidden" id="fc-modal-extras-json" name="extras_json" value="[]">
+                </div>
+
+                <!-- ── Anticipo ── -->
+                <div class="fc-form-group">
+                    <label class="fc-check-label">
+                        <input type="checkbox" id="fc-modal-anticipo-check" style="width:auto;margin:0;">
+                        El cliente dio anticipo
+                    </label>
+                </div>
+                <div id="fc-modal-anticipo-wrap" style="display:none">
+                    <div class="fc-form-group">
+                        <label for="fc-modal-total">Total del pedido</label>
+                        <input type="number" id="fc-modal-total" name="monto_total" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="fc-form-group">
+                        <label for="fc-modal-anticipo">Anticipo recibido</label>
+                        <input type="number" id="fc-modal-anticipo" name="anticipo" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="fc-anticipo-saldo" id="fc-modal-saldo-row" style="display:none">
+                        Saldo pendiente: <strong id="fc-modal-saldo-val"></strong>
+                    </div>
+                </div>
+
                 <!-- ── Arreglos (multi-ítem) ── -->
                 <div class="fc-items-section">
                     <div class="fc-items-section-title">Arreglos</div>
