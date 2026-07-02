@@ -29,11 +29,13 @@
 
     // Extras nuevo-pedido state (shared between initNewOrderModal and resetNewOrderForm)
     let extrasArr = [];
+    function extraName(e) { return typeof e === 'object' && e !== null ? (e.n || '') : String(e); }
+    function extraLabel(e) { const n = extraName(e).toUpperCase(); const p = typeof e === 'object' ? (e.p || 0) : 0; return n + (p > 0 ? ' $' + parseFloat(p).toFixed(2) : ''); }
     function renderExtras() {
         const list = $('#fc-modal-extras-list');
         if (!list) return;
         list.innerHTML = extrasArr.map((ex, i) =>
-            `<span class="fc-extra-chip">${escHtml(ex)}<button type="button" class="fc-extra-chip-remove" data-i="${i}">×</button></span>`
+            `<span class="fc-extra-chip">${escHtml(extraName(ex))}<button type="button" class="fc-extra-chip-remove" data-i="${i}">×</button></span>`
         ).join('');
         list.querySelectorAll('.fc-extra-chip-remove').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -137,7 +139,7 @@
                 title        = '¿Ya pusiste los extras?';
                 desc         = 'Este pedido lleva extras. Confirma que los vas a incluir antes de continuar.';
                 confirmColor = '#f59e0b';
-                const listaExtras = pedidoData.extras.map(e => `<li><strong>${escHtml(e.toUpperCase())}</strong></li>`).join('');
+                const listaExtras = pedidoData.extras.map(e => `<li><strong>${escHtml(extraLabel(e))}</strong></li>`).join('');
                 fields = `<ul class="fc-dm-extras-list">${listaExtras}</ul>`;
             } else if (status === 'entregado') {
                 title        = '¿Quién recibió el pedido?';
@@ -339,7 +341,7 @@
 
             <!-- Arreglos -->
             ${items.length ? `<div class="fc-card-items-list">${itemsHtml}</div>` : ''}
-            ${p.extras?.length ? `<div class="fc-card-row fc-extras-row"><span class="fc-label">Extras</span><span class="fc-value fc-extras-val"><strong>${p.extras.map(e => escHtml(e.toUpperCase())).join(' · ')}</strong></span></div>` : ''}
+            ${p.extras?.length ? `<div class="fc-card-row fc-extras-row"><span class="fc-label">Extras</span><span class="fc-value fc-extras-val"><strong>${p.extras.map(e => escHtml(extraLabel(e))).join(' · ')}</strong></span></div>` : ''}
             ${(p.anticipo > 0 && !p.anticipo_liquidado) ? `<div class="fc-card-row fc-saldo-row"><span class="fc-label">Saldo pendiente</span><span class="fc-value fc-saldo-val">$${(p.monto_total - p.anticipo).toFixed(2)}</span></div>` : ''}
             ${(p.anticipo > 0 && p.anticipo_liquidado) ? `<div class="fc-card-row"><span class="fc-label">Anticipo</span><span class="fc-value" style="color:#10b981;">✔ Liquidado</span></div>` : ''}
 
@@ -1809,7 +1811,7 @@
             const inp = $('#fc-modal-extras-input');
             const val = (inp?.value || '').trim();
             if (!val) return;
-            extrasArr.push(val);
+            extrasArr.push({ n: val, p: 0 });
             const h = $('#fc-modal-extras-json');
             if (h) h.value = JSON.stringify(extrasArr);
             renderExtras();

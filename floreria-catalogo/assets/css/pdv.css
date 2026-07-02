@@ -1209,6 +1209,12 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 }
 .fc-pdv-desglose-iva span:last-child { color: #c8185a; font-weight: 600; }
 .fc-pdv-desglose-isr span:last-child { color: #e07000; font-weight: 600; }
+.fc-pdv-desglose-anticipo span:last-child { color: #e07000; font-weight: 600; }
+.fc-pdv-desglose-saldo {
+    border-top: 1.5px solid #e2e8f0;
+    margin-top: 4px;
+    color: var(--pdv-text) !important;
+}
 .fc-pdv-desglose-total {
     border-top: 1.5px solid #e2e8f0;
     margin-top: 4px;
@@ -1250,6 +1256,15 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
     display: flex;
     gap: 6px;
     margin-top: 4px;
+}
+.fc-pdv-extras-precio {
+    flex: 0 0 80px !important;
+}
+.fc-chip-price {
+    font-style: normal;
+    font-size: 11px;
+    opacity: 0.75;
+    margin-left: 2px;
 }
 .fc-extras-add-row input {
     flex: 1;

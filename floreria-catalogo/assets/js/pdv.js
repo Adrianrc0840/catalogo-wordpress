@@ -698,7 +698,8 @@
                     <div id="pdv-co-extras-wrap" style="display:none">
                         <div id="pdv-co-extras-list" class="fc-extras-list"></div>
                         <div class="fc-extras-add-row">
-                            <input type="text" id="pdv-co-extras-input" placeholder="Ej: Globo, Caja de chocolates…">
+                            <input type="text" id="pdv-co-extras-input" placeholder="Ej: Globo, Chocolates…">
+                            <input type="number" id="pdv-co-extras-precio" placeholder="$0" min="0" step="0.01" class="fc-pdv-extras-precio">
                             <button type="button" id="pdv-co-extras-add-btn" class="fc-pdv-btn-sm">+ Agregar</button>
                         </div>
                         <input type="hidden" id="pdv-co-extras-json" value="[]">
@@ -743,6 +744,9 @@
                         <div id="pdv-dsg-envio-row" class="fc-pdv-desglose-row" style="display:none">
                             <span>Envío</span><span id="pdv-dsg-envio"></span>
                         </div>
+                        <div id="pdv-dsg-extras-row" class="fc-pdv-desglose-row" style="display:none">
+                            <span>Extras</span><span id="pdv-dsg-extras"></span>
+                        </div>
                         <div id="pdv-dsg-iva-row" class="fc-pdv-desglose-row fc-pdv-desglose-iva" style="display:none">
                             <span>IVA 8%</span><span id="pdv-dsg-iva"></span>
                         </div>
@@ -751,6 +755,12 @@
                         </div>
                         <div class="fc-pdv-desglose-row fc-pdv-desglose-total">
                             <strong>Total</strong><strong id="pdv-dsg-total"></strong>
+                        </div>
+                        <div id="pdv-dsg-anticipo-row" class="fc-pdv-desglose-row fc-pdv-desglose-anticipo" style="display:none">
+                            <span>Anticipo</span><span id="pdv-dsg-anticipo"></span>
+                        </div>
+                        <div id="pdv-dsg-saldo-row" class="fc-pdv-desglose-row fc-pdv-desglose-saldo" style="display:none">
+                            <strong>Saldo pendiente</strong><strong id="pdv-dsg-saldo"></strong>
                         </div>
                     </div>
 
@@ -822,8 +832,12 @@
         });
 
         // Factura — helpers
+        let pdvExtrasArr = [];
+        function pdvExtrasTotal() {
+            return pdvExtrasArr.reduce((s, e) => s + (e.p || 0), 0);
+        }
         function getSubtotal() {
-            return cartTotal() + parseFloat($('#pdv-co-costo-envio', backdrop)?.value || 0);
+            return cartTotal() + parseFloat($('#pdv-co-costo-envio', backdrop)?.value || 0) + pdvExtrasTotal();
         }
         function calcMontoTotal() {
             const sub = getSubtotal();
@@ -834,21 +848,36 @@
         function updateDesglose() {
             const productos  = cartTotal();
             const envio      = parseFloat($('#pdv-co-costo-envio', backdrop)?.value || 0);
-            const subtotal   = productos + envio;
+            const extras     = pdvExtrasTotal();
+            const subtotal   = productos + envio + extras;
             const hasFactura = facturaTipo === 'fisica' || facturaTipo === 'moral';
             const iva        = hasFactura ? subtotal * 0.08 : 0;
             const isr        = facturaTipo === 'moral' ? subtotal * 0.0125 : 0;
             const total      = subtotal + iva - isr;
+            const anticipo   = parseFloat($('#pdv-co-anticipo', backdrop)?.value || 0);
+            const saldo      = Math.max(0, total - anticipo);
 
-            $('#pdv-dsg-subtotal',  backdrop).textContent = fmt(productos);
-            $('#pdv-dsg-envio',     backdrop).textContent = fmt(envio);
-            $('#pdv-dsg-iva',       backdrop).textContent = '+' + fmt(iva);
-            $('#pdv-dsg-isr',       backdrop).textContent = '−' + fmt(isr);
-            $('#pdv-dsg-total',     backdrop).textContent = fmt(total);
+            $('#pdv-dsg-subtotal',   backdrop).textContent = fmt(productos);
+            $('#pdv-dsg-envio',      backdrop).textContent = fmt(envio);
+            $('#pdv-dsg-extras',     backdrop).textContent = fmt(extras);
+            $('#pdv-dsg-iva',        backdrop).textContent = '+' + fmt(iva);
+            $('#pdv-dsg-isr',        backdrop).textContent = '−' + fmt(isr);
+            $('#pdv-dsg-total',      backdrop).textContent = fmt(total);
+            $('#pdv-dsg-anticipo',   backdrop).textContent = '−' + fmt(anticipo);
+            $('#pdv-dsg-saldo',      backdrop).textContent = fmt(saldo);
 
-            $('#pdv-dsg-envio-row', backdrop).style.display = envio > 0 ? '' : 'none';
-            $('#pdv-dsg-iva-row',   backdrop).style.display = hasFactura ? '' : 'none';
-            $('#pdv-dsg-isr-row',   backdrop).style.display = facturaTipo === 'moral' ? '' : 'none';
+            $('#pdv-dsg-envio-row',    backdrop).style.display = envio   > 0 ? '' : 'none';
+            $('#pdv-dsg-extras-row',   backdrop).style.display = extras  > 0 ? '' : 'none';
+            $('#pdv-dsg-iva-row',      backdrop).style.display = hasFactura ? '' : 'none';
+            $('#pdv-dsg-isr-row',      backdrop).style.display = facturaTipo === 'moral' ? '' : 'none';
+            $('#pdv-dsg-anticipo-row', backdrop).style.display = anticipo > 0 ? '' : 'none';
+            $('#pdv-dsg-saldo-row',    backdrop).style.display = anticipo > 0 ? '' : 'none';
+
+            // Saldo en el form también
+            const saldoRow = $('#pdv-co-saldo-row', backdrop);
+            const saldoVal = $('#pdv-co-saldo-val', backdrop);
+            if (saldoRow) saldoRow.style.display = anticipo > 0 ? '' : 'none';
+            if (saldoVal) saldoVal.textContent = '$' + saldo.toFixed(2);
 
             // Actualizar placeholder de monto recibido con el total real
             const mr = $('#pdv-co-monto-recibido', backdrop);
@@ -856,18 +885,16 @@
         }
 
         // Extras PDV
-        let pdvExtrasArr = [];
         function pdvRenderExtras() {
             const list = $('#pdv-co-extras-list', backdrop);
             if (!list) return;
             list.innerHTML = pdvExtrasArr.map((ex, i) =>
-                `<span class="fc-extra-chip">${escHtml(ex)}<button type="button" class="fc-extra-chip-remove" data-i="${i}">×</button></span>`
+                `<span class="fc-extra-chip">${escHtml(ex.n)}${ex.p > 0 ? `<em class="fc-chip-price"> $${parseFloat(ex.p).toFixed(2)}</em>` : ''}<button type="button" class="fc-extra-chip-remove" data-i="${i}">×</button></span>`
             ).join('');
             list.querySelectorAll('.fc-extra-chip-remove').forEach(btn => {
                 btn.addEventListener('click', () => {
                     pdvExtrasArr.splice(parseInt(btn.dataset.i), 1);
-                    const h = $('#pdv-co-extras-json', backdrop);
-                    if (h) h.value = JSON.stringify(pdvExtrasArr);
+                    updateDesglose();
                     pdvRenderExtras();
                 });
             });
@@ -875,38 +902,30 @@
         $('#pdv-co-extras-check', backdrop)?.addEventListener('change', function() {
             const wrap = $('#pdv-co-extras-wrap', backdrop);
             if (wrap) wrap.style.display = this.checked ? '' : 'none';
-            if (!this.checked) { pdvExtrasArr = []; const h = $('#pdv-co-extras-json', backdrop); if (h) h.value = '[]'; pdvRenderExtras(); }
+            if (!this.checked) { pdvExtrasArr = []; updateDesglose(); pdvRenderExtras(); }
         });
         $('#pdv-co-extras-add-btn', backdrop)?.addEventListener('click', () => {
-            const inp = $('#pdv-co-extras-input', backdrop);
-            const val = (inp?.value || '').trim();
+            const inp  = $('#pdv-co-extras-input', backdrop);
+            const pInp = $('#pdv-co-extras-precio', backdrop);
+            const val  = (inp?.value || '').trim();
             if (!val) return;
-            pdvExtrasArr.push(val);
-            const h = $('#pdv-co-extras-json', backdrop);
-            if (h) h.value = JSON.stringify(pdvExtrasArr);
+            pdvExtrasArr.push({ n: val, p: parseFloat(pInp?.value || 0) || 0 });
+            updateDesglose();
             pdvRenderExtras();
-            if (inp) inp.value = '';
+            if (inp)  inp.value  = '';
+            if (pInp) pInp.value = '';
         });
         $('#pdv-co-extras-input', backdrop)?.addEventListener('keydown', e => {
             if (e.key === 'Enter') { e.preventDefault(); $('#pdv-co-extras-add-btn', backdrop)?.click(); }
         });
 
         // Anticipo PDV
-        function pdvUpdateSaldo() {
-            const total    = calcMontoTotal();
-            const anticipo = parseFloat($('#pdv-co-anticipo', backdrop)?.value || 0);
-            const row      = $('#pdv-co-saldo-row', backdrop);
-            const val      = $('#pdv-co-saldo-val', backdrop);
-            if (row && val) {
-                row.style.display = anticipo > 0 ? '' : 'none';
-                val.textContent   = '$' + Math.max(0, total - anticipo).toFixed(2);
-            }
-        }
         $('#pdv-co-anticipo-check', backdrop)?.addEventListener('change', function() {
             const wrap = $('#pdv-co-anticipo-wrap', backdrop);
             if (wrap) wrap.style.display = this.checked ? '' : 'none';
+            if (!this.checked) { const a = $('#pdv-co-anticipo', backdrop); if (a) a.value = ''; updateDesglose(); }
         });
-        $('#pdv-co-anticipo', backdrop)?.addEventListener('input', pdvUpdateSaldo);
+        $('#pdv-co-anticipo', backdrop)?.addEventListener('input', updateDesglose);
 
         $('#pdv-co-factura-check', backdrop)?.addEventListener('change', function() {
             const wrap = $('#pdv-co-factura-tipo-wrap', backdrop);
@@ -1076,7 +1095,7 @@
             }));
 
             const costoEnvio = parseFloat($('#pdv-co-costo-envio', backdrop)?.value || 0);
-            const subtotal   = cartTotal() + costoEnvio;
+            const subtotal   = cartTotal() + costoEnvio + pdvExtrasTotal();
             const ivaAmt     = facturaTipo ? subtotal * 0.08 : 0;
             const isrAmt     = facturaTipo === 'moral' ? subtotal * 0.0125 : 0;
             const montoTotal = calcMontoTotal();

@@ -1766,7 +1766,7 @@ function fc_print_pedido_page() {
         <div class="fc-section-title">Extras</div>
         <div class="fc-row">
             <span class="fc-row-value" style="font-weight:700;color:#9d174d;">
-                <?php echo esc_html( implode( ' · ', array_map( fn( $e ) => mb_strtoupper( $e, 'UTF-8' ), $extras ) ) ); ?>
+                <?php echo esc_html( implode( ' · ', array_map( function( $e ) { $n = mb_strtoupper( is_array( $e ) ? ( $e['n'] ?? '' ) : (string) $e, 'UTF-8' ); $p = is_array( $e ) ? (float)( $e['p'] ?? 0 ) : 0; return $n . ( $p > 0 ? ' $' . number_format( $p, 2 ) : '' ); }, $extras ) ) ); ?>
             </span>
         </div>
         <?php endif; ?>

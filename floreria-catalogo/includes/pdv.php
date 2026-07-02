@@ -317,6 +317,22 @@ function fc_ajax_pdv_crear_venta() {
     $tz = new DateTimeZone( 'America/Tijuana' );
     $ts = ( new DateTime( 'now', $tz ) )->format( 'Y-m-d H:i:s' );
 
+    // Sanitizar extras JSON: soporta strings y objetos {n, p}
+    $extras_raw   = json_decode( wp_unslash( $_POST['extras_json'] ?? '[]' ), true );
+    $extras_clean = [];
+    if ( is_array( $extras_raw ) ) {
+        foreach ( $extras_raw as $ex ) {
+            if ( is_array( $ex ) ) {
+                $n = sanitize_text_field( isset( $ex['n'] ) ? $ex['n'] : '' );
+                if ( $n !== '' ) $extras_clean[] = [ 'n' => $n, 'p' => (float) ( isset( $ex['p'] ) ? $ex['p'] : 0 ) ];
+            } else {
+                $s = sanitize_text_field( (string) $ex );
+                if ( $s !== '' ) $extras_clean[] = [ 'n' => $s, 'p' => 0.0 ];
+            }
+        }
+    }
+    $extras_json = wp_json_encode( $extras_clean, JSON_UNESCAPED_UNICODE );
+
     $fields = [
         '_fc_pedido_numero'                  => $numero,
         '_fc_pedido_token'                   => $token,
@@ -338,9 +354,7 @@ function fc_ajax_pdv_crear_venta() {
         '_fc_pedido_factura_tipo'            => sanitize_key( $_POST['factura_tipo'] ?? '' ),
         '_fc_pedido_factura_iva'             => (float) ( $_POST['factura_iva']  ?? 0 ),
         '_fc_pedido_factura_isr'             => (float) ( $_POST['factura_isr']  ?? 0 ),
-        '_fc_pedido_extras'                  => wp_json_encode( array_values( array_map( 'sanitize_text_field',
-            json_decode( wp_unslash( $_POST['extras_json'] ?? '[]' ), true ) ?: []
-        ) ), JSON_UNESCAPED_UNICODE ),
+        '_fc_pedido_extras'                  => $extras_json,
         '_fc_pedido_anticipo'                => (float) ( $_POST['anticipo'] ?? 0 ),
         '_fc_pedido_monto_total'             => (float) ( $_POST['monto_total'] ?? 0 ),
         '_fc_pedido_caja_id'                 => $caja_id,

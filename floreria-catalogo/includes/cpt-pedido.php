@@ -1757,7 +1757,7 @@ function fc_render_rastreo_pedido_sc() {
                     <?php if ( ! empty( $extras ) ) : ?>
                     <div class="fc-detail-row">
                         <span class="fc-detail-label">Extras</span>
-                        <span class="fc-detail-value"><strong><?php echo esc_html( implode( ', ', array_map( 'strtoupper', $extras ) ) ); ?></strong></span>
+                        <span class="fc-detail-value"><strong><?php echo esc_html( implode( ', ', array_map( function( $e ) { $n = strtoupper( is_array( $e ) ? ( $e['n'] ?? '' ) : (string) $e ); $p = is_array( $e ) ? (float)( $e['p'] ?? 0 ) : 0; return $n . ( $p > 0 ? ' $' . number_format( $p, 2 ) : '' ); }, $extras ) ) ); ?></strong></span>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -1799,7 +1799,7 @@ function fc_render_rastreo_pedido_sc() {
                     <?php if ( ! empty( $extras ) ) : ?>
                     <div class="fc-detail-row" style="margin-top:8px;">
                         <span class="fc-detail-label">Extras</span>
-                        <span class="fc-detail-value"><strong><?php echo esc_html( implode( ', ', array_map( 'strtoupper', $extras ) ) ); ?></strong></span>
+                        <span class="fc-detail-value"><strong><?php echo esc_html( implode( ', ', array_map( function( $e ) { $n = strtoupper( is_array( $e ) ? ( $e['n'] ?? '' ) : (string) $e ); $p = is_array( $e ) ? (float)( $e['p'] ?? 0 ) : 0; return $n . ( $p > 0 ? ' $' . number_format( $p, 2 ) : '' ); }, $extras ) ) ); ?></strong></span>
                     </div>
                     <?php endif; ?>
                 </div>
