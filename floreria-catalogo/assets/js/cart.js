@@ -6,6 +6,15 @@
 
     /* ── Schedule & config data — localized directly to this script ── */
     var cartData = window.fcCartData || {};
+    var PAISES = [
+        ['+52','México'],['+1','Estados Unidos'],['+1','Canadá'],['+54','Argentina'],['+591','Bolivia'],
+        ['+55','Brasil'],['+56','Chile'],['+57','Colombia'],['+506','Costa Rica'],['+53','Cuba'],
+        ['+1809','Rep. Dominicana'],['+593','Ecuador'],['+503','El Salvador'],['+502','Guatemala'],
+        ['+504','Honduras'],['+505','Nicaragua'],['+507','Panamá'],['+595','Paraguay'],['+51','Perú'],
+        ['+1787','Puerto Rico'],['+598','Uruguay'],['+58','Venezuela'],['+34','España'],['+1','EE. UU.'],
+        ['+44','Reino Unido'],['+33','Francia'],['+49','Alemania'],['+39','Italia'],['+81','Japón'],
+        ['+86','China'],['+91','India'],['+61','Australia'],['+64','Nueva Zelanda'],['+7','Rusia']
+    ];
     function getSchedules()        { return cartData.schedules        || {}; }
     function getFechasEspeciales() { return cartData.fechasEspeciales || []; }
     function getFechasCerradas()   { return cartData.fechasCerradas   || []; }
@@ -202,6 +211,13 @@
                                         '<select id="fc-cart-horario"><option value="">-- Selecciona fecha primero --</option></select>' +
                                     '</div>' +
                                     '<div class="fc-form-group">' +
+                                        '<label>Tu WhatsApp <span style="color:#b91c1c;">*</span></label>' +
+                                        '<div style="display:flex;gap:8px;">' +
+                                            '<select id="fc-cart-wa-code" class="fc-wa-code-select"></select>' +
+                                            '<input type="tel" id="fc-cart-wa-num" class="fc-wa-numero-input" placeholder="Número" inputmode="numeric" maxlength="15" />' +
+                                        '</div>' +
+                                    '</div>' +
+                                    '<div class="fc-form-group">' +
                                         '<label for="fc-cart-direccion">Dirección de entrega</label>' +
                                         '<input type="text" id="fc-cart-direccion" placeholder="Calle, número, colonia..." />' +
                                     '</div>' +
@@ -212,6 +228,13 @@
                                         '<input type="time" id="fc-cart-hora-recol" />' +
                                     '</div>' +
                                     '<p id="fc-cart-recol-aviso" class="fc-cart-especial-aviso"></p>' +
+                                    '<div class="fc-form-group">' +
+                                        '<label>Tu WhatsApp <span style="color:#b91c1c;">*</span></label>' +
+                                        '<div style="display:flex;gap:8px;">' +
+                                            '<select id="fc-cart-wa-code-recol" class="fc-wa-code-select"></select>' +
+                                            '<input type="tel" id="fc-cart-wa-num-recol" class="fc-wa-numero-input" placeholder="Número" inputmode="numeric" maxlength="15" />' +
+                                        '</div>' +
+                                    '</div>' +
                                 '</div>' +
                             '</div>' +
                         '</div>' +
@@ -227,7 +250,11 @@
                         '<span>Total estimado:</span>' +
                         '<strong id="fc-cart-total-val"></strong>' +
                     '</div>' +
-                    '<button class="fc-btn-whatsapp" id="fc-cart-send-btn">' +
+                    '<label class="fc-politicas-label" style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;cursor:pointer;">' +
+                        '<input type="checkbox" id="fc-cart-politicas" style="width:auto;margin:0;flex-shrink:0;" />' +
+                        '<span>Leí y acepto las <a id="fc-cart-politicas-link" href="#" target="_blank" rel="noopener" style="color:#be185d;">políticas</a></span>' +
+                    '</label>' +
+                    '<button class="fc-btn-whatsapp" id="fc-cart-send-btn" disabled style="opacity:0.5;cursor:not-allowed;">' +
                         '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:20px;height:20px;fill:currentColor;flex-shrink:0;" aria-hidden="true">' +
                             '<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>' +
                         '</svg>' +
@@ -270,6 +297,74 @@
             }
         });
         drawerEl.querySelector('#fc-cart-send-btn').addEventListener('click', sendWhatsapp);
+
+        /* ── Políticas URL ── */
+        var politicasLink = drawerEl.querySelector('#fc-cart-politicas-link');
+        if (politicasLink) politicasLink.href = cartData.politicasUrl || '#';
+
+        /* ── Políticas checkbox → habilitar botón WA ── */
+        var politicasCb = drawerEl.querySelector('#fc-cart-politicas');
+        var sendBtn     = drawerEl.querySelector('#fc-cart-send-btn');
+        function checkSendReady() {
+            var checked = politicasCb && politicasCb.checked;
+            sendBtn.disabled = !checked;
+            sendBtn.style.opacity = checked ? '' : '0.5';
+            sendBtn.style.cursor  = checked ? '' : 'not-allowed';
+        }
+        if (politicasCb) politicasCb.addEventListener('change', checkSendReady);
+
+        /* ── WhatsApp del cliente ── */
+        function initWaSelect(sel) {
+            if (!sel) return;
+            PAISES.forEach(function (p) {
+                var opt = document.createElement('option');
+                opt.value = p[0];
+                opt.textContent = p[0];
+                sel.appendChild(opt);
+            });
+            sel.addEventListener('mousedown', function () {
+                Array.from(sel.options).forEach(function (opt, i) {
+                    opt.textContent = PAISES[i][0] + ' ' + PAISES[i][1];
+                });
+            });
+            sel.addEventListener('change', function () {
+                var s = sel.options[sel.selectedIndex];
+                if (s) s.textContent = sel.value;
+            });
+            sel.addEventListener('blur', function () {
+                var s = sel.options[sel.selectedIndex];
+                if (s) s.textContent = sel.value;
+            });
+        }
+        function saveWaPrefill() {
+            var codeEl  = drawerEl.querySelector('#fc-cart-tipo-envio.active')
+                ? drawerEl.querySelector('#fc-cart-wa-code')
+                : drawerEl.querySelector('#fc-cart-wa-code-recol');
+            var numEl   = drawerEl.querySelector('#fc-cart-tipo-envio.active')
+                ? drawerEl.querySelector('#fc-cart-wa-num')
+                : drawerEl.querySelector('#fc-cart-wa-num-recol');
+            var code = codeEl ? codeEl.value : '+52';
+            var num  = numEl  ? numEl.value  : '';
+            try {
+                var raw = localStorage.getItem('fc_cart_prefill');
+                var stored = raw ? JSON.parse(raw) : {};
+                stored.wa_code = code;
+                stored.wa_num  = num;
+                localStorage.setItem('fc_cart_prefill', JSON.stringify(stored));
+            } catch(e) {}
+        }
+        function initWaSelectWithSave(sel) {
+            initWaSelect(sel);
+            if (sel) sel.addEventListener('change', saveWaPrefill);
+        }
+        initWaSelectWithSave(drawerEl.querySelector('#fc-cart-wa-code'));
+        initWaSelectWithSave(drawerEl.querySelector('#fc-cart-wa-code-recol'));
+        [drawerEl.querySelector('#fc-cart-wa-num'), drawerEl.querySelector('#fc-cart-wa-num-recol')].forEach(function (inp) {
+            if (inp) inp.addEventListener('input', function () {
+                this.value = this.value.replace(/\D/g, '').slice(0, 15);
+                saveWaPrefill();
+            });
+        });
 
         /* ── Tipo toggle ── */
         var tipoEnvio = drawerEl.querySelector('#fc-cart-tipo-envio');
@@ -513,9 +608,58 @@
         clearAviso();
     }
 
+    function applyPrefill() {
+        var raw;
+        try { raw = localStorage.getItem('fc_cart_prefill'); } catch(e) {}
+        if (!raw) return;
+        var p;
+        try { p = JSON.parse(raw); } catch(e) { return; }
+
+        // WA siempre se restaura, independientemente de si hay fecha
+        var waCodeEl      = drawerEl.querySelector('#fc-cart-wa-code');
+        var waNumEl       = drawerEl.querySelector('#fc-cart-wa-num');
+        var waCodeRecolEl = drawerEl.querySelector('#fc-cart-wa-code-recol');
+        var waNumRecolEl  = drawerEl.querySelector('#fc-cart-wa-num-recol');
+        if (waCodeEl      && p.wa_code) waCodeEl.value      = p.wa_code;
+        if (waNumEl       && p.wa_num)  waNumEl.value       = p.wa_num;
+        if (waCodeRecolEl && p.wa_code) waCodeRecolEl.value = p.wa_code;
+        if (waNumRecolEl  && p.wa_num)  waNumRecolEl.value  = p.wa_num;
+
+        // Fecha/tipo/horario/dirección solo si el campo fecha está vacío
+        var fechaInput = drawerEl.querySelector('#fc-cart-fecha');
+        if (!fechaInput || fechaInput.value || !p.fecha) return;
+
+        fechaInput.value = p.fecha;
+        updateCartHorario();
+
+        var tipoEnvio = drawerEl.querySelector('#fc-cart-tipo-envio');
+        var tipoRecol = drawerEl.querySelector('#fc-cart-tipo-recol');
+        var envioFlds = drawerEl.querySelector('#fc-cart-envio-fields');
+        var recolFlds = drawerEl.querySelector('#fc-cart-recol-fields');
+
+        if (p.tipo === 'recoleccion') {
+            if (tipoRecol) { tipoRecol.classList.add('active'); }
+            if (tipoEnvio) { tipoEnvio.classList.remove('active'); }
+            if (envioFlds) { envioFlds.style.display = 'none'; }
+            if (recolFlds) { recolFlds.style.display = ''; }
+            var horaEl = drawerEl.querySelector('#fc-cart-hora-recol');
+            if (horaEl && p.hora_recoleccion) horaEl.value = p.hora_recoleccion;
+        } else {
+            if (tipoEnvio) { tipoEnvio.classList.add('active'); }
+            if (tipoRecol) { tipoRecol.classList.remove('active'); }
+            if (envioFlds) { envioFlds.style.display = ''; }
+            if (recolFlds) { recolFlds.style.display = 'none'; }
+            var horarioSel = drawerEl.querySelector('#fc-cart-horario');
+            if (horarioSel && p.horario) horarioSel.value = p.horario;
+            var dirEl = drawerEl.querySelector('#fc-cart-direccion');
+            if (dirEl && p.direccion) dirEl.value = p.direccion;
+        }
+    }
+
     function openDrawer() {
         if (!drawerEl) buildDrawer();
         renderItems();
+        applyPrefill();
         /* Restore delivery collapse state */
         var deliveryBody  = document.getElementById('fc-delivery-body');
         var deliveryArrow = document.getElementById('fc-delivery-arrow');
@@ -722,22 +866,31 @@
         var cart = getCart();
         if (cart.length === 0) { alert('Tu pedido está vacío.'); return; }
 
+        var politicasCb = document.getElementById('fc-cart-politicas');
+        if (!politicasCb || !politicasCb.checked) { alert('Por favor acepta las políticas para continuar.'); return; }
+
         var fechaInput = document.getElementById('fc-cart-fecha');
         var horarioSel = document.getElementById('fc-cart-horario');
         var dirInput   = document.getElementById('fc-cart-direccion');
         var horaInput  = document.getElementById('fc-cart-hora-recol');
         var tipoEnvio  = document.getElementById('fc-cart-tipo-envio');
         var isEnvio    = tipoEnvio && tipoEnvio.classList.contains('active');
+        var waCodeEl   = document.getElementById(isEnvio ? 'fc-cart-wa-code' : 'fc-cart-wa-code-recol');
+        var waNumEl    = document.getElementById(isEnvio ? 'fc-cart-wa-num'  : 'fc-cart-wa-num-recol');
 
         var fecha   = fechaInput ? fechaInput.value.trim() : '';
         var horario = horarioSel ? horarioSel.value.trim() : '';
         var dir     = dirInput   ? dirInput.value.trim()   : '';
         var hora    = horaInput  ? horaInput.value.trim()  : '';
+        var waCode  = waCodeEl   ? waCodeEl.value          : '+52';
+        var waNum   = waNumEl    ? waNumEl.value.trim()    : '';
+        var waTel   = (waCode + ' ' + waNum).trim();
 
         if (!fecha)              { alert('Por favor selecciona la fecha de entrega.');   return; }
         if (isEnvio && !horario) { alert('Por favor selecciona el horario de entrega.'); return; }
         if (isEnvio && !dir)     { alert('Por favor escribe la dirección de entrega.');  return; }
         if (!isEnvio && !hora)   { alert('Por favor escribe la hora de recolección.');   return; }
+        if (waNum.length < 7)    { alert('Por favor ingresa tu número de WhatsApp.');    return; }
         if (!isEnvio) {
             updateRecolAviso(fecha, hora);
             var recolAvisoEl = document.getElementById('fc-cart-recol-aviso');
@@ -777,6 +930,7 @@
         var fechaStr = formatFecha(fecha);
         var lines    = ['Hola! Quisiera hacer el siguiente pedido:\n'];
 
+        lines.push('*WhatsApp:* ' + waTel);
         if (isEnvio) {
             lines.push('*Tipo:* Envío a domicilio');
             lines.push('*Fecha:* '     + fechaStr);
@@ -842,6 +996,7 @@
                 horario:          isEnvio ? horario : '',
                 direccion:        isEnvio ? dir     : '',
                 hora_recoleccion: isEnvio ? ''      : hora,
+                canal_contacto:   waTel,
                 items_json:       JSON.stringify(itemsPayload),
             });
             fetch(ajaxurl, { method: 'POST', body: body }).catch(function () {});

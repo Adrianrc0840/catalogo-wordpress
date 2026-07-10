@@ -81,6 +81,7 @@ function fc_enqueue_frontend() {
         'whatsapp'         => get_option( 'fc_whatsapp', '' ),
         'gmapsKey'         => $gmaps_key,
         'hideCart'         => $hide_cart,
+        'politicasUrl'     => get_option( 'fc_politicas_url', '#' ),
     ] );
 
     // Detectar página de detalle de arreglo: ya sea URL directa (/arreglos/nombre/)

@@ -787,14 +787,36 @@
             }
 
             var item = {
-                arregloId:  data.arregloId || 0,
-                especial:   !!especial,
-                titulo:     titulo,
-                permalink:  permalink,
-                tamano:     selectedTamano ? selectedTamano.nombre : '',
-                color:      selectedColor  ? selectedColor.nombre  : '',
-                precio:     selectedTamano ? parseFloat(selectedTamano.precio) || 0 : 0,
+                arregloId:   data.arregloId || 0,
+                especial:    !!especial,
+                titulo:      titulo,
+                permalink:   permalink,
+                tamano:      selectedTamano ? selectedTamano.nombre : '',
+                color:       selectedColor  ? selectedColor.nombre  : '',
+                precio:      selectedTamano ? parseFloat(selectedTamano.precio) || 0 : 0,
+                destinatario: modoTipo === 'envio'
+                    ? (destinatarioEl      ? destinatarioEl.value.trim()      : '')
+                    : (nombreRecoleccionEl ? nombreRecoleccionEl.value.trim() : ''),
             };
+
+            // Guardar datos de entrega para pre-llenar el carrito
+            try {
+                var waCode = modoTipo === 'envio'
+                    ? (waCodeEnvioEl ? waCodeEnvioEl.value : '+52')
+                    : (waCodeRecolEl ? waCodeRecolEl.value : '+52');
+                var waNum = modoTipo === 'envio'
+                    ? (waNumEnvioEl ? waNumEnvioEl.value.trim() : '')
+                    : (waNumRecolEl ? waNumRecolEl.value.trim() : '');
+                localStorage.setItem('fc_cart_prefill', JSON.stringify({
+                    tipo:             modoTipo,
+                    fecha:            fechaEl           ? fechaEl.value.trim()           : '',
+                    horario:          horarioEl         ? horarioEl.value.trim()         : '',
+                    direccion:        direccionEl       ? direccionEl.value.trim()       : '',
+                    hora_recoleccion: horaRecoleccionEl ? horaRecoleccionEl.value.trim() : '',
+                    wa_code:          waCode,
+                    wa_num:           waNum,
+                }));
+            } catch(e) {}
 
             if (window.fcCart) {
                 window.fcCart.add(item);
