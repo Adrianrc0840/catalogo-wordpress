@@ -135,7 +135,16 @@
         return new Promise((resolve) => {
             let title, desc, fields, confirmColor;
 
-            if ((status === 'en_camino' || status === 'listo_recoleccion') && pedidoData.extras?.length) {
+            const modItems = (pedidoData.items || []).filter(it => it.notas?.trim());
+            if (status === 'en_preparacion' && modItems.length) {
+                title        = '¿Ya revisaste las modificaciones?';
+                desc         = 'Este pedido tiene modificaciones. Revísalas antes de empezar a prepararlo.';
+                confirmColor = '#8b5cf6';
+                const listaMods = modItems.map(it =>
+                    `<li><strong>${escHtml(it.arreglo_nombre || 'Personalizado')}</strong>: ${escHtml(it.notas)}</li>`
+                ).join('');
+                fields = `<ul class="fc-dm-extras-list">${listaMods}</ul>`;
+            } else if ((status === 'en_camino' || status === 'listo_recoleccion') && pedidoData.extras?.length) {
                 title        = '¿Ya pusiste los extras?';
                 desc         = 'Este pedido lleva extras. Confirma que los vas a incluir antes de continuar.';
                 confirmColor = '#f59e0b';
@@ -805,7 +814,8 @@
                 const pedidoData = pedidoDataMap[pedidoId] || {};
                 const needsModal = status === 'entregado'
                     || status === 'no_entregado'
-                    || ((status === 'en_camino' || status === 'listo_recoleccion') && pedidoData.extras?.length);
+                    || ((status === 'en_camino' || status === 'listo_recoleccion') && pedidoData.extras?.length)
+                    || (status === 'en_preparacion' && (pedidoData.items || []).some(it => it.notas?.trim()));
                 if (needsModal) {
                     const result = await showDeliveryModal(status, pedidoData);
                     if (result === null) return; // usuario canceló
