@@ -777,9 +777,10 @@ function fc_ajax_crear_pedido() {
         '_fc_pedido_canal_contacto'   => sanitize_text_field( $_POST['canal_contacto']  ?? '' ),
         '_fc_pedido_referencias'      => sanitize_textarea_field( $_POST['referencias']  ?? '' ),
         '_fc_pedido_registrado_por'   => get_current_user_id(),
-        '_fc_pedido_extras'           => wp_json_encode( array_values( array_map( 'sanitize_text_field',
-            json_decode( wp_unslash( $_POST['extras_json'] ?? '[]' ), true ) ?: []
-        ) ), JSON_UNESCAPED_UNICODE ),
+        '_fc_pedido_extras'           => wp_json_encode( array_values( array_map( function( $e ) {
+            if ( is_array( $e ) ) return [ 'n' => sanitize_text_field( $e['n'] ?? '' ), 'p' => (float)( $e['p'] ?? 0 ) ];
+            return [ 'n' => sanitize_text_field( (string) $e ), 'p' => 0 ];
+        }, json_decode( wp_unslash( $_POST['extras_json'] ?? '[]' ), true ) ?: [] ) ), JSON_UNESCAPED_UNICODE ),
         '_fc_pedido_monto_total'      => (float) ( $_POST['monto_total'] ?? 0 ),
         '_fc_pedido_anticipo'         => (float) ( $_POST['anticipo']    ?? 0 ),
         '_fc_pedido_pdf_url'          => esc_url_raw( $_POST['pdf_url'] ?? '' ),
@@ -1040,9 +1041,10 @@ function fc_ajax_actualizar_pedido_datos() {
         '_fc_pedido_canal_contacto'   => sanitize_text_field( $_POST['canal_contacto']  ?? '' ),
         '_fc_pedido_referencias'      => sanitize_textarea_field( $_POST['referencias'] ?? '' ),
         '_fc_pedido_pdf_url'          => esc_url_raw( $_POST['pdf_url'] ?? '' ),
-        '_fc_pedido_extras'           => wp_json_encode( array_values( array_map( 'sanitize_text_field',
-            json_decode( wp_unslash( $_POST['extras_json'] ?? '[]' ), true ) ?: []
-        ) ), JSON_UNESCAPED_UNICODE ),
+        '_fc_pedido_extras'           => wp_json_encode( array_values( array_map( function( $e ) {
+            if ( is_array( $e ) ) return [ 'n' => sanitize_text_field( $e['n'] ?? '' ), 'p' => (float)( $e['p'] ?? 0 ) ];
+            return [ 'n' => sanitize_text_field( (string) $e ), 'p' => 0 ];
+        }, json_decode( wp_unslash( $_POST['extras_json'] ?? '[]' ), true ) ?: [] ) ), JSON_UNESCAPED_UNICODE ),
         '_fc_pedido_monto_total'      => (float) ( $_POST['monto_total'] ?? 0 ),
         '_fc_pedido_anticipo'         => (float) ( $_POST['anticipo']    ?? 0 ),
         // Legacy single-item for backward compat
