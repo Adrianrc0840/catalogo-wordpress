@@ -10,7 +10,7 @@
     --pdv-border:    #e2e8f0;
     --pdv-text:      #1a202c;
     --pdv-muted:     #64748b;
-    --pdv-header-h:  56px;
+    --pdv-header-h:  68px;
     --pdv-ticket-w:  340px;
 }
 
@@ -128,45 +128,45 @@ body.fc-pdv-page input[type="number"] { -moz-appearance: textfield; appearance: 
 }
 
 .fc-pdv-header-brand {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
     letter-spacing: 0.03em;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     white-space: nowrap;
 }
 
-/* Nav de 3 botones */
+/* Nav de botones */
 .fc-pdv-nav {
     display: flex;
-    gap: 4px;
+    gap: 6px;
     flex: 1;
     justify-content: center;
 }
 .fc-pdv-nav-btn {
-    padding: 7px 18px;
-    border-radius: 8px;
+    padding: 10px 22px;
+    border-radius: 10px;
     border: none;
     background: rgba(255,255,255,0.12);
-    color: rgba(255,255,255,0.8);
-    font-size: 14px;
+    color: rgba(255,255,255,0.85);
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
     transition: background .15s, color .15s;
     white-space: nowrap;
 }
-.fc-pdv-nav-btn:hover { background: rgba(255,255,255,0.2); color: #fff; }
-.fc-pdv-nav-btn.active { background: rgba(255,255,255,0.28); color: #fff; }
+.fc-pdv-nav-btn:hover { background: rgba(255,255,255,0.22); color: #fff; }
+.fc-pdv-nav-btn.active { background: rgba(255,255,255,0.32); color: #fff; }
 
 .fc-pdv-btn-header {
     background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.3);
+    border: 1px solid rgba(255,255,255,0.35);
     color: #fff;
-    border-radius: 7px;
-    padding: 6px 14px;
-    font-size: 13px;
+    border-radius: 9px;
+    padding: 9px 18px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
@@ -743,9 +743,9 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 #fc-pdv-view-transacciones .fc-pdv-informes-toolbar {
     flex-direction: column;
     align-items: stretch;
-    width: 190px;
+    width: 230px;
     flex-shrink: 0;
-    padding: 20px 16px;
+    padding: 24px 18px;
     border-right: 1px solid var(--pdv-border);
     border-bottom: none;
     overflow-y: auto;
@@ -753,7 +753,7 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 }
 
 #fc-pdv-view-transacciones .fc-pdv-informes-toolbar .fc-pdv-form-group {
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     margin-top: 0;
 }
 
@@ -764,25 +764,26 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
     border-top: 1px solid var(--pdv-border);
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 10px;
 }
 .fc-pdv-tx-res-chip {
     background: var(--pdv-bg);
-    border: 1.5px solid var(--pdv-border);
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 13px;
+    border: 2px solid var(--pdv-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 20px;
     font-weight: 700;
     color: var(--pdv-text);
+    line-height: 1.1;
 }
 .fc-pdv-tx-res-chip span {
     display: block;
-    font-size: 10px;
-    font-weight: 400;
+    font-size: 11px;
+    font-weight: 500;
     color: var(--pdv-muted);
-    margin-bottom: 2px;
+    margin-bottom: 4px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
 }
 .fc-pdv-tx-res-chip.total    { border-color: var(--pdv-primary); background: #fdf5f7; }
 .fc-pdv-tx-res-chip.envios   { border-color: #3b82f6; background: #eff6ff; }
@@ -934,25 +935,89 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 .fc-pdv-btn-cobrar:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Caja section (full view) ── */
-.fc-pdv-caja-wrap { display: flex; gap: 16px; flex-wrap: wrap; align-content: flex-start; max-width: 900px; }
+.fc-pdv-caja-wrap { display: flex; flex-direction: column; gap: 24px; width: 100%; max-width: 1100px; }
+
+.fc-pdv-caja-abierta-section { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+
+.fc-pdv-cajas-anteriores-section { width: 100%; }
+
+.fc-pdv-cajas-anteriores-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.fc-pdv-caja-filtros { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fc-pdv-caja-filtro-input {
+    padding: 5px 10px;
+    border: 1.5px solid var(--pdv-border);
+    border-radius: 7px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--pdv-text);
+    background: var(--pdv-bg);
+}
+
+.fc-pdv-cajas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
 
 .fc-pdv-caja-card {
     background: var(--pdv-bg);
     border: 1.5px solid var(--pdv-border);
-    border-radius: 12px;
-    padding: 14px 16px;
-    min-width: 220px;
-    flex: 1;
+    border-radius: 14px;
+    padding: 20px 22px;
+    display: flex;
+    flex-direction: column;
 }
-.fc-pdv-caja-card.abierta { border-color: var(--pdv-accent); background: #f0fdf4; }
-.fc-pdv-caja-card.cerrada { border-color: var(--pdv-border); opacity: 0.75; }
+.fc-pdv-caja-card.abierta { border-color: var(--pdv-accent); background: #f0fdf4; min-width: 280px; flex: 1; max-width: 480px; }
+.fc-pdv-caja-card.cerrada { border-color: var(--pdv-border); }
 
-.fc-pdv-caja-card h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--pdv-muted); margin: 0 0 8px; }
-.fc-pdv-caja-saldo { font-size: 22px; font-weight: 700; color: var(--pdv-text); margin: 0 0 6px; }
-.fc-pdv-caja-desglose { font-size: 12px; color: var(--pdv-muted); line-height: 1.7; }
+.fc-pdv-caja-card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.fc-pdv-caja-card-top h4 { margin: 0; }
+.fc-pdv-caja-card h4 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--pdv-muted); margin: 0 0 10px; }
+.fc-pdv-caja-saldo { font-size: 30px; font-weight: 700; color: var(--pdv-text); margin: 0 0 10px; }
+.fc-pdv-caja-desglose { font-size: 14px; color: var(--pdv-muted); line-height: 2; }
 .fc-pdv-caja-desglose strong { color: var(--pdv-text); }
 
-.fc-pdv-caja-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.fc-pdv-caja-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+
+/* Checkboxes de selección */
+.fc-pdv-caja-check-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.fc-pdv-caja-check-label input[type="checkbox"],
+#fc-pdv-caja-select-all {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--pdv-primary);
+    flex-shrink: 0;
+}
+.fc-pdv-caja-card.selected {
+    border-color: var(--pdv-primary);
+    background: #fdf5f7;
+}
+
+/* Row: título + checkbox select-all + botón borrar */
+.fc-pdv-caja-select-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
 .fc-pdv-btn-sm {
     padding: 6px 12px;
@@ -998,35 +1063,77 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 .fc-pdv-informes-result {
     flex: 1;
     overflow-y: auto;
-    padding: 16px 20px;
+    padding: 24px 28px;
 }
 
 .fc-pdv-informe-totales {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
 }
 .fc-pdv-total-chip {
     background: var(--pdv-bg);
-    border: 1.5px solid var(--pdv-border);
-    border-radius: 9px;
-    padding: 8px 14px;
-    font-size: 13px;
-    font-weight: 600;
+    border: 2px solid var(--pdv-border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.1;
 }
-.fc-pdv-total-chip span { display: block; font-size: 11px; font-weight: 400; color: var(--pdv-muted); margin-bottom: 2px; }
+.fc-pdv-total-chip span {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--pdv-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+}
+.fc-pdv-chip-count {
+    display: block;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--pdv-muted);
+    margin-top: 4px;
+}
 .fc-pdv-total-chip.efectivo { border-color: var(--pdv-accent);  background: #f0fdf4; }
 .fc-pdv-total-chip.tarjeta  { border-color: #3b82f6;            background: #eff6ff; }
 .fc-pdv-total-chip.otro     { border-color: var(--pdv-warn);    background: #fffbeb; }
 .fc-pdv-total-chip.total    { border-color: var(--pdv-primary); background: #fdf5f7; }
 
-.fc-pdv-informe-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.fc-pdv-informe-table th, .fc-pdv-informe-table td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--pdv-border); }
-.fc-pdv-informe-table th:first-child, .fc-pdv-informe-table td:first-child { text-align: left; }
-.fc-pdv-informe-table th { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--pdv-muted); }
-.fc-pdv-informe-table tr:last-child td { border-bottom: none; }
+.fc-pdv-informe-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.fc-pdv-informe-table th,
+.fc-pdv-informe-table td { padding: 13px 14px; text-align: right; border-bottom: 1px solid var(--pdv-border); }
+.fc-pdv-informe-table th:first-child,
+.fc-pdv-informe-table td:first-child { text-align: left; }
+.fc-pdv-informe-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--pdv-muted);
+    background: var(--pdv-surface);
+    position: sticky;
+    top: 0;
+}
+.fc-pdv-informe-table tbody tr:last-child td { border-bottom: none; }
 .fc-pdv-informe-table td:last-child { font-weight: 700; }
+.fc-pdv-inf-count { color: var(--pdv-muted); font-size: 14px; }
+.fc-pdv-inf-tfoot td {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--pdv-text);
+    background: var(--pdv-surface);
+    border-top: 2px solid var(--pdv-border);
+    border-bottom: none;
+}
+.fc-pdv-inf-empty {
+    color: var(--pdv-muted);
+    font-size: 15px;
+    text-align: center;
+    padding: 40px 0;
+}
 
 /* ── MODAL backdrop ── */
 .fc-pdv-modal-backdrop {
@@ -1355,13 +1462,11 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 
 /* ── Movimientos de caja ── */
 .fc-pdv-cajas-anteriores-title {
-    width: 100%;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .05em;
     color: var(--pdv-muted);
-    margin: 8px 0 6px;
 }
 .fc-pdv-movs-list {
     margin-top: 10px;
@@ -1390,53 +1495,53 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 .fc-pdv-mov-ts { font-size: 11px; color: var(--pdv-muted); flex-shrink: 0; }
 
 /* ── Transacciones ── */
-.fc-pdv-tx-grupo { margin-bottom: 20px; }
+.fc-pdv-tx-grupo { margin-bottom: 28px; }
 .fc-pdv-tx-fecha-header {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
     color: var(--pdv-muted);
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--pdv-border);
-    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--pdv-border);
+    margin-bottom: 14px;
 }
 .fc-pdv-tx-cards {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 14px;
 }
 .fc-pdv-tx-card {
     background: var(--pdv-card);
     border: 1.5px solid var(--pdv-border);
-    border-radius: 12px;
-    padding: 14px 16px;
+    border-radius: 14px;
+    padding: 18px 20px;
     transition: box-shadow .15s;
 }
-.fc-pdv-tx-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+.fc-pdv-tx-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
 
 .fc-pdv-tx-card-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
+    gap: 10px;
+    margin-bottom: 8px;
 }
-.fc-pdv-tx-numero { font-size: 14px; font-weight: 700; color: var(--pdv-text); }
+.fc-pdv-tx-numero { font-size: 16px; font-weight: 700; color: var(--pdv-text); }
 .fc-pdv-tx-status {
     font-size: 11px;
     font-weight: 700;
     color: #fff;
-    padding: 2px 8px;
+    padding: 3px 10px;
     border-radius: 20px;
     text-transform: uppercase;
     letter-spacing: .04em;
 }
-.fc-pdv-tx-hora { font-size: 12px; color: var(--pdv-muted); margin-left: auto; }
+.fc-pdv-tx-hora { font-size: 13px; color: var(--pdv-muted); margin-left: auto; }
 
 .fc-pdv-tx-meta {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--pdv-muted);
-    margin-bottom: 4px;
+    margin-bottom: 5px;
 }
 .fc-pdv-tx-link {
     color: var(--pdv-primary);
@@ -1446,19 +1551,19 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 .fc-pdv-tx-link:hover { text-decoration: underline; }
 
 .fc-pdv-tx-items {
-    margin: 10px 0 8px;
+    margin: 12px 0 10px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 .fc-pdv-tx-item {
-    padding: 8px 10px;
+    padding: 12px 14px;
     background: #f8fafc;
-    border-radius: 8px;
+    border-radius: 10px;
     border: 1px solid var(--pdv-border);
 }
-.fc-pdv-tx-item-nombre { font-size: 13px; font-weight: 700; color: var(--pdv-text); margin-bottom: 3px; }
-.fc-pdv-tx-item-sub { font-size: 12px; color: var(--pdv-muted); margin-top: 2px; }
+.fc-pdv-tx-item-nombre { font-size: 15px; font-weight: 700; color: var(--pdv-text); margin-bottom: 5px; }
+.fc-pdv-tx-item-sub { font-size: 13px; color: var(--pdv-muted); margin-top: 3px; }
 .fc-pdv-tx-item-sub a { color: var(--pdv-primary); text-decoration: none; }
 .fc-pdv-tx-item-sub a:hover { text-decoration: underline; }
 
@@ -1466,12 +1571,12 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 8px;
+    padding-top: 10px;
     border-top: 1px solid var(--pdv-border);
-    font-size: 13px;
+    font-size: 14px;
     color: var(--pdv-muted);
 }
-.fc-pdv-tx-monto { font-size: 16px; font-weight: 700; color: var(--pdv-primary); }
+.fc-pdv-tx-monto { font-size: 20px; font-weight: 700; color: var(--pdv-primary); }
 
 /* Toast */
 .fc-pdv-toast {

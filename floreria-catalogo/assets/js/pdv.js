@@ -845,6 +845,20 @@
             const isr = facturaTipo === 'moral' ? sub * 0.0125 : 0;
             return sub + iva - isr;
         }
+        function calcBaseCobro() {
+            const anticipo = parseFloat($('#pdv-co-anticipo', backdrop)?.value || 0);
+            return anticipo > 0 ? anticipo : calcMontoTotal();
+        }
+        function refreshCambio() {
+            const mr       = $('#pdv-co-monto-recibido', backdrop);
+            const recibido = parseFloat(mr?.value || 0);
+            const row      = $('#pdv-co-cambio-row', backdrop);
+            const val      = $('#pdv-co-cambio-val', backdrop);
+            if (recibido > 0 && row && val) {
+                row.style.display = '';
+                val.textContent   = fmt(Math.max(0, recibido - calcBaseCobro()));
+            }
+        }
         function updateDesglose() {
             const productos  = cartTotal();
             const envio      = parseFloat($('#pdv-co-costo-envio', backdrop)?.value || 0);
@@ -879,9 +893,9 @@
             if (saldoRow) saldoRow.style.display = anticipo > 0 ? '' : 'none';
             if (saldoVal) saldoVal.textContent = '$' + saldo.toFixed(2);
 
-            // Actualizar placeholder de monto recibido con el total real
+            // Placeholder: anticipo si hay, total si no
             const mr = $('#pdv-co-monto-recibido', backdrop);
-            if (mr) mr.placeholder = total.toFixed(2);
+            if (mr) mr.placeholder = calcBaseCobro().toFixed(2);
         }
 
         // Extras PDV
@@ -923,9 +937,9 @@
         $('#pdv-co-anticipo-check', backdrop)?.addEventListener('change', function() {
             const wrap = $('#pdv-co-anticipo-wrap', backdrop);
             if (wrap) wrap.style.display = this.checked ? '' : 'none';
-            if (!this.checked) { const a = $('#pdv-co-anticipo', backdrop); if (a) a.value = ''; updateDesglose(); }
+            if (!this.checked) { const a = $('#pdv-co-anticipo', backdrop); if (a) a.value = ''; updateDesglose(); refreshCambio(); }
         });
-        $('#pdv-co-anticipo', backdrop)?.addEventListener('input', updateDesglose);
+        $('#pdv-co-anticipo', backdrop)?.addEventListener('input', () => { updateDesglose(); refreshCambio(); });
 
         $('#pdv-co-factura-check', backdrop)?.addEventListener('change', function() {
             const wrap = $('#pdv-co-factura-tipo-wrap', backdrop);
@@ -936,11 +950,13 @@
                 if (sel) sel.value = '';
             }
             updateDesglose();
+            refreshCambio();
         });
 
         $('#pdv-co-factura-tipo', backdrop)?.addEventListener('change', function() {
             facturaTipo = this.value;
             updateDesglose();
+            refreshCambio();
         });
 
         // Inicializar desglose al abrir el modal
@@ -1017,7 +1033,7 @@
             montoInput.addEventListener('wheel', e => e.preventDefault(), { passive: false });
             montoInput.addEventListener('input', () => {
                 const recibido = parseFloat(montoInput.value || 0);
-                const cambio   = recibido - calcMontoTotal();
+                const cambio   = recibido - calcBaseCobro();
                 const row      = $('#pdv-co-cambio-row', backdrop);
                 const val      = $('#pdv-co-cambio-val', backdrop);
                 if (recibido > 0 && row && val) {
@@ -1044,7 +1060,7 @@
                 const val      = $('#pdv-co-cambio-val', backdrop);
                 if (recibido > 0 && row && val) {
                     row.style.display = '';
-                    val.textContent   = fmt(Math.max(0, recibido - total));
+                    val.textContent   = fmt(Math.max(0, recibido - calcBaseCobro()));
                 }
             });
         }
@@ -1100,7 +1116,7 @@
             const isrAmt     = facturaTipo === 'moral' ? subtotal * 0.0125 : 0;
             const montoTotal = calcMontoTotal();
             const recibido   = parseFloat($('#pdv-co-monto-recibido', backdrop)?.value || 0);
-            const cambio     = formaPago === 'efectivo' && recibido > 0 ? Math.max(0, recibido - montoTotal) : 0;
+            const cambio     = formaPago === 'efectivo' && recibido > 0 ? Math.max(0, recibido - calcBaseCobro()) : 0;
 
             confirmBtn.textContent = 'Procesando...';
             confirmBtn.disabled    = true;
@@ -1189,41 +1205,109 @@
         }
     }
 
+    let cajaFiltroDesde = '';
+    let cajaFiltroHasta = '';
+    let cajasSeleccionadas = new Set();
+
     function renderCajas() {
         const wrap = $('#fc-pdv-caja-wrap');
         if (!wrap) return;
+        cajasSeleccionadas = new Set();
 
-        let html = '';
-
-        // Cajas abiertas (puede haber más de una)
+        // ── Caja abierta ──
+        let abiertaHtml = '';
         if (!cajasData.abiertas.length) {
-            html += `
+            abiertaHtml = `
                 <div class="fc-pdv-no-caja">
                     <p>No hay caja abierta.</p>
                     <button class="fc-pdv-btn-sm success" id="fc-pdv-btn-abrir-caja">+ Abrir caja</button>
                 </div>`;
         } else {
-            cajasData.abiertas.forEach(caja => {
-                html += renderCajaCard(caja, true);
-            });
-            html += `<button class="fc-pdv-btn-sm outline" id="fc-pdv-btn-abrir-caja" style="align-self:flex-start">+ Abrir otra caja</button>`;
+            cajasData.abiertas.forEach(caja => { abiertaHtml += renderCajaCard(caja, true); });
+            abiertaHtml += `<button class="fc-pdv-btn-sm outline" id="fc-pdv-btn-abrir-caja" style="align-self:flex-start;margin-top:4px;">+ Abrir otra caja</button>`;
         }
 
-        // Historial cajas cerradas
+        // ── Cajas cerradas con filtro ──
+        let cerradasHtml = '';
+        let filtradas = [];
         if (cajasData.cerradas.length) {
-            html += `<div class="fc-pdv-cajas-anteriores-title">Cajas anteriores</div>`;
-            cajasData.cerradas.forEach(c => { html += renderCajaCard(c, false); });
+            filtradas = cajasData.cerradas.filter(c => {
+                const fecha = (c.fecha_apertura || '').slice(0, 10);
+                if (cajaFiltroDesde && fecha < cajaFiltroDesde) return false;
+                if (cajaFiltroHasta && fecha > cajaFiltroHasta) return false;
+                return true;
+            });
+
+            cerradasHtml = `
+                <div class="fc-pdv-cajas-anteriores-section">
+                    <div class="fc-pdv-cajas-anteriores-header">
+                        <div class="fc-pdv-caja-select-row">
+                            <label class="fc-pdv-caja-check-label" title="Seleccionar todo">
+                                <input type="checkbox" id="fc-pdv-caja-select-all" />
+                            </label>
+                            <span class="fc-pdv-cajas-anteriores-title">Cajas anteriores (${filtradas.length})</span>
+                            <button class="fc-pdv-btn-sm danger" id="fc-pdv-btn-borrar-seleccionadas" style="display:none">🗑 Borrar seleccionadas (0)</button>
+                        </div>
+                        <div class="fc-pdv-caja-filtros">
+                            <label style="font-size:13px;color:var(--pdv-muted);">Desde</label>
+                            <input type="date" id="fc-pdv-caja-desde" value="${cajaFiltroDesde}" class="fc-pdv-caja-filtro-input" />
+                            <label style="font-size:13px;color:var(--pdv-muted);">Hasta</label>
+                            <input type="date" id="fc-pdv-caja-hasta" value="${cajaFiltroHasta}" class="fc-pdv-caja-filtro-input" />
+                            <button class="fc-pdv-btn-sm outline" id="fc-pdv-caja-filtro-limpiar">Limpiar</button>
+                        </div>
+                    </div>
+                    <div class="fc-pdv-cajas-grid">
+                        ${filtradas.length
+                            ? filtradas.map(c => renderCajaCard(c, false)).join('')
+                            : '<p style="font-size:14px;color:var(--pdv-muted);padding:16px 0;">Sin cajas en ese rango.</p>'}
+                    </div>
+                </div>`;
         }
 
-        wrap.innerHTML = html;
+        wrap.innerHTML = `
+            <div class="fc-pdv-caja-abierta-section">${abiertaHtml}</div>
+            ${cerradasHtml}`;
 
         $('#fc-pdv-btn-abrir-caja', wrap)?.addEventListener('click', () => showAbrirCajaModal());
 
-        // Botones por caja abierta
+        // Filtros fecha
+        $('#fc-pdv-caja-desde', wrap)?.addEventListener('change', function() { cajaFiltroDesde = this.value; renderCajas(); });
+        $('#fc-pdv-caja-hasta', wrap)?.addEventListener('change', function() { cajaFiltroHasta = this.value; renderCajas(); });
+        $('#fc-pdv-caja-filtro-limpiar', wrap)?.addEventListener('click', () => { cajaFiltroDesde = ''; cajaFiltroHasta = ''; renderCajas(); });
+
+        // Botones caja abierta
         cajasData.abiertas.forEach(caja => {
             $(`#fc-pdv-btn-entrada-${caja.id}`, wrap)?.addEventListener('click', () => showMovimientoModal(caja.id, 'entrada'));
             $(`#fc-pdv-btn-salida-${caja.id}`,  wrap)?.addEventListener('click', () => showMovimientoModal(caja.id, 'salida'));
             $(`#fc-pdv-btn-cerrar-${caja.id}`,  wrap)?.addEventListener('click', () => showCerrarCajaModal(caja));
+        });
+
+        // Checkboxes individuales
+        $$('.fc-pdv-caja-check', wrap).forEach(chk => {
+            chk.addEventListener('change', () => {
+                const id = parseInt(chk.dataset.id);
+                if (chk.checked) cajasSeleccionadas.add(id);
+                else cajasSeleccionadas.delete(id);
+                chk.closest('.fc-pdv-caja-card').classList.toggle('selected', chk.checked);
+                updateCajaSeleccion(wrap, filtradas.length);
+            });
+        });
+
+        // Seleccionar todo
+        $('#fc-pdv-caja-select-all', wrap)?.addEventListener('change', function() {
+            $$('.fc-pdv-caja-check', wrap).forEach(chk => {
+                chk.checked = this.checked;
+                const id = parseInt(chk.dataset.id);
+                if (this.checked) cajasSeleccionadas.add(id);
+                else cajasSeleccionadas.delete(id);
+                chk.closest('.fc-pdv-caja-card').classList.toggle('selected', this.checked);
+            });
+            updateCajaSeleccion(wrap, filtradas.length);
+        });
+
+        // Borrar seleccionadas
+        $('#fc-pdv-btn-borrar-seleccionadas', wrap)?.addEventListener('click', () => {
+            if (cajasSeleccionadas.size) showBorrarBulkModal([...cajasSeleccionadas]);
         });
 
         // Toggle expandir cajas cerradas
@@ -1236,6 +1320,20 @@
                 btn.textContent = open ? '▼ Ver detalles' : '▲ Ocultar';
             });
         });
+    }
+
+    function updateCajaSeleccion(wrap, total) {
+        const n   = cajasSeleccionadas.size;
+        const btn = $('#fc-pdv-btn-borrar-seleccionadas', wrap);
+        if (btn) {
+            btn.style.display   = n ? '' : 'none';
+            btn.textContent     = `🗑 Borrar seleccionadas (${n})`;
+        }
+        const allChk = $('#fc-pdv-caja-select-all', wrap);
+        if (allChk) {
+            allChk.indeterminate = n > 0 && n < total;
+            allChk.checked       = total > 0 && n === total;
+        }
     }
 
     function renderMovimientos(movs) {
@@ -1253,10 +1351,12 @@
 
     function renderCajaCard(caja, isAbierta) {
         const movHtml = renderMovimientos(caja.movimientos || []);
-        const expandible = !isAbierta;
         return `
             <div class="fc-pdv-caja-card ${isAbierta ? 'abierta' : 'cerrada'}">
-                <h4>${isAbierta ? '🟢 Caja abierta' : '🔴 Caja cerrada'} · ${fmtDatetime(caja.fecha_apertura)}</h4>
+                <div class="fc-pdv-caja-card-top">
+                    ${!isAbierta ? `<label class="fc-pdv-caja-check-label"><input type="checkbox" class="fc-pdv-caja-check" data-id="${caja.id}" /></label>` : ''}
+                    <h4>${isAbierta ? '🟢 Caja abierta' : '🔴 Caja cerrada'} · ${fmtDatetime(caja.fecha_apertura)}</h4>
+                </div>
                 <div class="fc-pdv-caja-saldo">${fmt(isAbierta ? caja.saldo_actual : caja.saldo_final)}</div>
                 <div class="fc-pdv-caja-desglose">
                     Inicial: <strong>${fmt(caja.saldo_inicial)}</strong> &nbsp;
@@ -1272,11 +1372,11 @@
                     <button class="fc-pdv-btn-sm success" id="fc-pdv-btn-entrada-${caja.id}">+ Entrada</button>
                     <button class="fc-pdv-btn-sm danger"  id="fc-pdv-btn-salida-${caja.id}">− Salida</button>
                     <button class="fc-pdv-btn-sm outline" id="fc-pdv-btn-cerrar-${caja.id}">Cerrar caja</button>
-                </div>` : ''}
-                ${expandible
-                    ? `<button class="fc-pdv-caja-toggle fc-pdv-btn-sm outline" style="margin-top:8px;align-self:flex-start">▼ Ver detalles</button>
-                       <div class="fc-pdv-caja-expandable" style="display:none">${movHtml}</div>`
-                    : `<div class="fc-pdv-caja-expandable">${movHtml}</div>`}
+                </div>` : `
+                <div class="fc-pdv-caja-actions">
+                    <button class="fc-pdv-caja-toggle fc-pdv-btn-sm outline">▼ Ver detalles</button>
+                </div>`}
+                <div class="fc-pdv-caja-expandable" style="display:none">${movHtml}</div>
             </div>`;
     }
 
@@ -1430,6 +1530,95 @@
         });
     }
 
+    // ── Borrar caja cerrada ──
+    function showBorrarCajaModal(cajaId) {
+        const backdrop = document.createElement('div');
+        backdrop.className = 'fc-pdv-modal-backdrop';
+        backdrop.innerHTML = `
+            <div class="fc-pdv-modal" style="max-width:380px;">
+                <div class="fc-pdv-modal-header">
+                    <h3>Borrar caja</h3>
+                    <button class="fc-pdv-modal-close">×</button>
+                </div>
+                <div class="fc-pdv-modal-body">
+                    <p style="font-size:14px;color:var(--pdv-text);line-height:1.6;">
+                        ¿Seguro que quieres borrar esta caja? Esta acción no se puede deshacer.<br>
+                        <strong>Los pedidos asociados no se eliminarán.</strong>
+                    </p>
+                </div>
+                <div class="fc-pdv-modal-footer">
+                    <button class="fc-pdv-modal-cancel">Cancelar</button>
+                    <button class="fc-pdv-btn-sm danger" id="pdv-borrar-caja-confirm">Sí, borrar</button>
+                </div>
+            </div>`;
+        document.body.appendChild(backdrop);
+        const close = () => backdrop.remove();
+        $('.fc-pdv-modal-close',  backdrop).addEventListener('click', close);
+        $('.fc-pdv-modal-cancel', backdrop).addEventListener('click', close);
+        backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+        const confirmBtn = $('#pdv-borrar-caja-confirm', backdrop);
+        confirmBtn.addEventListener('click', async () => {
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Borrando…';
+            const data = await ajax('fc_pdv_eliminar_caja', { caja_id: cajaId });
+            if (data.success) {
+                close();
+                await loadCajas();
+                showToast('Caja eliminada', 'success');
+            } else {
+                showToast(data.data?.message || 'Error al borrar', 'error');
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Sí, borrar';
+            }
+        });
+    }
+
+    // ── Borrar cajas en bulk ──
+    function showBorrarBulkModal(ids) {
+        const n = ids.length;
+        const backdrop = document.createElement('div');
+        backdrop.className = 'fc-pdv-modal-backdrop';
+        backdrop.innerHTML = `
+            <div class="fc-pdv-modal" style="max-width:400px;">
+                <div class="fc-pdv-modal-header">
+                    <h3>Borrar ${n} caja${n > 1 ? 's' : ''}</h3>
+                    <button class="fc-pdv-modal-close">×</button>
+                </div>
+                <div class="fc-pdv-modal-body">
+                    <p style="font-size:14px;color:var(--pdv-text);line-height:1.6;">
+                        ¿Seguro que quieres eliminar <strong>${n} caja${n > 1 ? 's cerradas' : ' cerrada'}</strong>?
+                        Esta acción no se puede deshacer.<br>
+                        <strong>Los pedidos asociados no se eliminarán.</strong>
+                    </p>
+                </div>
+                <div class="fc-pdv-modal-footer">
+                    <button class="fc-pdv-modal-cancel">Cancelar</button>
+                    <button class="fc-pdv-btn-sm danger" id="pdv-borrar-bulk-confirm">Sí, borrar ${n}</button>
+                </div>
+            </div>`;
+        document.body.appendChild(backdrop);
+        const close = () => backdrop.remove();
+        $('.fc-pdv-modal-close',  backdrop).addEventListener('click', close);
+        $('.fc-pdv-modal-cancel', backdrop).addEventListener('click', close);
+        backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+        const confirmBtn = $('#pdv-borrar-bulk-confirm', backdrop);
+        confirmBtn.addEventListener('click', async () => {
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Borrando…';
+            let errores = 0;
+            for (const id of ids) {
+                const res = await ajax('fc_pdv_eliminar_caja', { caja_id: id });
+                if (!res.success) errores++;
+            }
+            close();
+            if (errores) showToast(`${n - errores} eliminadas, ${errores} con error`, 'error');
+            else showToast(`${n} caja${n > 1 ? 's eliminadas' : ' eliminada'}`, 'success');
+            await loadCajas();
+        });
+    }
+
     // ── TRANSACCIONES ──
     const pagoLabel = { efectivo: '💵 Efectivo', tarjeta: '💳 Tarjeta', otro: '🔄 Otro' };
     const statusLabel = { aceptado: 'Aceptado', en_proceso: 'En proceso', listo: 'Listo', entregado: 'Entregado', cancelado: 'Cancelado' };
@@ -1563,28 +1752,58 @@
 
         wrap.innerHTML = `
             <div class="fc-pdv-informe-totales">
-                <div class="fc-pdv-total-chip total"><span>Total ventas</span>${fmt(totales.total)} <small style="font-size:11px;color:#94a3b8">(${totales.count})</small></div>
-                <div class="fc-pdv-total-chip efectivo"><span>Efectivo</span>${fmt(totales.efectivo)}</div>
-                <div class="fc-pdv-total-chip tarjeta"><span>Tarjeta</span>${fmt(totales.tarjeta)}</div>
-                <div class="fc-pdv-total-chip otro"><span>Otro</span>${fmt(totales.otro)}</div>
+                <div class="fc-pdv-total-chip total">
+                    <span>Total ventas</span>
+                    ${fmt(totales.total)}
+                    <small class="fc-pdv-chip-count">${totales.count} pedido${totales.count !== 1 ? 's' : ''}</small>
+                </div>
+                <div class="fc-pdv-total-chip efectivo">
+                    <span>Efectivo</span>
+                    ${fmt(totales.efectivo)}
+                </div>
+                <div class="fc-pdv-total-chip tarjeta">
+                    <span>Tarjeta</span>
+                    ${fmt(totales.tarjeta)}
+                </div>
+                <div class="fc-pdv-total-chip otro">
+                    <span>Otro</span>
+                    ${fmt(totales.otro)}
+                </div>
             </div>
             ${dias.length ? `
             <table class="fc-pdv-informe-table">
                 <thead>
-                    <tr><th>Fecha</th><th>Ventas</th><th>Efectivo</th><th>Tarjeta</th><th>Otro</th><th>Total</th></tr>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Pedidos</th>
+                        <th>Efectivo</th>
+                        <th>Tarjeta</th>
+                        <th>Otro</th>
+                        <th>Total día</th>
+                    </tr>
                 </thead>
                 <tbody>
                     ${dias.map(d => `
                     <tr>
                         <td>${fmtDate(d.fecha)}</td>
-                        <td>${d.count}</td>
+                        <td class="fc-pdv-inf-count">${d.count}</td>
                         <td>${fmt(d.efectivo)}</td>
                         <td>${fmt(d.tarjeta)}</td>
                         <td>${fmt(d.otro)}</td>
                         <td>${fmt(d.total)}</td>
                     </tr>`).join('')}
                 </tbody>
-            </table>` : '<p style="color:#94a3b8;font-size:14px;">Sin ventas en el período seleccionado.</p>'}`;
+                <tfoot>
+                    <tr class="fc-pdv-inf-tfoot">
+                        <td>Total período</td>
+                        <td class="fc-pdv-inf-count">${totales.count}</td>
+                        <td>${fmt(totales.efectivo)}</td>
+                        <td>${fmt(totales.tarjeta)}</td>
+                        <td>${fmt(totales.otro)}</td>
+                        <td>${fmt(totales.total)}</td>
+                    </tr>
+                </tfoot>
+            </table>` : '<p class="fc-pdv-inf-empty">Sin ventas en el período seleccionado.</p>'}`;
     }
 
     // ── AUTH / LOGIN ──

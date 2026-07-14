@@ -349,7 +349,9 @@ function fc_ajax_pdv_crear_venta() {
         '_fc_pedido_costo_envio'             => (float) ( $_POST['costo_envio'] ?? 0 ),
         '_fc_pedido_referencias'             => sanitize_textarea_field( wp_unslash( $_POST['referencias'] ?? '' ) ),
         '_fc_pedido_registrado_por'          => get_current_user_id(),
-        '_fc_pedido_monto'                   => (float) ( $_POST['monto_total']   ?? 0 ),
+        '_fc_pedido_monto'                   => ( (float) ( $_POST['anticipo'] ?? 0 ) > 0 )
+                                                 ? (float) $_POST['anticipo']
+                                                 : (float) ( $_POST['monto_total'] ?? 0 ),
         '_fc_pedido_forma_pago'              => sanitize_key( $_POST['forma_pago'] ?? 'efectivo' ),
         '_fc_pedido_factura_tipo'            => sanitize_key( $_POST['factura_tipo'] ?? '' ),
         '_fc_pedido_factura_iva'             => (float) ( $_POST['factura_iva']  ?? 0 ),
@@ -485,6 +487,33 @@ function fc_ajax_pdv_cerrar_caja() {
         'message' => 'Caja cerrada.',
         'caja'    => fc_build_caja_data( $caja_id ),
     ] );
+}
+
+// ─────────────────────────────────────────────
+// AJAX: Eliminar caja cerrada
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_fc_pdv_eliminar_caja', 'fc_ajax_pdv_eliminar_caja' );
+function fc_ajax_pdv_eliminar_caja() {
+    fc_pdv_verify_nonce();
+    fc_pdv_require_admin();
+
+    $caja_id = (int) ( $_POST['caja_id'] ?? 0 );
+
+    if ( ! $caja_id || get_post_type( $caja_id ) !== 'fc_caja' ) {
+        wp_send_json_error( [ 'message' => 'Caja no encontrada.' ] );
+    }
+
+    $status = get_post_meta( $caja_id, '_fc_caja_status', true );
+    if ( $status !== 'cerrada' ) {
+        wp_send_json_error( [ 'message' => 'Solo se pueden borrar cajas cerradas.' ] );
+    }
+
+    $result = wp_delete_post( $caja_id, true );
+    if ( ! $result ) {
+        wp_send_json_error( [ 'message' => 'No se pudo eliminar la caja.' ] );
+    }
+
+    wp_send_json_success( [ 'message' => 'Caja eliminada.' ] );
 }
 
 // ─────────────────────────────────────────────
