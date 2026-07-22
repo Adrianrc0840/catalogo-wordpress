@@ -297,10 +297,10 @@
                 : (item.color ? item.color.split(' · ')[0] : '');
             const sub = [item.tamano, (colorParaMostrar && !colorParaMostrar.startsWith('--')) ? colorParaMostrar : ''].filter(Boolean).join(' · ');
             const destLine = item.destinatario
-                ? `<span class="fc-card-item-dest">Para: ${escHtml(item.destinatario)}${item.destinatario_telefono ? ' · ' + telLink(item.destinatario_telefono) : ''}${item.destinatario_telefono2 ? ' · ' + telLink(item.destinatario_telefono2) : ''}</span>`
+                ? `<span class="fc-card-item-dest">Para: ${escHtml(capitalize(item.destinatario))}${item.destinatario_telefono ? ' · ' + telLink(item.destinatario_telefono) : ''}${item.destinatario_telefono2 ? ' · ' + telLink(item.destinatario_telefono2) : ''}</span>`
                 : '';
             const tarjetaLine = item.mensaje_tarjeta
-                ? `<span class="fc-card-item-tarjeta">"${escHtml(item.mensaje_tarjeta)}"</span>`
+                ? `<span class="fc-card-item-tarjeta">"${escHtml(capitalize(item.mensaje_tarjeta))}"</span>`
                 : '';
             return `
             <div class="fc-card-item">
@@ -346,7 +346,7 @@
                 <span class="fc-value">${escHtml(tipoLabel)} · ${escHtml(p.fecha)}${horarioLabel ? ' · ' + escHtml(horarioLabel) : ''}</span>
             </div>
             ${p.tipo === 'envio' && p.direccion ? `<div class="fc-card-row"><span class="fc-label">Dirección</span><span class="fc-value"><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.direccion)}" target="_blank" rel="noopener" class="fc-maps-link">${escHtml(p.direccion)}</a></span></div>` : ''}
-            ${p.referencias ? `<div class="fc-card-row fc-referencias-row"><span class="fc-label">Referencias</span><span class="fc-value">${escHtml(p.referencias)}</span></div>` : ''}
+            ${p.referencias ? `<div class="fc-card-row fc-referencias-row"><span class="fc-label">Referencias</span><span class="fc-value">${escHtml(capitalize(p.referencias))}</span></div>` : ''}
 
             <!-- Arreglos -->
             ${items.length ? `<div class="fc-card-items-list">${itemsHtml}</div>` : ''}
@@ -406,6 +406,12 @@
 
     function escAttr(str) {
         return escHtml(str);
+    }
+
+    function capitalize(str) {
+        if (!str) return '';
+        const s = String(str).trim();
+        return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
     }
 
     function telLink(num) {
@@ -2283,7 +2289,7 @@
             <div class="fc-card-row"><span class="fc-label">Cliente</span><span class="fc-value">${escHtml(p.cliente_nombre)}${p.cliente_telefono ? ' · ' + telLink(p.cliente_telefono) : ''}</span></div>
             <div class="fc-card-row"><span class="fc-label">Arreglo</span><span class="fc-value">${escHtml(p.arreglo_nombre)}${p.tamano ? ' — ' + escHtml(p.tamano) : ''}</span></div>
             <div class="fc-card-row"><span class="fc-label">Fecha</span><span class="fc-value">${escHtml(p.fecha)} · ${escHtml(tipoLabel)}</span></div>
-            ${p.destinatario ? `<div class="fc-card-row"><span class="fc-label">Para</span><span class="fc-value">${escHtml(p.destinatario)}</span></div>` : ''}
+            ${p.destinatario ? `<div class="fc-card-row"><span class="fc-label">Para</span><span class="fc-value">${escHtml(capitalize(p.destinatario))}</span></div>` : ''}
         </div>
         <hr class="fc-card-divider" />
         <div class="fc-card-extra-actions">

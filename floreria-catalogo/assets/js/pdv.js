@@ -248,6 +248,7 @@
                     <span class="fc-pdv-cat-chevron">▼</span>
                 </button>
                 <div class="fc-pdv-cat-panel" id="pdv-cat-panel" style="display:none">
+                    ${catalogo.length > 5 ? `<input type="search" class="fc-pdv-cat-search" placeholder="Buscar categoría…" autocomplete="off" />` : ''}
                     <button class="fc-pdv-cat-btn${selectedCat === null ? ' active' : ''}" data-cat="all">Todas</button>
                     ${catalogo.map(c => `<button class="fc-pdv-cat-btn${selectedCat === c.id ? ' active' : ''}" data-cat="${c.id}">${escHtml(c.nombre)}</button>`).join('')}
                 </div>
@@ -309,6 +310,19 @@
                     setTimeout(() => document.addEventListener('click', closeCatPanel), 0);
                 }
             });
+        }
+
+        // Buscador dentro del panel de categorías
+        const catSearchEl = $('.fc-pdv-cat-search', container);
+        if (catSearchEl) {
+            catSearchEl.addEventListener('input', () => {
+                const q = catSearchEl.value.toLowerCase().trim();
+                $$('.fc-pdv-cat-btn', catPanelEl).forEach(btn => {
+                    if (btn.dataset.cat === 'all') return;
+                    btn.style.display = btn.textContent.toLowerCase().includes(q) ? '' : 'none';
+                });
+            });
+            catSearchEl.addEventListener('click', e => e.stopPropagation());
         }
 
         // Botones de categoría dentro del panel

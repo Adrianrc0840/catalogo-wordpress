@@ -325,6 +325,22 @@ body.fc-pdv-page input[type="number"] { -moz-appearance: textfield; appearance: 
 .fc-pdv-cat-panel::-webkit-scrollbar { width: 4px; }
 .fc-pdv-cat-panel::-webkit-scrollbar-thumb { background: var(--pdv-border); border-radius: 4px; }
 
+.fc-pdv-cat-search {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 7px 10px;
+    margin-bottom: 6px;
+    border: 1.5px solid var(--pdv-border);
+    border-radius: 7px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--pdv-text);
+    background: var(--pdv-bg);
+    outline: none;
+}
+.fc-pdv-cat-search:focus { border-color: var(--pdv-primary); }
+
 .fc-pdv-cat-btn {
     display: flex;
     align-items: center;
