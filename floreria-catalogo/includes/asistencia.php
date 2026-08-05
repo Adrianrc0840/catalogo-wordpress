@@ -2,6 +2,17 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 // ─────────────────────────────────────────────
+// IP real del visitante (el sitio corre detrás de Cloudflare, REMOTE_ADDR
+// por sí solo devolvería la IP del edge de Cloudflare, no la del cliente)
+// ─────────────────────────────────────────────
+function fc_get_client_ip() {
+    if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
+        return sanitize_text_field( wp_unslash( $_SERVER['HTTP_CF_CONNECTING_IP'] ) );
+    }
+    return sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) );
+}
+
+// ─────────────────────────────────────────────
 // DB: crear tablas en el primer init
 // ─────────────────────────────────────────────
 add_action( 'init', 'fc_asistencia_maybe_create_tables' );
@@ -1173,6 +1184,20 @@ function fc_ajax_borrar_emp() {
 add_action( 'wp_ajax_nopriv_fc_asistencia_buscar', 'fc_ajax_asistencia_buscar' );
 add_action( 'wp_ajax_fc_asistencia_buscar',        'fc_ajax_asistencia_buscar' );
 function fc_ajax_asistencia_buscar() {
+    if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'fc_asistencia_nonce' ) ) {
+        wp_send_json_error( [ 'message' => 'Sesión expirada, refresca la página.' ] );
+    }
+
+    // Límite de intentos por IP: el PIN es de solo 4 dígitos (10,000 combinaciones),
+    // sin esto sería enumerable en minutos.
+    $ip       = fc_get_client_ip();
+    $key      = 'fc_asist_buscar_' . md5( $ip );
+    $intentos = (int) get_transient( $key );
+    if ( $intentos >= 20 ) {
+        wp_send_json_error( [ 'message' => 'Demasiados intentos. Espera unos minutos.' ] );
+    }
+    set_transient( $key, $intentos + 1, 10 * MINUTE_IN_SECONDS );
+
     $numero = sanitize_text_field( $_POST['numero'] ?? '' );
     if ( strlen( $numero ) !== 4 ) wp_send_json_error( [ 'message' => 'Número inválido.' ] );
     global $wpdb;
@@ -1190,6 +1215,10 @@ function fc_ajax_asistencia_buscar() {
 add_action( 'wp_ajax_nopriv_fc_asistencia_fichar', 'fc_ajax_asistencia_fichar' );
 add_action( 'wp_ajax_fc_asistencia_fichar',        'fc_ajax_asistencia_fichar' );
 function fc_ajax_asistencia_fichar() {
+    if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'fc_asistencia_nonce' ) ) {
+        wp_send_json_error( [ 'message' => 'Sesión expirada, refresca la página.' ] );
+    }
+
     $empleado_id = intval( $_POST['empleado_id'] ?? 0 );
     $tipo        = sanitize_text_field( $_POST['tipo'] ?? '' );
     if ( ! $empleado_id || ! in_array( $tipo, [ 'entrada', 'salida' ], true ) ) {
