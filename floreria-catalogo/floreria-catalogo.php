@@ -74,7 +74,6 @@ function fc_enqueue_frontend() {
 
     wp_localize_script( 'fc-cart', 'fcCartData', [
         'ajaxurl'          => admin_url( 'admin-ajax.php' ),
-        'whatsappNonce'    => wp_create_nonce( 'fc_whatsapp_pedido' ),
         'schedules'        => fc_get_schedules(),
         'fechasEspeciales' => fc_get_fechas_especiales(),
         'fechasCerradas'   => fc_get_fechas_cerradas(),
@@ -110,7 +109,6 @@ function fc_enqueue_frontend() {
 
         wp_localize_script( 'fc-detalle', 'fcArreglo', [
             'ajaxurl'          => admin_url( 'admin-ajax.php' ),
-            'whatsappNonce'    => wp_create_nonce( 'fc_whatsapp_pedido' ),
             'arregloId'        => $arreglo_id,
             'tamanos'          => $tamanos,
             'tamano_principal' => $tamano_principal,

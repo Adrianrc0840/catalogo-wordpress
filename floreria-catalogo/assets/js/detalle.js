@@ -735,9 +735,8 @@
             }
 
             /* ── Fire-and-forget: registrar como pedido pendiente ── */
-            var ajaxurl       = data.ajaxurl       || '';
-            var whatsappNonce = data.whatsappNonce || '';
-            if (ajaxurl && whatsappNonce) {
+            var ajaxurl = data.ajaxurl || '';
+            if (ajaxurl) {
                 var imagenUrl = (selectedColor && selectedColor.imagen_url)
                     ? selectedColor.imagen_url
                     : (selectedTamano && selectedTamano.imagen_url ? selectedTamano.imagen_url : '');
@@ -757,20 +756,29 @@
                     destinatario_telefono2: '',
                     mensaje_tarjeta:        '',
                 }];
-                var bodyDet = new URLSearchParams({
-                    action:           'fc_crear_pedido_whatsapp',
-                    nonce:            whatsappNonce,
-                    fecha:            fecha,
-                    tipo:             modoTipo,
-                    horario:          modoTipo === 'envio' ? (horarioEl ? horarioEl.value.trim() : '') : '',
-                    direccion:        modoTipo === 'envio' ? (direccionEl ? direccionEl.value.trim() : '') : '',
-                    hora_recoleccion: modoTipo === 'recoleccion' ? (horaRecoleccionEl ? horaRecoleccionEl.value : '') : '',
-                    canal_contacto:   modoTipo === 'envio'
-                                        ? (waCodeEnvio + ' ' + waNumEnvio).trim()
-                                        : (waCodeRecol + ' ' + waNumRecol).trim(),
-                    items_json:       JSON.stringify(itemPayload),
-                });
-                fetch(ajaxurl, { method: 'POST', body: bodyDet }).catch(function () {});
+                // Nonce fresco vía admin-ajax.php (no se cachea) para que funcione aunque
+                // la página HTML esté cacheada por WP Fastest Cache
+                fetch(ajaxurl, { method: 'POST', body: new URLSearchParams({ action: 'fc_get_whatsapp_nonce' }) })
+                    .then(function (r) { return r.json(); })
+                    .then(function (nonceData) {
+                        var freshNonce = (nonceData && nonceData.success && nonceData.data && nonceData.data.nonce) || '';
+                        if (!freshNonce) return;
+                        var bodyDet = new URLSearchParams({
+                            action:           'fc_crear_pedido_whatsapp',
+                            nonce:            freshNonce,
+                            fecha:            fecha,
+                            tipo:             modoTipo,
+                            horario:          modoTipo === 'envio' ? (horarioEl ? horarioEl.value.trim() : '') : '',
+                            direccion:        modoTipo === 'envio' ? (direccionEl ? direccionEl.value.trim() : '') : '',
+                            hora_recoleccion: modoTipo === 'recoleccion' ? (horaRecoleccionEl ? horaRecoleccionEl.value : '') : '',
+                            canal_contacto:   modoTipo === 'envio'
+                                                ? (waCodeEnvio + ' ' + waNumEnvio).trim()
+                                                : (waCodeRecol + ' ' + waNumRecol).trim(),
+                            items_json:       JSON.stringify(itemPayload),
+                        });
+                        return fetch(ajaxurl, { method: 'POST', body: bodyDet });
+                    })
+                    .catch(function () {});
             }
 
             window.open('https://wa.me/' + whatsapp + '?text=' + encodeURIComponent(mensaje), '_blank');
