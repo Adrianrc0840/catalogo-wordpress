@@ -98,6 +98,14 @@ function fc_ajax_get_nonce() {
     wp_send_json_success( [ 'nonce' => wp_create_nonce( 'fc_panel_nonce' ) ] );
 }
 
+// Nonce fresco para el formulario público de WhatsApp (admin-ajax.php nunca se cachea,
+// así que este nonce siempre es válido aunque la página HTML esté cacheada por días)
+add_action( 'wp_ajax_nopriv_fc_get_whatsapp_nonce', 'fc_ajax_get_whatsapp_nonce' );
+add_action( 'wp_ajax_fc_get_whatsapp_nonce',        'fc_ajax_get_whatsapp_nonce' );
+function fc_ajax_get_whatsapp_nonce() {
+    wp_send_json_success( [ 'nonce' => wp_create_nonce( 'fc_whatsapp_pedido' ) ] );
+}
+
 // Reforzar no-caché en la capa de cabeceras HTTP de WordPress
 add_action( 'send_headers', 'fc_panel_send_nocache_headers' );
 function fc_panel_send_nocache_headers() {
@@ -637,7 +645,12 @@ function fc_ajax_search_pedidos() {
 add_action( 'wp_ajax_nopriv_fc_crear_pedido_whatsapp', 'fc_ajax_crear_pedido_whatsapp' );
 add_action( 'wp_ajax_fc_crear_pedido_whatsapp',        'fc_ajax_crear_pedido_whatsapp' );
 function fc_ajax_crear_pedido_whatsapp() {
-    // Endpoint público — no requiere nonce para evitar fallos con páginas cacheadas
+    // Endpoint público — el JS obtiene el nonce vía fc_get_whatsapp_nonce (admin-ajax.php
+    // nunca se cachea) justo antes de enviar, así que siempre está fresco aunque la
+    // página HTML esté cacheada por días.
+    if ( ! wp_verify_nonce( $_POST['nonce'] ?? '', 'fc_whatsapp_pedido' ) ) {
+        wp_send_json_error( [ 'message' => 'Sesión expirada, refresca la página.' ] );
+    }
 
     $fecha_entrega = sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) );
     $numero        = fc_generar_numero_pendiente( $fecha_entrega ); // Número temporal P-

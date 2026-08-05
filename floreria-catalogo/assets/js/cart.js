@@ -972,9 +972,8 @@
         var msg = lines.join('\n');
 
         /* ── Fire-and-forget: registrar como pedido pendiente ── */
-        var ajaxurl       = cartData.ajaxurl       || '';
-        var whatsappNonce = cartData.whatsappNonce || '';
-        if (ajaxurl && whatsappNonce) {
+        var ajaxurl = cartData.ajaxurl || '';
+        if (ajaxurl) {
             var itemsPayload = cart.map(function (item) {
                 return {
                     arreglo_id:             item.arregloId           || 0,
@@ -988,18 +987,27 @@
                     mensaje_tarjeta:        item.mensajeTarjeta      || '',
                 };
             });
-            var body = new URLSearchParams({
-                action:           'fc_crear_pedido_whatsapp',
-                nonce:            whatsappNonce,
-                fecha:            fecha,
-                tipo:             isEnvio ? 'envio' : 'recoleccion',
-                horario:          isEnvio ? horario : '',
-                direccion:        isEnvio ? dir     : '',
-                hora_recoleccion: isEnvio ? ''      : hora,
-                canal_contacto:   waTel,
-                items_json:       JSON.stringify(itemsPayload),
-            });
-            fetch(ajaxurl, { method: 'POST', body: body }).catch(function () {});
+            // Nonce fresco vía admin-ajax.php (no se cachea) para que funcione aunque
+            // la página HTML esté cacheada por WP Fastest Cache
+            fetch(ajaxurl, { method: 'POST', body: new URLSearchParams({ action: 'fc_get_whatsapp_nonce' }) })
+                .then(function (r) { return r.json(); })
+                .then(function (nonceData) {
+                    var freshNonce = (nonceData && nonceData.success && nonceData.data && nonceData.data.nonce) || '';
+                    if (!freshNonce) return;
+                    var body = new URLSearchParams({
+                        action:           'fc_crear_pedido_whatsapp',
+                        nonce:            freshNonce,
+                        fecha:            fecha,
+                        tipo:             isEnvio ? 'envio' : 'recoleccion',
+                        horario:          isEnvio ? horario : '',
+                        direccion:        isEnvio ? dir     : '',
+                        hora_recoleccion: isEnvio ? ''      : hora,
+                        canal_contacto:   waTel,
+                        items_json:       JSON.stringify(itemsPayload),
+                    });
+                    return fetch(ajaxurl, { method: 'POST', body: body });
+                })
+                .catch(function () {});
         }
 
         window.open('https://wa.me/' + wa + '?text=' + encodeURIComponent(msg), '_blank');
