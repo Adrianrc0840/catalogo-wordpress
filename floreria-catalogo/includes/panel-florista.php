@@ -375,7 +375,10 @@ function fc_ajax_get_pedidos() {
 // Upload foto adicional para un item de pedido
 // ─────────────────────────────────────────────
 function fc_ajax_upload_foto() {
+    // El nonce por sí solo no basta: fc_get_nonce es nopriv, así que cualquiera
+    // puede obtener un fc_panel_nonce válido. La capability es la que autoriza.
     fc_panel_verify_nonce();
+    fc_panel_require_cap();
 
     $pedido_id = intval( $_POST['pedido_id'] ?? 0 );
     $item_idx  = intval( $_POST['item_idx']  ?? 0 );
