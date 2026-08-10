@@ -131,9 +131,12 @@ function fc_enqueue_frontend() {
     }
 }
 
-// Ocultar barra de administrador en PDV y panel de floristas (no en asistencia)
+// Ocultar barra de administrador en PDV, panel de floristas y kiosco de asistencia.
+// Ojo: WordPress inicializa el admin bar en template_redirect prioridad 0, y los
+// globals de wrapper (fc_is_asistencia_wrapper, etc.) se definen en prioridad 1 —
+// o sea, aún no existen aquí. Solo sirven los query vars, que se resuelven antes.
 add_filter( 'show_admin_bar', function( $show ) {
-    if ( get_query_var( 'fc_pdv' ) || get_query_var( 'fc_panel_florista' ) ) {
+    if ( get_query_var( 'fc_pdv' ) || get_query_var( 'fc_panel_florista' ) || get_query_var( 'fc_asistencia' ) ) {
         return false;
     }
     return $show;
