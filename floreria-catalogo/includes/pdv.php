@@ -35,6 +35,16 @@ function fc_pdv_nocache_headers() {
     }
 }
 
+// Manifest propio: al instalar el PDV como app (Chrome/Edge/iOS) toma su
+// propio icono en vez del favicon genérico del sitio.
+add_action( 'wp_head', 'fc_pdv_manifest_link' );
+function fc_pdv_manifest_link() {
+    if ( ! get_query_var( 'fc_pdv' ) ) return;
+    $base = FC_URL . 'assets/';
+    echo '<link rel="manifest" href="' . esc_url( $base . 'manifest-pdv.json' ) . '">' . "\n";
+    echo '<link rel="apple-touch-icon" href="' . esc_url( $base . 'images/icon-pdv-192.png' ) . '">' . "\n";
+}
+
 // ─────────────────────────────────────────────
 // Enqueue PDV assets
 // ─────────────────────────────────────────────

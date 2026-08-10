@@ -336,6 +336,19 @@ function fc_asistencia_render_content() {
     <?php
 }
 
+// Manifest propio: al instalar el kiosco como app toma su propio icono.
+// Va por wp_head (no por el template) porque la página puede renderizarse
+// por ruta directa, por wrapper de Elementor o por shortcode.
+add_action( 'wp_head', 'fc_asistencia_manifest_link' );
+function fc_asistencia_manifest_link() {
+    global $post;
+    $tiene_shortcode = is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, 'floreria_kiosco_asistencia' );
+    if ( ! get_query_var( 'fc_asistencia' ) && empty( $GLOBALS['fc_is_asistencia_wrapper'] ) && ! $tiene_shortcode ) return;
+    $base = FC_URL . 'assets/';
+    echo '<link rel="manifest" href="' . esc_url( $base . 'manifest-asistencia.json' ) . '">' . "\n";
+    echo '<link rel="apple-touch-icon" href="' . esc_url( $base . 'images/icon-asistencia-192.png' ) . '">' . "\n";
+}
+
 // Sin caché en el kiosco
 add_action( 'plugins_loaded', 'fc_asistencia_disable_cache', 1 );
 function fc_asistencia_disable_cache() {
