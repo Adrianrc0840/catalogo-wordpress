@@ -142,6 +142,29 @@ add_filter( 'show_admin_bar', function( $show ) {
     return $show;
 } );
 
+// ── Páginas privadas fuera de buscadores ─────────────────────────────────────
+// Cubre PDV, panel de floristas, kiosco de asistencia y rastreo de pedido.
+// Rastreo es el importante: muestra nombre, teléfono, dirección y mensaje de
+// tarjeta del cliente.
+//
+// Se usa la cabecera HTTP y no <meta robots> porque el plugin de SEO inyecta su
+// propio <meta name="robots" content="follow, index"> en estas páginas; dos
+// etiquetas contradictorias dependen de que el buscador elija la más
+// restrictiva. La cabecera no admite esa ambigüedad y además se envía aunque la
+// página se renderice por wrapper de Elementor o por shortcode.
+//
+// send_headers corre después de resolver la query, así que los query vars ya
+// están disponibles aquí (los globals de wrapper todavía no).
+add_action( 'send_headers', function() {
+    $privadas = get_query_var( 'fc_pdv' )
+             || get_query_var( 'fc_panel_florista' )
+             || get_query_var( 'fc_asistencia' )
+             || get_query_var( 'fc_pedido_ref' );
+    if ( $privadas && ! headers_sent() ) {
+        header( 'X-Robots-Tag: noindex, nofollow', true );
+    }
+} );
+
 // Asistencia: noindex + ocultar carrito
 add_action( 'wp_head', function() {
     if ( ! get_query_var( 'fc_asistencia' ) && empty( $GLOBALS['fc_is_asistencia_wrapper'] ) ) return;
