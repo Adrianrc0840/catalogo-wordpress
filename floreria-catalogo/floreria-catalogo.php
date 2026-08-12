@@ -67,9 +67,25 @@ function fc_enqueue_frontend() {
     $current_page_id     = (int) get_queried_object_id();
     $hide_cart           = $current_page_id > 0 && in_array( $current_page_id, $cart_disabled_pages, true );
 
-    // Respaldo CSS: oculta el FAB aunque el JS esté cacheado en el navegador
-    if ( $hide_cart ) {
-        wp_add_inline_style( 'fc-cart', '.fc-cart-fab{display:none!important;}' );
+    // Pantallas internas donde no va ningún botón flotante (ni carrito ni WhatsApp):
+    // herramientas del negocio y la página de rastreo del cliente.
+    //
+    // Se decide aquí, en un solo lugar, en vez de con una regla CSS por pantalla
+    // apuntando a cada botón — así lo que se agregue después queda cubierto solo.
+    // wp_enqueue_scripts corre dentro de wp_head, o sea después de template_redirect,
+    // por eso los globals de wrapper ya están disponibles además de los query vars.
+    $es_pantalla_interna = get_query_var( 'fc_pdv' )
+                        || get_query_var( 'fc_panel_florista' )
+                        || get_query_var( 'fc_asistencia' )
+                        || get_query_var( 'fc_pedido_ref' )
+                        || ! empty( $GLOBALS['fc_is_asistencia_wrapper'] )
+                        || ! empty( $GLOBALS['fc_is_rastreo_pedido'] );
+
+    $hide_floating = $hide_cart || $es_pantalla_interna;
+
+    // Respaldo CSS: oculta los flotantes aunque el JS esté cacheado en el navegador
+    if ( $hide_floating ) {
+        wp_add_inline_style( 'fc-cart', '.fc-cart-fab,.fc-wa-fab{display:none!important;}' );
     }
 
     wp_localize_script( 'fc-cart', 'fcCartData', [
@@ -79,7 +95,8 @@ function fc_enqueue_frontend() {
         'fechasCerradas'   => fc_get_fechas_cerradas(),
         'whatsapp'         => get_option( 'fc_whatsapp', '' ),
         'gmapsKey'         => $gmaps_key,
-        'hideCart'         => $hide_cart,
+        'hideCart'         => $hide_floating,
+        'waFabMensaje'     => '¡Hola! Vi su catálogo y me gustaría hacer un pedido',
         'politicasUrl'     => get_option( 'fc_politicas_url', '#' ),
     ] );
 

@@ -216,10 +216,10 @@ function fc_render_settings_page() {
 
                 <!-- ── Carrito flotante ── -->
                 <tr>
-                    <th colspan="2"><h2 style="margin:0;padding:16px 0 4px;">Carrito flotante</h2></th>
+                    <th colspan="2"><h2 style="margin:0;padding:16px 0 4px;">Botones flotantes</h2></th>
                 </tr>
                 <tr>
-                    <th>Ocultar carrito en</th>
+                    <th>Ocultarlos en</th>
                     <td>
                         <?php
                         $cart_disabled = get_option( 'fc_cart_disabled_pages', [] );
@@ -238,7 +238,11 @@ function fc_render_settings_page() {
                         else : ?>
                             <p style="color:#888;">No hay páginas publicadas.</p>
                         <?php endif; ?>
-                        <p class="description">Marca las páginas donde <strong>NO</strong> quieres que aparezca el botón flotante del carrito.</p>
+                        <p class="description">
+                            Marca las páginas donde <strong>NO</strong> quieres que aparezcan los botones flotantes.
+                            Aplica a los <strong>dos</strong>: el del carrito y el de WhatsApp.<br>
+                            <span style="color:#888;">El PDV, el panel de floristas, el kiosco de asistencia y la página de rastreo nunca los muestran, no hace falta marcarlos aquí.</span>
+                        </p>
                     </td>
                 </tr>
 

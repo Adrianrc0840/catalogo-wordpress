@@ -35,6 +35,35 @@
     opacity: .55;
 }
 
+/* ── WhatsApp FAB — contacto directo, apilado encima del carrito ── */
+.fc-wa-fab {
+    position: fixed;
+    bottom: 94px; /* 24 del carrito + 56 de su alto + 14 de separación */
+    right: 24px;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #25d366;
+    box-shadow: 0 4px 18px rgba(37,211,102,.35);
+    transition: background .2s, transform .15s;
+    text-decoration: none;
+}
+
+.fc-wa-fab:hover {
+    background: #1da851;
+    transform: scale(1.07);
+}
+
+.fc-wa-fab svg {
+    width: 28px;
+    height: 28px;
+    fill: #fff;
+}
+
 .fc-cart-badge {
     position: absolute;
     top: -4px;
@@ -587,6 +616,13 @@
 @media (max-width: 480px) {
     .fc-cart-fab {
         bottom: 18px;
+        right: 18px;
+        width: 52px;
+        height: 52px;
+    }
+
+    .fc-wa-fab {
+        bottom: 82px; /* 18 + 52 + 12 */
         right: 18px;
         width: 52px;
         height: 52px;
