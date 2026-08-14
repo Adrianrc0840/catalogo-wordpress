@@ -63,6 +63,7 @@ $today        = current_time( 'Y-m-d' );
         </div>
         <nav class="fc-pdv-nav">
             <button class="fc-pdv-nav-btn active" data-view="pdv">🛒 PDV</button>
+            <button class="fc-pdv-nav-btn" data-view="funeral">🚨 Modo funeral</button>
             <button class="fc-pdv-nav-btn" data-view="caja">💰 Caja</button>
             <button class="fc-pdv-nav-btn" data-view="transacciones">📋 Ventas</button>
             <button class="fc-pdv-nav-btn" data-view="informes">📊 Informes</button>

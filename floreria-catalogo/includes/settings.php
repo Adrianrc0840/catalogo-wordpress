@@ -24,6 +24,7 @@ function fc_render_settings_page() {
         update_option( 'fc_asistencia_wrapper_page_id', (int) ( $_POST['fc_asistencia_wrapper_page_id'] ?? 0 ) );
         update_option( 'fc_onesignal_app_id',        sanitize_text_field( $_POST['fc_onesignal_app_id']       ?? '' ) );
         update_option( 'fc_onesignal_api_key',       sanitize_text_field( $_POST['fc_onesignal_api_key']      ?? '' ) );
+        update_option( 'fc_funeral_cat_id', (int) ( $_POST['fc_funeral_cat_id'] ?? 0 ) );
         $disabled_pages = isset( $_POST['fc_cart_disabled_pages'] ) ? array_map( 'intval', (array) $_POST['fc_cart_disabled_pages'] ) : [];
         update_option( 'fc_cart_disabled_pages', $disabled_pages );
         echo '<div class="notice notice-success is-dismissible"><p>¡Configuración guardada!</p></div>';
@@ -213,6 +214,35 @@ function fc_render_settings_page() {
                     </td>
                 </tr>
                 <?php endif; ?>
+
+                <!-- ── Modo funeral ── -->
+                <tr>
+                    <th colspan="2"><h2 style="margin:0;padding:16px 0 4px;">Modo funeral (PDV)</h2></th>
+                </tr>
+                <tr>
+                    <th><label for="fc_funeral_cat_id">Categoría fúnebre</label></th>
+                    <td>
+                        <?php
+                        $funeral_cat = (int) get_option( 'fc_funeral_cat_id', 0 );
+                        $cat_terms   = get_terms( [ 'taxonomy' => 'categoria_arreglo', 'hide_empty' => false, 'orderby' => 'name' ] );
+                        if ( ! is_wp_error( $cat_terms ) && $cat_terms ) : ?>
+                        <select name="fc_funeral_cat_id" id="fc_funeral_cat_id">
+                            <option value="0">— Sin definir —</option>
+                            <?php foreach ( $cat_terms as $ct ) : ?>
+                            <option value="<?php echo (int) $ct->term_id; ?>" <?php selected( $funeral_cat, $ct->term_id ); ?>>
+                                <?php echo esc_html( $ct->name ); ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <?php else : ?>
+                            <p style="color:#888;">Aún no hay categorías de arreglos.</p>
+                        <?php endif; ?>
+                        <p class="description">
+                            En el <strong>Modo funeral</strong> del PDV solo se muestran los arreglos de esta categoría.
+                            Si no la defines, el modo funeral no tendrá arreglos que mostrar.
+                        </p>
+                    </td>
+                </tr>
 
                 <!-- ── Carrito flotante ── -->
                 <tr>

@@ -247,6 +247,41 @@ body.fc-pdv-page input[type="number"] { -moz-appearance: textfield; appearance: 
     padding: 14px 14px 20px;
 }
 
+/* ── Modo funeral ── */
+/* Indicador permanente: la barra superior cambia de color para que nadie
+   capture un pedido creyendo que está en el PDV normal. */
+body.fc-pdv-modo-funeral .fc-pdv-header {
+    background: #1f2937;
+}
+body.fc-pdv-modo-funeral .fc-pdv-nav-btn.active {
+    background: rgba(255,255,255,0.28);
+}
+
+.fc-pdv-funeral-aviso {
+    margin: 0 0 14px;
+    padding: 12px 16px;
+    border: 1.5px solid var(--pdv-warn);
+    background: #fffbeb;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--pdv-text);
+}
+
+/* Tarjeta fija "Arreglo en existencia" — se distingue del catálogo real */
+.fc-pdv-catalog-card.fc-pdv-card-existencia {
+    border-style: dashed;
+    border-color: var(--pdv-primary);
+    background: #fdf5f7;
+}
+.fc-pdv-catalog-card.fc-pdv-card-existencia .fc-pdv-card-img-empty {
+    font-size: 34px;
+}
+.fc-pdv-catalog-card.fc-pdv-card-existencia .fc-pdv-card-precio {
+    color: var(--pdv-primary);
+    font-weight: 600;
+}
+
 /* ── Category dropdown filter ── */
 .fc-pdv-cat-filter {
     position: relative;

@@ -5,6 +5,11 @@
     const { ajaxurl, nonce: initialNonce, siteurl, today = '', schedules = {}, fechasEspeciales = [], fechasCerradas = [] } = window.fcPdv || {};
     let nonce = initialNonce;
 
+    // wp_localize_script convierte los escalares a string, así que esto llega como
+    // "5" y no como 5. Hay que volverlo número: los cat_ids de los arreglos vienen
+    // por AJAX (json_encode directo) y sí son enteros — comparar "5" contra 5 falla.
+    const funeralCatId = parseInt( ( window.fcPdv || {} ).funeralCatId, 10 ) || 0;
+
     // ── DOM helpers ──
     const $  = (sel, ctx = document) => ctx.querySelector(sel);
     const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
@@ -20,6 +25,7 @@
     let tipoPedido   = 'recoleccion';
     let formaPago    = 'efectivo';
     let facturaTipo  = '';   // '' | 'fisica' | 'moral'
+    let modoFuneral  = false; // true = catálogo fúnebre + ticket de funeraria
 
     // ── Helpers ──
     function escHtml(str) {
@@ -217,13 +223,115 @@
     }
 
     // Cambiar entre vistas PDV / Caja / Informes
+    //
+    // "funeral" no es una vista propia: reutiliza la del PDV y solo cambia el modo,
+    // porque el catálogo, el ticket y el cobro son la misma maquinaria con otro
+    // filtro y otro formulario. Por eso apunta al panel de PDV.
     function switchView(view) {
         $$('.fc-pdv-nav-btn').forEach(b => b.classList.remove('active'));
         $$('.fc-pdv-view').forEach(v => v.classList.remove('active'));
         const btn = $(`.fc-pdv-nav-btn[data-view="${view}"]`);
         if (btn) btn.classList.add('active');
-        const panel = $(`#fc-pdv-view-${view}`);
+        const panelId = view === 'funeral' ? 'pdv' : view;
+        const panel   = $(`#fc-pdv-view-${panelId}`);
         if (panel) panel.classList.add('active');
+        document.body.classList.toggle('fc-pdv-modo-funeral', modoFuneral);
+    }
+
+    // ── MODO FUNERAL ──
+    // Devuelve solo los arreglos marcados con la categoría fúnebre.
+    function arreglosDelModo() {
+        if (!modoFuneral) return allArreglos;
+        if (!funeralCatId) return [];
+        return allArreglos.filter(a => Array.isArray(a.cat_ids) && a.cat_ids.includes(funeralCatId));
+    }
+
+    // Categorías a mostrar en el desplegable: en modo funeral solo las que
+    // realmente tienen arreglos fúnebres, y sin repetir la fúnebre misma.
+    function categoriasDelModo() {
+        if (!modoFuneral) return catalogo;
+        const presentes = new Set();
+        arreglosDelModo().forEach(a => (a.cat_ids || []).forEach(id => presentes.add(id)));
+        presentes.delete(funeralCatId);
+        return catalogo.filter(c => presentes.has(c.id));
+    }
+
+    function pedirCambioDeModo(aFuneral) {
+        // Mismo modo (p. ej. volver desde Caja): solo mostrar la pantalla.
+        // Se re-renderiza para salir del panel de detalle si quedó abierto.
+        if (aFuneral === modoFuneral) {
+            switchView(aFuneral ? 'funeral' : 'pdv');
+            renderCatalog();
+            return;
+        }
+
+        const hayTicket = cart.length > 0;
+        const backdrop  = document.createElement('div');
+        backdrop.className = 'fc-pdv-modal-backdrop';
+        backdrop.innerHTML = aFuneral ? `
+            <div class="fc-pdv-modal" style="max-width:460px;">
+                <div class="fc-pdv-modal-header">
+                    <h3>🚨 Entrar al modo funeral</h3>
+                    <button class="fc-pdv-modal-close">×</button>
+                </div>
+                <div class="fc-pdv-modal-body">
+                    <p style="font-size:15px;line-height:1.6;color:var(--pdv-text);margin-top:0;">El PDV cambia así:</p>
+                    <ul style="font-size:14px;line-height:1.9;color:var(--pdv-text);padding-left:20px;margin:0;">
+                        <li>Solo aparecen los arreglos <strong>fúnebres</strong></li>
+                        <li>Se agrega <strong>Arreglo en existencia</strong> al inicio del catálogo</li>
+                        <li>El ticket pide <strong>funeraria, capilla y banda</strong> en lugar de los datos de entrega</li>
+                        <li><strong>No se cobra anticipo</strong>; se conservan extras, factura y forma de pago</li>
+                        <li>El pedido llega al panel en la pestaña <strong>Pedidos de funeral</strong></li>
+                    </ul>
+                    ${hayTicket ? `<p style="font-size:14px;color:var(--pdv-danger);margin-bottom:0;margin-top:16px;">
+                        ⚠ Tienes ${cart.length} arreglo${cart.length > 1 ? 's' : ''} en el ticket. Al cambiar de modo se vaciará.
+                    </p>` : ''}
+                </div>
+                <div class="fc-pdv-modal-footer">
+                    <button class="fc-pdv-modal-cancel">Cancelar</button>
+                    <button class="fc-pdv-btn-primary" id="pdv-modo-confirm">Entrar al modo funeral</button>
+                </div>
+            </div>` : `
+            <div class="fc-pdv-modal" style="max-width:460px;">
+                <div class="fc-pdv-modal-header">
+                    <h3>Volver al PDV normal</h3>
+                    <button class="fc-pdv-modal-close">×</button>
+                </div>
+                <div class="fc-pdv-modal-body">
+                    <p style="font-size:15px;line-height:1.6;color:var(--pdv-text);margin-top:0;">Sales del modo funeral. El PDV vuelve a la normalidad:</p>
+                    <ul style="font-size:14px;line-height:1.9;color:var(--pdv-text);padding-left:20px;margin:0;">
+                        <li>Vuelve el catálogo completo</li>
+                        <li>El ticket vuelve a pedir los datos de entrega y el anticipo</li>
+                        <li>Los pedidos entran como <strong>Pedidos regulares</strong></li>
+                    </ul>
+                    ${hayTicket ? `<p style="font-size:14px;color:var(--pdv-danger);margin-bottom:0;margin-top:16px;">
+                        ⚠ Tienes ${cart.length} arreglo${cart.length > 1 ? 's' : ''} en el ticket. Al cambiar de modo se vaciará.
+                    </p>` : ''}
+                </div>
+                <div class="fc-pdv-modal-footer">
+                    <button class="fc-pdv-modal-cancel">Cancelar</button>
+                    <button class="fc-pdv-btn-primary" id="pdv-modo-confirm">Volver al PDV normal</button>
+                </div>
+            </div>`;
+        document.body.appendChild(backdrop);
+
+        const close = () => backdrop.remove();
+        $('.fc-pdv-modal-close',  backdrop).addEventListener('click', close);
+        $('.fc-pdv-modal-cancel', backdrop).addEventListener('click', close);
+        backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+
+        $('#pdv-modo-confirm', backdrop).addEventListener('click', () => {
+            modoFuneral = aFuneral;
+            cart        = [];          // los dos modos guardan datos distintos: no se mezclan
+            selectedCat = null;
+            searchTerm  = '';
+            const searchInput = $('#fc-pdv-search');
+            if (searchInput) searchInput.value = '';
+            close();
+            switchView(aFuneral ? 'funeral' : 'pdv');
+            renderTicket();
+            renderCatalog();
+        });
     }
 
     // ── CATALOG ──
@@ -232,32 +340,49 @@
         if (!container) return;
         container.classList.add('is-grid'); // padding + scroll para el grid
 
-        // Aplicar filtros de categoría y búsqueda
-        let arr = allArreglos;
+        // Aplicar filtros de modo, categoría y búsqueda
+        let arr = arreglosDelModo();
         if (selectedCat !== null) arr = arr.filter(a => Array.isArray(a.cat_ids) && a.cat_ids.includes(selectedCat));
         if (searchTerm) arr = arr.filter(a => a.nombre.toLowerCase().includes(searchTerm));
 
         // Dropdown de categoría (solo si hay más de una)
+        const cats     = categoriasDelModo();
         const catLabel = selectedCat === null
             ? 'Todas las categorías'
-            : (catalogo.find(c => c.id === selectedCat)?.nombre || 'Todas las categorías');
-        const pillsHtml = catalogo.length > 1 ? `
+            : (cats.find(c => c.id === selectedCat)?.nombre || 'Todas las categorías');
+        const pillsHtml = cats.length > 1 ? `
             <div class="fc-pdv-cat-filter">
                 <button class="fc-pdv-cat-toggle" id="pdv-cat-toggle">
                     <span id="pdv-cat-label">${escHtml(catLabel)}</span>
                     <span class="fc-pdv-cat-chevron">▼</span>
                 </button>
                 <div class="fc-pdv-cat-panel" id="pdv-cat-panel" style="display:none">
-                    ${catalogo.length > 5 ? `<input type="search" class="fc-pdv-cat-search" placeholder="Buscar categoría…" autocomplete="off" />` : ''}
+                    ${cats.length > 5 ? `<input type="search" class="fc-pdv-cat-search" placeholder="Buscar categoría…" autocomplete="off" />` : ''}
                     <button class="fc-pdv-cat-btn${selectedCat === null ? ' active' : ''}" data-cat="all">Todas</button>
-                    ${catalogo.map(c => `<button class="fc-pdv-cat-btn${selectedCat === c.id ? ' active' : ''}" data-cat="${c.id}">${escHtml(c.nombre)}</button>`).join('')}
+                    ${cats.map(c => `<button class="fc-pdv-cat-btn${selectedCat === c.id ? ' active' : ''}" data-cat="${c.id}">${escHtml(c.nombre)}</button>`).join('')}
                 </div>
             </div>` : '';
 
         // Grid de tarjetas
         const capturedArr = arr; // closure para eventos
-        const cardsHtml = arr.length
+
+        // En modo funeral, "Arreglo en existencia" encabeza siempre el catálogo.
+        // Es una entrada fija (no un arreglo del catálogo) que abre el mismo
+        // panel que Personalizado: nombre, modificaciones y precio libre.
+        const existenciaHtml = modoFuneral ? `
+            <div class="fc-pdv-catalog-card fc-pdv-card-existencia" id="pdv-card-existencia">
+                <div class="fc-pdv-card-img-wrap">
+                    <div class="fc-pdv-card-img-empty">📋</div>
+                </div>
+                <div class="fc-pdv-card-body">
+                    <div class="fc-pdv-card-nombre">Arreglo en existencia</div>
+                    <div class="fc-pdv-card-precio">Precio libre</div>
+                </div>
+            </div>` : '';
+
+        const cardsHtml = (arr.length || modoFuneral)
             ? `<div class="fc-pdv-catalog-grid">
+                ${existenciaHtml}
                 ${arr.map((a, i) => {
                     const precios = a.tamanos.map(t => t.precio).filter(p => p > 0);
                     const pMin = precios.length ? Math.min(...precios) : 0;
@@ -284,7 +409,20 @@
                    ${searchTerm ? `Sin resultados para "<strong>${escHtml(searchTerm)}</strong>"` : 'No hay arreglos disponibles.'}
                </p>`;
 
-        container.innerHTML = pillsHtml + cardsHtml;
+        // Aviso si el modo funeral está activo pero nadie eligió la categoría en Configuración
+        const avisoSinCat = (modoFuneral && !funeralCatId) ? `
+            <div class="fc-pdv-funeral-aviso">
+                ⚠ No has definido cuál es la categoría fúnebre.
+                Ve a <strong>Arreglos → Configuración</strong> y elígela para que aparezcan aquí.
+                Mientras tanto puedes usar <strong>Arreglo en existencia</strong> y <strong>Personalizado</strong>.
+            </div>` : '';
+
+        container.innerHTML = pillsHtml + avisoSinCat + cardsHtml;
+
+        // "Arreglo en existencia" → mismo panel que Personalizado, solo cambia el ejemplo del campo
+        $('#pdv-card-existencia', container)?.addEventListener('click', () => {
+            showDetailPanel({ id: 0, nombre: '', descripcion: '', thumb: '', tamanos: [], esExistencia: true });
+        });
 
         // Dropdown → toggle panel
         const catToggleEl = $('#pdv-cat-toggle', container);
@@ -422,7 +560,7 @@
                             <div class="fc-pdv-form-group">
                                 <label>Nombre del arreglo <span style="color:#ef4444">*</span></label>
                                 <input type="text" id="pdv-item-nombre"
-                                       placeholder="Ej: Girasoles personalizados"
+                                       placeholder="${arreglo.esExistencia ? 'Ej: Corona de rosas blancas' : 'Ej: Girasoles personalizados'}"
                                        value="${escHtml(editItem?.arreglo_nombre || '')}" />
                             </div>` : `
                             <h2 class="fc-pdv-detail-nombre">${escHtml(arreglo.nombre)}</h2>`}
@@ -1862,15 +2000,22 @@
         const mainPanel = $('#fc-pdv-main');
         if (!mainPanel) return; // not logged in, login form is shown
 
-        // Nav: PDV | Caja | Informes
+        // Nav: PDV | Modo funeral | Caja | Ventas | Informes
         $$('.fc-pdv-nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const view = btn.dataset.view;
+
+                // PDV y funeral comparten pantalla: si cambia el modo hay que
+                // confirmarlo antes, porque se vacía el ticket.
+                if (view === 'pdv' || view === 'funeral') {
+                    pedirCambioDeModo(view === 'funeral');
+                    return;
+                }
+
                 switchView(view);
                 if (view === 'caja')          loadCajas();
                 if (view === 'transacciones') loadTransacciones();
                 if (view === 'informes')      loadInformes();
-                if (view === 'pdv')           renderCatalog();
             });
         });
 

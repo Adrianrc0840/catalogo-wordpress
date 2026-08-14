@@ -75,6 +75,7 @@ function fc_enqueue_pdv() {
         'nonce'            => wp_create_nonce( 'fc_pdv_nonce' ),
         'siteurl'          => home_url(),
         'today'            => $today,
+        'funeralCatId'     => (int) get_option( 'fc_funeral_cat_id', 0 ),
         'schedules'        => fc_get_schedules(),
         'fechasEspeciales' => fc_get_fechas_especiales(),
         'fechasCerradas'   => fc_get_fechas_cerradas(),
