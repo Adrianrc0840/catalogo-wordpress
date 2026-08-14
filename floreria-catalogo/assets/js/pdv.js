@@ -1877,8 +1877,10 @@
 
     // ── TRANSACCIONES ──
     const pagoLabel = { efectivo: '💵 Efectivo', tarjeta: '💳 Tarjeta', otro: '🔄 Otro' };
-    const statusLabel = { aceptado: 'Aceptado', en_proceso: 'En proceso', listo: 'Listo', entregado: 'Entregado', cancelado: 'Cancelado' };
-    const statusColor = { aceptado: '#3b82f6', en_proceso: '#f59e0b', listo: '#10b981', entregado: '#64748b', cancelado: '#ef4444' };
+    // Los estados de funeral van aquí también: sin ellos el badge mostraría el
+    // texto crudo 'funeral_pendiente' en lugar de una etiqueta legible.
+    const statusLabel = { aceptado: 'Aceptado', en_proceso: 'En proceso', listo: 'Listo', entregado: 'Entregado', cancelado: 'Cancelado', funeral_pendiente: 'Pendiente', funeral_entregado: 'Entregado' };
+    const statusColor = { aceptado: '#3b82f6', en_proceso: '#f59e0b', listo: '#10b981', entregado: '#64748b', cancelado: '#ef4444', funeral_pendiente: '#f59e0b', funeral_entregado: '#10b981' };
 
     async function loadTransacciones() {
         const desde    = $('#fc-pdv-tx-desde')?.value || '';
@@ -1970,8 +1972,14 @@
         const dirLink = tx.direccion
             ? `<a href="https://maps.google.com/?q=${encodeURIComponent(tx.direccion)}" target="_blank" rel="noopener" class="fc-pdv-tx-link">📍 ${escHtml(tx.direccion)}</a>`
             : '';
-        const tipoStr = tx.tipo === 'envio' ? '🚗 Envío' : '🏪 Recolección';
-        const st      = tx.status || 'aceptado';
+        // Un pedido de funeral no es envío ni recolección: sin este caso caería en
+        // "Recolección" por descarte y mostraría una línea de entrega vacía.
+        const tipoStr = tx.es_funeral
+            ? '🚨 Funeral'
+            : (tx.tipo === 'envio' ? '🚗 Envío' : '🏪 Recolección');
+        const st = tx.status || 'aceptado';
+
+        const metaFuneral = [tx.funeraria, tx.capilla, tx.difunto].filter(Boolean).join(' · ');
 
         return `
             <div class="fc-pdv-tx-card">
@@ -1981,10 +1989,11 @@
                     <span class="fc-pdv-tx-hora">${fmtDatetime(tx.fecha_venta).split(' ')[1] || ''}</span>
                 </div>
                 <div class="fc-pdv-tx-meta">
-                    ${tipoStr} · Entrega: ${fmtDate(tx.fecha_entrega)}
-                    ${tx.tipo === 'envio'
-                        ? (tx.horario          ? ' · ' + escHtml(tx.horario)          : '')
-                        : (tx.hora_recoleccion ? ' · ' + escHtml(tx.hora_recoleccion) : '')}
+                    ${tipoStr}${tx.es_funeral
+                        ? (metaFuneral ? ' · ' + escHtml(metaFuneral) : '')
+                        : ` · Entrega: ${fmtDate(tx.fecha_entrega)}` + (tx.tipo === 'envio'
+                            ? (tx.horario          ? ' · ' + escHtml(tx.horario)          : '')
+                            : (tx.hora_recoleccion ? ' · ' + escHtml(tx.hora_recoleccion) : ''))}
                 </div>
                 ${dirLink ? `<div class="fc-pdv-tx-meta">${dirLink}</div>` : ''}
                 <div class="fc-pdv-tx-items">${itemsHtml}</div>

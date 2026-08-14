@@ -742,6 +742,10 @@ function fc_ajax_pdv_get_transacciones() {
             'direccion'        => get_post_meta( $p->ID, '_fc_pedido_direccion',          true ),
             'horario'          => get_post_meta( $p->ID, '_fc_pedido_horario',            true ),
             'hora_recoleccion' => get_post_meta( $p->ID, '_fc_pedido_hora_recoleccion',   true ),
+            'es_funeral'       => get_post_meta( $p->ID, '_fc_pedido_es_funeral', true ) === '1',
+            'funeraria'        => get_post_meta( $p->ID, '_fc_pedido_funeraria',          true ),
+            'capilla'          => get_post_meta( $p->ID, '_fc_pedido_capilla',            true ),
+            'difunto'          => get_post_meta( $p->ID, '_fc_pedido_difunto',            true ),
             'items'            => $items,
         ];
 
