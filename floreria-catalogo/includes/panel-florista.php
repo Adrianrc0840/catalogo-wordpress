@@ -282,9 +282,33 @@ function fc_ajax_get_pedidos() {
     fc_panel_verify_nonce();
     fc_panel_require_cap();
 
-    $status = isset( $_POST['status'] ) ? sanitize_key( $_POST['status'] ) : 'all';
-    $fecha  = isset( $_POST['fecha'] )  ? sanitize_text_field( wp_unslash( $_POST['fecha'] ) ) : '';
-    $valid  = array_keys( fc_pedido_status_labels() );
+    $status  = isset( $_POST['status'] ) ? sanitize_key( $_POST['status'] ) : 'all';
+    $fecha   = isset( $_POST['fecha'] )  ? sanitize_text_field( wp_unslash( $_POST['fecha'] ) ) : '';
+    $valid   = array_keys( fc_pedido_status_labels() );
+    $seccion = ( ( $_POST['seccion'] ?? '' ) === 'funeral' ) ? 'funeral' : 'regular';
+
+    // ── Sección de funeral: lista aparte, siempre ordenada por número ──
+    // Sin filtro de estado (solo tienen dos) pero sí por fecha. A diferencia de la
+    // sección regular, sin fecha se muestran todos y no solo de hoy en adelante,
+    // porque la fecha de un pedido de funeral es la del día en que se capturó.
+    if ( $seccion === 'funeral' ) {
+        $meta_funeral = [ [ 'key' => '_fc_pedido_es_funeral', 'value' => '1' ] ];
+        if ( $fecha ) {
+            $meta_funeral[] = [ 'key' => '_fc_pedido_fecha', 'value' => $fecha, 'compare' => '=' ];
+        }
+        $pedidos_query = get_posts( [
+            'post_type'      => 'pedido',
+            'post_status'    => 'publish',
+            'posts_per_page' => 200,
+            'meta_query'     => array_merge( [ 'relation' => 'AND' ], $meta_funeral ),
+        ] );
+        $pedidos = array_map( 'fc_build_pedido_data', $pedidos_query );
+        usort( $pedidos, fn( $a, $b ) => strcmp( $a['numero'] ?? '', $b['numero'] ?? '' ) );
+
+        header( 'Content-Type: application/json; charset=utf-8' );
+        echo json_encode( [ 'success' => true, 'data' => [ 'pedidos' => $pedidos ] ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+        wp_die();
+    }
 
     $tz    = new DateTimeZone( 'America/Tijuana' );
     $today = ( new DateTime( 'now', $tz ) )->format( 'Y-m-d' );
@@ -353,6 +377,14 @@ function fc_ajax_get_pedidos() {
         }
     }
 
+    // Los de funeral nunca aparecen en la sección regular. Se contempla que los
+    // pedidos anteriores a esta función no tienen la meta, de ahí el NOT EXISTS.
+    $meta_conditions[] = [
+        'relation' => 'OR',
+        [ 'key' => '_fc_pedido_es_funeral', 'compare' => 'NOT EXISTS' ],
+        [ 'key' => '_fc_pedido_es_funeral', 'value' => '1', 'compare' => '!=' ],
+    ];
+
     $args['meta_query'] = array_merge( [ 'relation' => 'AND' ], $meta_conditions );
 
     $pedidos_query = get_posts( $args );
@@ -369,6 +401,47 @@ function fc_ajax_get_pedidos() {
     header( 'Content-Type: application/json; charset=utf-8' );
     echo json_encode( [ 'success' => true, 'data' => [ 'pedidos' => $pedidos ] ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
     wp_die();
+}
+
+// ─────────────────────────────────────────────
+// AJAX: alternar entregado/pendiente en un pedido de funeral
+// Los de funeral no siguen el flujo de estados del panel regular: solo tienen
+// estos dos y se cambian con un botón que va y viene.
+// ─────────────────────────────────────────────
+add_action( 'wp_ajax_fc_panel_funeral_toggle', 'fc_ajax_funeral_toggle' );
+function fc_ajax_funeral_toggle() {
+    fc_panel_verify_nonce();
+    fc_panel_require_cap();
+
+    $pedido_id = (int) ( $_POST['pedido_id'] ?? 0 );
+    if ( ! $pedido_id ) wp_send_json_error( [ 'message' => 'ID inválido.' ] );
+
+    $post = get_post( $pedido_id );
+    if ( ! $post || $post->post_type !== 'pedido' ) {
+        wp_send_json_error( [ 'message' => 'Pedido no encontrado.' ] );
+    }
+    if ( get_post_meta( $pedido_id, '_fc_pedido_es_funeral', true ) !== '1' ) {
+        wp_send_json_error( [ 'message' => 'Este pedido no es de funeral.' ] );
+    }
+
+    $actual = get_post_meta( $pedido_id, '_fc_pedido_status', true );
+    $nuevo  = ( $actual === 'funeral_entregado' ) ? 'funeral_pendiente' : 'funeral_entregado';
+    update_post_meta( $pedido_id, '_fc_pedido_status', $nuevo );
+
+    // Historial, igual que en los pedidos regulares
+    $tz   = new DateTimeZone( 'America/Tijuana' );
+    $user = wp_get_current_user();
+    $hist = maybe_unserialize( get_post_meta( $pedido_id, '_fc_pedido_historial', true ) );
+    if ( ! is_array( $hist ) ) $hist = [];
+    $hist[] = [
+        'status'    => $nuevo,
+        'user_id'   => get_current_user_id(),
+        'user_name' => $user->display_name,
+        'timestamp' => ( new DateTime( 'now', $tz ) )->format( 'Y-m-d H:i:s' ),
+    ];
+    update_post_meta( $pedido_id, '_fc_pedido_historial', maybe_serialize( $hist ) );
+
+    wp_send_json_success( [ 'status' => $nuevo ] );
 }
 
 // ─────────────────────────────────────────────
@@ -482,6 +555,7 @@ function fc_build_pedido_data( $p ) {
                     'destinatario_telefono' => sanitize_text_field( $item['destinatario_telefono']  ?? '' ),
                     'destinatario_telefono2'=> sanitize_text_field( $item['destinatario_telefono2'] ?? '' ),
                     'mensaje_tarjeta'       => sanitize_textarea_field( $item['mensaje_tarjeta'] ?? '' ),
+                    'banda'                 => sanitize_text_field( $item['banda'] ?? '' ),
                 ];
             }
         }
@@ -519,6 +593,10 @@ function fc_build_pedido_data( $p ) {
         'canal'             => get_post_meta( $p->ID, '_fc_pedido_canal',            true ),
         'canal_nombre'      => get_post_meta( $p->ID, '_fc_pedido_canal_nombre',     true ),
         'canal_contacto'    => get_post_meta( $p->ID, '_fc_pedido_canal_contacto',   true ),
+        'es_funeral'        => get_post_meta( $p->ID, '_fc_pedido_es_funeral', true ) === '1',
+        'funeraria'         => get_post_meta( $p->ID, '_fc_pedido_funeraria',        true ),
+        'capilla'           => get_post_meta( $p->ID, '_fc_pedido_capilla',          true ),
+        'difunto'           => get_post_meta( $p->ID, '_fc_pedido_difunto',          true ),
         'items'             => $items,
         // Legacy top-level fields kept for backward compat (print, single-pedido template)
         'arreglo_id'        => (int) get_post_meta( $p->ID, '_fc_pedido_arreglo_id',    true ),
@@ -607,16 +685,33 @@ function fc_ajax_search_pedidos() {
         '_fc_pedido_direccion',
         '_fc_pedido_color',
         '_fc_pedido_tamano',
+        '_fc_pedido_funeraria',
+        '_fc_pedido_capilla',
     ];
 
-    $meta_query = [ 'relation' => 'OR' ];
+    $busqueda = [ 'relation' => 'OR' ];
     foreach ( $search_fields as $field ) {
-        $meta_query[] = [
+        $busqueda[] = [
             'key'     => $field,
             'value'   => $term,
             'compare' => 'LIKE',
         ];
     }
+
+    // La búsqueda respeta la pestaña donde está el usuario: si busca en regulares
+    // no deben salir pedidos de funeral (se renderizarían con la tarjeta equivocada)
+    // y viceversa. Los pedidos anteriores a esta función no tienen la meta, de ahí
+    // el NOT EXISTS del lado regular.
+    $seccion = ( ( $_POST['seccion'] ?? '' ) === 'funeral' ) ? 'funeral' : 'regular';
+    $filtro_seccion = $seccion === 'funeral'
+        ? [ [ 'key' => '_fc_pedido_es_funeral', 'value' => '1' ] ]
+        : [ [
+            'relation' => 'OR',
+            [ 'key' => '_fc_pedido_es_funeral', 'compare' => 'NOT EXISTS' ],
+            [ 'key' => '_fc_pedido_es_funeral', 'value' => '1', 'compare' => '!=' ],
+        ] ];
+
+    $meta_query = array_merge( [ 'relation' => 'AND', $busqueda ], $filtro_seccion );
 
     $results = get_posts( [
         'post_type'      => 'pedido',
@@ -1041,10 +1136,15 @@ function fc_ajax_actualizar_pedido_datos() {
                 'destinatario_telefono2' => sanitize_text_field(    $item['destinatario_telefono2'] ?? '' ),
                 'mensaje_tarjeta'        => sanitize_textarea_field( $item['mensaje_tarjeta']       ?? '' ),
                 'notas'                  => sanitize_textarea_field( $item['notas']                 ?? '' ),
+                'banda'                  => sanitize_text_field(     $item['banda']                 ?? '' ),
             ];
         }
     }
     $first = $items_clean[0] ?? [];
+
+    // Solo un pedido ya marcado como de funeral acepta funeraria y capilla: así
+    // el formulario normal no puede convertir un pedido regular en uno de funeral.
+    $es_funeral = get_post_meta( $pedido_id, '_fc_pedido_es_funeral', true ) === '1';
 
     $fields = [
         '_fc_pedido_tipo'             => sanitize_key( $_POST['tipo'] ?? 'envio' ),
@@ -1072,6 +1172,23 @@ function fc_ajax_actualizar_pedido_datos() {
         '_fc_pedido_destinatario_telefono'   => $first['destinatario_telefono'] ?? '',
         '_fc_pedido_mensaje_tarjeta'         => $first['mensaje_tarjeta']       ?? '',
     ];
+
+    // En funeral no aplican los datos de entrega: se conservan vacíos y en su
+    // lugar se guardan funeraria y capilla.
+    if ( $es_funeral ) {
+        unset(
+            $fields['_fc_pedido_tipo'],
+            $fields['_fc_pedido_horario'],
+            $fields['_fc_pedido_direccion'],
+            $fields['_fc_pedido_hora_recoleccion'],
+            $fields['_fc_pedido_canal'],
+            $fields['_fc_pedido_canal_nombre'],
+            $fields['_fc_pedido_canal_contacto']
+        );
+        $fields['_fc_pedido_funeraria'] = sanitize_text_field( wp_unslash( $_POST['funeraria'] ?? '' ) );
+        $fields['_fc_pedido_capilla']   = sanitize_text_field( wp_unslash( $_POST['capilla']   ?? '' ) );
+        $fields['_fc_pedido_difunto']   = sanitize_text_field( wp_unslash( $_POST['difunto']   ?? '' ) );
+    }
 
     foreach ( $fields as $key => $value ) {
         update_post_meta( $pedido_id, $key, $value );
@@ -1329,6 +1446,12 @@ function fc_print_pedido_page() {
     $ant_liq     = (bool)  get_post_meta( $pedido_id, '_fc_pedido_anticipo_liquidado', true );
     $shop_name   = 'Florería Monarca';
     $status_lbl  = fc_pedido_status_label( $status );
+
+    // Funeral: cambia la sección de entrega por funeraria/capilla
+    $es_funeral  = get_post_meta( $pedido_id, '_fc_pedido_es_funeral', true ) === '1';
+    $funeraria   = get_post_meta( $pedido_id, '_fc_pedido_funeraria',  true );
+    $capilla     = get_post_meta( $pedido_id, '_fc_pedido_capilla',    true );
+    $difunto     = get_post_meta( $pedido_id, '_fc_pedido_difunto',    true );
 
     // Multi-item
     $items_raw = get_post_meta( $pedido_id, '_fc_pedido_items', true );
@@ -1682,6 +1805,31 @@ function fc_print_pedido_page() {
     <!-- Cuerpo -->
     <div class="fc-doc-body">
 
+        <?php if ( $es_funeral ) : ?>
+        <!-- Funeral: funeraria y capilla en lugar de los datos de entrega -->
+        <div class="fc-section-title">Funeraria</div>
+        <div class="fc-row">
+            <span class="fc-row-label">Funeraria</span>
+            <span class="fc-row-value" style="font-weight:700;"><?php echo esc_html( $funeraria ); ?></span>
+        </div>
+        <div class="fc-row">
+            <span class="fc-row-label">Capilla</span>
+            <span class="fc-row-value" style="font-weight:700;"><?php echo esc_html( $capilla ); ?></span>
+        </div>
+        <?php if ( $difunto ) : ?>
+        <div class="fc-row">
+            <span class="fc-row-label">Difunto</span>
+            <span class="fc-row-value"><?php echo esc_html( $difunto ); ?></span>
+        </div>
+        <?php endif; ?>
+        <?php if ( $fecha_fmt ) : ?>
+        <div class="fc-row">
+            <span class="fc-row-label">Fecha</span>
+            <span class="fc-row-value"><?php echo esc_html( $fecha_fmt ); ?></span>
+        </div>
+        <?php endif; ?>
+
+        <?php else : ?>
         <!-- Entrega -->
         <div class="fc-section-title">Entrega</div>
         <div class="fc-row">
@@ -1711,6 +1859,7 @@ function fc_print_pedido_page() {
             <span class="fc-row-label">Canal</span>
             <span class="fc-row-value"><?php echo esc_html( $canal_label ); ?><?php echo $canal_detalle ? ' · ' . esc_html( $canal_detalle ) : ''; ?></span>
         </div>
+        <?php endif; ?>
         <?php endif; ?>
         <?php if ( $nota ) : ?>
         <div class="fc-row">
@@ -1748,6 +1897,7 @@ function fc_print_pedido_page() {
             $item_tel   = $item['destinatario_telefono']  ?? '';
             $item_tel2  = $item['destinatario_telefono2'] ?? '';
             $item_tarj  = $item['mensaje_tarjeta']        ?? '';
+            $item_banda = $item['banda']                  ?? '';
         ?>
         <div class="fc-item-print-row">
             <div class="fc-item-print-thumb">
@@ -1767,6 +1917,9 @@ function fc_print_pedido_page() {
                 <?php endif; ?>
                 <?php if ( $item_dest ) : ?>
                 <div class="fc-item-print-dest">Para: <?php echo esc_html( $item_dest ); ?><?php echo $item_tel ? ' · ' . esc_html( $item_tel ) : ''; ?><?php echo $item_tel2 ? ' · ' . esc_html( $item_tel2 ) : ''; ?></div>
+                <?php endif; ?>
+                <?php if ( $item_banda ) : ?>
+                <div class="fc-item-print-dest" style="font-weight:700;">Banda: <?php echo esc_html( mb_strtoupper( $item_banda, 'UTF-8' ) ); ?></div>
                 <?php endif; ?>
                 <?php if ( $item_tarj ) : ?>
                 <div class="fc-item-print-tarjeta">"<?php echo esc_html( $item_tarj ); ?>"</div>

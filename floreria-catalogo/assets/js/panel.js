@@ -16,6 +16,7 @@
 
     // ── State ──
     let currentFilter    = 'all';
+    let seccionActual    = 'regular';      // 'regular' | 'funeral'
     let currentSort      = 'hora-asc';     // 'numero-asc' | 'numero-desc' | 'hora-asc' | 'hora-desc'
     let currentEditId    = null;   // null = crear, número = editar
     let pedidoDataMap    = {};     // id → datos completos del pedido
@@ -394,6 +395,90 @@
 </div>`;
     }
 
+    // ── Tarjeta de pedido de funeral ──
+    // Va aparte de renderCard porque comparte poco: no lleva link de rastreo,
+    // ni selector de estado, ni nota para el cliente. Solo funeraria, capilla,
+    // los arreglos con su banda, y tres botones.
+    function renderFuneralCard(p) {
+        const entregado = p.status === 'funeral_entregado';
+        const last      = p.last_change;
+        const lastInfo  = last
+            ? `Último cambio: ${fmtDatetime(last.timestamp)} por ${escHtml(last.user_name)}`
+            : '';
+
+        const items = p.items || [];
+        const itemsHtml = items.map(item => {
+            const allPhotos = [item.imagen_url, ...(item.fotos_extra || [])].filter(Boolean);
+            const thumb = allPhotos.length
+                ? `<div class="fc-card-item-thumb-wrap" data-photos="${escAttr(JSON.stringify(allPhotos))}">
+                       <img class="fc-card-item-thumb" src="${escAttr(allPhotos[0])}" alt="" loading="lazy" />
+                   </div>`
+                : `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
+            const sub = [item.tamano, item.color].filter(Boolean).join(' · ');
+            return `
+                <div class="fc-card-item">
+                    ${thumb}
+                    <div class="fc-card-item-info">
+                        <strong class="fc-card-item-nombre">${escHtml(item.arreglo_nombre)}</strong>
+                        ${sub ? `<span class="fc-card-item-sub">${escHtml(sub)}</span>` : ''}
+                        ${item.notas ? `<span class="fc-card-item-modificaciones">${escHtml(item.notas)}</span>` : ''}
+                        ${item.banda ? `<span class="fc-card-item-banda"><strong>Banda:</strong> ${escHtml(capitalize(item.banda))}</span>` : ''}
+                    </div>
+                </div>`;
+        }).join('');
+
+        const isMobile = window.innerWidth <= 640;
+
+        return `
+<div class="fc-order-card fc-order-card-funeral${entregado ? ' fc-funeral-entregado' : ''}${isMobile ? ' collapsed' : ''}" data-id="${p.id}">
+    <div class="fc-card-header">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <span class="fc-order-num fc-card-numero">${escHtml(p.numero)}</span>
+            ${items.length > 1 ? `<span class="fc-card-item-count">${items.length} arreglos</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span class="fc-status-badge ${entregado ? 'entregado' : 'funeral_pendiente'}">${entregado ? 'Entregado' : 'Pendiente'}</span>
+            <button class="fc-card-collapse-btn" aria-label="Colapsar">&#9662;</button>
+        </div>
+    </div>
+
+    <div class="fc-card-collapsible">
+        <div class="fc-card-info">
+            <div class="fc-card-row">
+                <span class="fc-label">Funeraria</span>
+                <span class="fc-value"><strong>${escHtml(p.funeraria || '—')}</strong></span>
+            </div>
+            <div class="fc-card-row">
+                <span class="fc-label">Capilla</span>
+                <span class="fc-value"><strong>${escHtml(p.capilla || '—')}</strong></span>
+            </div>
+            ${p.difunto ? `<div class="fc-card-row"><span class="fc-label">Difunto</span><span class="fc-value">${escHtml(capitalize(p.difunto))}</span></div>` : ''}
+            <div class="fc-card-row">
+                <span class="fc-label">Fecha</span>
+                <span class="fc-value">${escHtml(p.fecha)}</span>
+            </div>
+
+            ${items.length ? `<div class="fc-card-items-list">${itemsHtml}</div>` : ''}
+            ${p.extras?.length ? `<div class="fc-card-row fc-extras-row"><span class="fc-label">Extras</span><span class="fc-value fc-extras-val"><strong>${p.extras.map(e => escHtml(extraLabel(e))).join(' · ')}</strong></span></div>` : ''}
+        </div>
+
+        <hr class="fc-card-divider" />
+
+        <div class="fc-card-actions">
+            ${lastInfo ? `<p class="fc-last-change">${lastInfo}</p>` : ''}
+            <div class="fc-card-extra-actions">
+                <button class="fc-btn-sm fc-btn-funeral-toggle" data-id="${p.id}"
+                        style="background:${entregado ? '#6b7280' : '#10b981'};">
+                    ${entregado ? '↺ Pendiente' : '✓ Entregado'}
+                </button>
+                <button class="fc-btn-sm fc-btn-imprimir" data-id="${p.id}" style="background:#2d6a4f;">&#128424; Imprimir</button>
+                <button class="fc-btn-sm fc-btn-editar-pedido" style="background:#4a5568;">&#9998; Editar</button>
+            </div>
+        </div>
+    </div>
+</div>`;
+    }
+
     function escHtml(str) {
         if (!str) return '';
         return String(str)
@@ -507,20 +592,22 @@
         grid.innerHTML = '<div class="fc-loading">Cargando pedidos...</div>';
 
         try {
-            const data = await ajax('fc_panel_get_pedidos', { status, fecha });
+            const esFuneral = seccionActual === 'funeral';
+            const data = await ajax('fc_panel_get_pedidos', { status, fecha, seccion: seccionActual });
             if (!data.success) {
                 grid.innerHTML = '<div class="fc-no-pedidos">Error al cargar pedidos.</div>';
                 return;
             }
             const pedidos = data.data.pedidos;
             if (!pedidos.length) {
-                grid.innerHTML = '<div class="fc-no-pedidos">No hay pedidos en este estado.</div>';
+                grid.innerHTML = `<div class="fc-no-pedidos">${esFuneral ? 'No hay pedidos de funeral.' : 'No hay pedidos en este estado.'}</div>`;
                 return;
             }
             pedidoDataMap = {};
             pedidos.forEach(p => { pedidoDataMap[p.id] = p; });
-            const sorted = sortPedidos(pedidos);
-            grid.innerHTML = sorted.map(renderCard).join('');
+            // Los de funeral ya vienen ordenados por número desde el servidor
+            const sorted = esFuneral ? pedidos : sortPedidos(pedidos);
+            grid.innerHTML = sorted.map(esFuneral ? renderFuneralCard : renderCard).join('');
             attachCardEvents(grid);
         } catch (e) {
             grid.innerHTML = '<div class="fc-no-pedidos">Error de conexión.</div>';
@@ -583,6 +670,24 @@
 
     // ── Attach card events ──
     function attachCardEvents(grid) {
+        // Entregado ↔ Pendiente (solo pedidos de funeral)
+        $$('.fc-btn-funeral-toggle', grid).forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const pedidoId = parseInt(btn.dataset.id, 10);
+                btn.disabled    = true;
+                btn.textContent = '…';
+                const data = await ajax('fc_panel_funeral_toggle', { pedido_id: pedidoId });
+                if (data.success) {
+                    showToast(data.data.status === 'funeral_entregado' ? 'Marcado como entregado' : 'Regresado a pendiente', 'success');
+                    loadPedidos();
+                } else {
+                    showToast(data.data?.message || 'Error', 'error');
+                    btn.disabled = false;
+                }
+            });
+        });
+
         // Editar pedido
         $$('.fc-btn-editar-pedido', grid).forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -978,6 +1083,44 @@
         if (sb) sb.style.display = '';
     }
 
+    // ── Secciones: regulares vs funeral ──
+    // Los de funeral no usan los filtros de estado, fecha ni orden: son una lista
+    // por número. Por eso esos controles se ocultan al entrar a esa sección.
+    function initSeccionTabs() {
+        const tabs = $$('.fc-seccion-tab');
+        if (!tabs.length) return;
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const seccion = tab.dataset.seccion;
+                if (seccion === seccionActual) return;
+
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                seccionActual = seccion;
+
+                const esFuneral = seccion === 'funeral';
+                document.body.classList.toggle('fc-panel-seccion-funeral', esFuneral);
+
+                // Los de funeral solo tienen dos estados y su propio orden, así que
+                // esos controles no aplican. El filtro de fecha sí se conserva.
+                const filtros  = $('.fc-filter-tabs');
+                const mSel     = $('.fc-filter-select-mobile');
+                const sortWrap = $('.fc-sort-wrap');
+                if (filtros)  filtros.style.display  = esFuneral ? 'none' : '';
+                if (mSel)     mSel.style.display     = esFuneral ? 'none' : '';
+                if (sortWrap) sortWrap.style.display = esFuneral ? 'none' : '';
+
+                // Al entrar a funeral se limpia la fecha para ver todos; al volver,
+                // la sección regular necesita una fecha o mostraría de hoy en adelante.
+                const fechaInput = $('#fc-fecha-filter');
+                if (fechaInput) fechaInput.value = esFuneral ? '' : (today || '');
+
+                loadPedidos(currentFilter, getCurrentFecha());
+            });
+        });
+    }
+
     // ── Filter tabs ──
     function initFilterTabs() {
         const tabContainer = $('.fc-filter-tabs');
@@ -1099,7 +1242,8 @@
                 if (grid) grid.innerHTML = '<div class="fc-loading">Buscando...</div>';
 
                 try {
-                    const data = await ajax('fc_panel_search_pedidos', { term });
+                    const esFuneral = seccionActual === 'funeral';
+                    const data = await ajax('fc_panel_search_pedidos', { term, seccion: seccionActual });
                     if (!data.success) {
                         grid.innerHTML = '<div class="fc-no-pedidos">Error al buscar.</div>';
                         return;
@@ -1108,9 +1252,9 @@
                     pedidoDataMap = {};
                     pedidos.forEach(p => { pedidoDataMap[p.id] = p; });
                     if (!pedidos.length) {
-                        grid.innerHTML = `<div class="fc-no-pedidos">Sin resultados para "<strong>${escHtml(term)}</strong>".</div>`;
+                        grid.innerHTML = `<div class="fc-no-pedidos">Sin resultados para "<strong>${escHtml(term)}</strong>"${esFuneral ? ' en pedidos de funeral' : ''}.</div>`;
                     } else {
-                        grid.innerHTML = pedidos.map(renderCard).join('');
+                        grid.innerHTML = pedidos.map(esFuneral ? renderFuneralCard : renderCard).join('');
                         attachCardEvents(grid);
                     }
                 } catch {
@@ -1334,21 +1478,25 @@
             </div>
             ${modo === 'normal' ? campoArregloNormal : ''}
             ${campoArregloPersonalizado}
-            <div class="fc-form-group">
+            <div class="fc-form-group fc-oculto-funeral">
                 <label>Nombre del destinatario</label>
                 <input type="text" class="fc-item-destinatario" placeholder="¿A quién va dirigido?" value="${escHtml(prefill.destinatario || '')}" />
             </div>
-            <div class="fc-form-group">
+            <div class="fc-form-group fc-oculto-funeral">
                 <label>Teléfono del destinatario</label>
                 <input type="tel" class="fc-item-dest-tel" placeholder="10 dígitos" inputmode="numeric" maxlength="15" value="${escHtml(prefill.destinatario_telefono || '')}" />
             </div>
-            <div class="fc-form-group">
+            <div class="fc-form-group fc-oculto-funeral">
                 <label>Teléfono del destinatario 2 <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
                 <input type="tel" class="fc-item-dest-tel2" placeholder="Número alternativo" inputmode="numeric" maxlength="15" value="${escHtml(prefill.destinatario_telefono2 || '')}" />
             </div>
-            <div class="fc-form-group">
+            <div class="fc-form-group fc-oculto-funeral">
                 <label>Mensaje de tarjeta</label>
                 <textarea class="fc-item-tarjeta" rows="2" placeholder="Mensaje para incluir en la tarjeta...">${escHtml(prefill.mensaje_tarjeta || '')}</textarea>
+            </div>
+            <div class="fc-form-group fc-solo-funeral">
+                <label>Banda</label>
+                <input type="text" class="fc-item-banda" placeholder="Texto del listón. Ej: Tus hijos, con amor" value="${escHtml(prefill.banda || '')}" />
             </div>
             <div class="fc-form-group">
                 <label>Modificaciones <span style="font-weight:400;color:#94a3b8;">(opcional)</span></label>
@@ -1605,6 +1753,7 @@
                 destinatario_telefono:  block.querySelector('.fc-item-dest-tel')?.value      || '',
                 destinatario_telefono2: block.querySelector('.fc-item-dest-tel2')?.value     || '',
                 mensaje_tarjeta:        block.querySelector('.fc-item-tarjeta')?.value       || '',
+                banda:                  block.querySelector('.fc-item-banda')?.value         || '',
                 notas:                  block.querySelector('.fc-item-modificaciones-input')?.value || '',
                 fotos_extra:            (() => { try { return JSON.parse(block.querySelector('.fc-item-fotos-json')?.value || '[]'); } catch { return []; } })(),
             };
@@ -1632,6 +1781,11 @@
                     addItemBlock();
                 }
             });
+        });
+
+        // Funeraria → capillas (solo visible al editar un pedido de funeral)
+        $('#fc-modal-funeraria')?.addEventListener('change', function() {
+            fcSyncCapillas(this.value);
         });
 
         if (openBtn) {
@@ -1904,11 +2058,60 @@
     }
 
     // ── Open modal in EDIT mode ──
+    // Capillas por funeraria — misma lista que el PDV
+    const FC_FUNERARIAS = {
+        'Moreno':          ['Capilla 1', 'Capilla 2', 'Capilla 3', 'Capilla 4'],
+        'El Ángel':        ['Capilla 1', 'Capilla 2', 'Capilla 3', 'Capilla 4', 'Capilla 5', 'Capilla 6'],
+        'Latinoamericana': ['Capilla 1'],
+        'Ensenada':        ['Capilla 1', 'Capilla 2'],
+        'Otro':            null,
+    };
+
+    // Arma el selector de capillas según la funeraria elegida.
+    // capillaActual permite preseleccionar al abrir la edición.
+    function fcSyncCapillas(funeraria, capillaActual = '') {
+        const capillas = FC_FUNERARIAS[funeraria];
+        const selWrap  = $('#fc-modal-capilla-sel-wrap');
+        const txtWrap  = $('#fc-modal-capilla-txt-wrap');
+        const sel      = $('#fc-modal-capilla-sel');
+        const txt      = $('#fc-modal-capilla-txt');
+        if (!selWrap || !txtWrap) return;
+
+        if (!funeraria) {
+            selWrap.style.display = 'none';
+            txtWrap.style.display = 'none';
+        } else if (capillas) {
+            if (sel) {
+                sel.innerHTML = capillas.map(c => `<option value="${escAttr(c)}">${escHtml(c)}</option>`).join('');
+                if (capillaActual && capillas.includes(capillaActual)) sel.value = capillaActual;
+            }
+            selWrap.style.display = '';
+            txtWrap.style.display = 'none';
+        } else {
+            if (txt && capillaActual) txt.value = capillaActual;
+            selWrap.style.display = 'none';
+            txtWrap.style.display = '';
+        }
+    }
+
     async function openEditModal(pedido) {
         currentEditId = pedido.id;
 
         const overlay = $('#fc-modal-overlay');
         if (overlay) overlay.classList.add('open');
+
+        // Un pedido de funeral se edita con otros campos: funeraria y capilla en
+        // lugar de canal, tipo de entrega, dirección y horario.
+        const esFuneral = !!pedido.es_funeral;
+        const modalEl   = $('#fc-modal-overlay');
+        if (modalEl) modalEl.classList.toggle('fc-modal-funeral', esFuneral);
+        if (esFuneral) {
+            const funEl = $('#fc-modal-funeraria');
+            if (funEl) funEl.value = pedido.funeraria || '';
+            fcSyncCapillas(pedido.funeraria || '', pedido.capilla || '');
+            const difEl = $('#fc-modal-difunto');
+            if (difEl) difEl.value = pedido.difunto || '';
+        }
 
         const title = $('#fc-modal-title');
         if (title) title.textContent = `Editar pedido ${pedido.numero}`;
@@ -2051,6 +2254,14 @@
         currentEditId    = null;
         tipoPedidoActual = 'normal';
 
+        // Un pedido nuevo nunca es de funeral: esos solo se crean desde el PDV.
+        // Si no se limpia, el modal queda con los campos de funeral de la edición anterior.
+        $('#fc-modal-overlay')?.classList.remove('fc-modal-funeral');
+        const funEl = $('#fc-modal-funeraria');
+        if (funEl) funEl.value = '';
+        const capTxt = $('#fc-modal-capilla-txt');
+        if (capTxt) capTxt.value = '';
+
         // Resetear botones del toggle tipo pedido
         $$('[data-pedido-tipo]').forEach(b => {
             b.classList.toggle('active', b.dataset.pedidoTipo === 'normal');
@@ -2166,6 +2377,13 @@
             canal_contacto:   $('#fc-modal-canal-contacto')?.value   || '',
             referencias:      $('#fc-modal-referencias')?.value      || '',
             pdf_url:          $('#fc-modal-pdf-url')?.value          || '',
+            // Solo viajan con sentido al editar un pedido de funeral; en los demás
+            // el servidor los ignora porque el pedido no está marcado como funeral.
+            funeraria:        $('#fc-modal-funeraria')?.value        || '',
+            capilla:          ($('#fc-modal-funeraria')?.value === 'Otro'
+                                  ? $('#fc-modal-capilla-txt')?.value
+                                  : $('#fc-modal-capilla-sel')?.value) || '',
+            difunto:          $('#fc-modal-difunto')?.value          || '',
             items_json:       JSON.stringify(items),
             extras_json:      $('#fc-modal-extras-json')?.value      || '[]',
             monto_total:      parseFloat($('#fc-modal-total')?.value || 0),
@@ -2470,6 +2688,7 @@
         initRefresh();
         initSearch();
         initFilterTabs();
+        initSeccionTabs();
         initDateFilter();
         initLightbox();
 

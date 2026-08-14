@@ -821,6 +821,10 @@
                     <div class="fc-pdv-form-group" id="pdv-co-capilla-txt-wrap" style="display:none">
                         <label>Funeraria y capilla <span style="color:#ef4444">*</span></label>
                         <input type="text" id="pdv-co-capilla-txt" placeholder="Ej: Capilla 1" />
+                    </div>
+                    <div class="fc-pdv-form-group">
+                        <label>Nombre del difunto <small style="color:var(--pdv-muted)">(opcional)</small></label>
+                        <input type="text" id="pdv-co-difunto" placeholder="Nombre de la persona" />
                     </div>` : '';
 
         // Datos de entrega: no aplican en funeral. La fecha se pone sola (hoy) y
@@ -1299,8 +1303,9 @@
 
             // En funeral la fecha la pone el servidor (hoy) y no hay datos de entrega:
             // lo único obligatorio es funeraria y capilla.
-            let funeraria = '', capilla = '';
+            let funeraria = '', capilla = '', difunto = '';
             if (modoFuneral) {
+                difunto = ($('#pdv-co-difunto', backdrop)?.value || '').trim();
                 funeraria = $('#pdv-co-funeraria', backdrop)?.value || '';
                 if (!funeraria) {
                     showToast('Selecciona la funeraria', 'error');
@@ -1371,6 +1376,7 @@
                     modo:            modoFuneral ? 'funeral' : 'normal',
                     funeraria,
                     capilla,
+                    difunto,
                     tipo:            tipoPedido,
                     fecha,
                     horario:         ($('.fc-pdv-horario-modo[data-modo="personalizado"].active', backdrop) ? $('#pdv-co-horario-custom', backdrop)?.value : $('#pdv-co-horario', backdrop)?.value) || '',

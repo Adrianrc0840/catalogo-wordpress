@@ -370,6 +370,7 @@ function fc_ajax_pdv_crear_venta() {
         '_fc_pedido_es_funeral'              => $es_funeral ? '1' : '',
         '_fc_pedido_funeraria'               => $es_funeral ? sanitize_text_field( wp_unslash( $_POST['funeraria'] ?? '' ) ) : '',
         '_fc_pedido_capilla'                 => $es_funeral ? sanitize_text_field( wp_unslash( $_POST['capilla']   ?? '' ) ) : '',
+        '_fc_pedido_difunto'                 => $es_funeral ? sanitize_text_field( wp_unslash( $_POST['difunto']  ?? '' ) ) : '',
         '_fc_pedido_tipo'                    => $es_funeral ? 'funeral' : sanitize_key( $_POST['tipo'] ?? 'recoleccion' ),
         '_fc_pedido_fecha'                   => $fecha_entrega,
         '_fc_pedido_horario'                 => $es_funeral ? '' : sanitize_text_field( $_POST['horario']          ?? '' ),

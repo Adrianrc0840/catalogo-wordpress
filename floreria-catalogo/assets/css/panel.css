@@ -226,6 +226,52 @@
 }
 
 /* ── Filter tabs ── */
+/* ── Secciones: regulares vs funeral ── */
+.fc-seccion-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.fc-seccion-tab {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    padding: 10px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    transition: color .2s, border-color .2s;
+}
+
+.fc-seccion-tab:hover { color: var(--fc-primary); }
+
+.fc-seccion-tab.active {
+    color: var(--fc-primary);
+    border-bottom-color: var(--fc-primary);
+}
+
+/* Tarjetas de funeral */
+.fc-order-card-funeral { border-left: 4px solid #1f2937; }
+.fc-order-card-funeral.fc-funeral-entregado { opacity: .72; }
+
+/* Modal de edición: qué se ve según el tipo de pedido.
+   El !important es necesario porque el JS pone display en línea sobre las
+   secciones de envío/recolección al alternar el tipo de entrega. */
+.fc-solo-funeral { display: none; }
+.fc-modal-funeral .fc-solo-funeral { display: block; }
+.fc-modal-funeral .fc-oculto-funeral { display: none !important; }
+
+.fc-card-item-banda {
+    display: block;
+    font-size: 13px;
+    color: #1f2937;
+    margin-top: 3px;
+}
+
 .fc-filter-tabs {
     display: flex;
     gap: 8px;
@@ -333,6 +379,7 @@
 .fc-status-badge.entregado         { background: var(--fc-s-entregado); }
 .fc-status-badge.no_entregado      { background: var(--fc-s-no_entregado); }
 .fc-status-badge.pendiente         { background: #92400e; }
+.fc-status-badge.funeral_pendiente { background: #f59e0b; }
 
 /* ── Card body ── */
 .fc-card-info {

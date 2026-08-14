@@ -101,6 +101,12 @@ $status_labels = fc_pedido_status_labels();
 <!-- Main content -->
 <main class="fc-panel-content">
 
+    <!-- Secciones: regulares vs funeral -->
+    <div class="fc-seccion-tabs">
+        <button class="fc-seccion-tab active" data-seccion="regular">Pedidos regulares</button>
+        <button class="fc-seccion-tab" data-seccion="funeral">🚨 Pedidos de funeral</button>
+    </div>
+
     <!-- Search bar -->
     <div class="fc-search-bar">
         <div class="fc-search-wrap">
@@ -158,8 +164,35 @@ $status_labels = fc_pedido_status_labels();
         <div class="fc-modal-body">
             <form id="fc-new-pedido-form" novalidate autocomplete="off">
 
+                <!-- Funeraria y capilla — solo al editar un pedido de funeral -->
+                <div class="fc-solo-funeral">
+                    <div class="fc-form-group">
+                        <label for="fc-modal-funeraria">Funeraria</label>
+                        <select id="fc-modal-funeraria" name="funeraria">
+                            <option value="">-- Seleccionar --</option>
+                            <option value="Moreno">Moreno</option>
+                            <option value="El Ángel">El Ángel</option>
+                            <option value="Latinoamericana">Latinoamericana</option>
+                            <option value="Ensenada">Ensenada</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="fc-form-group" id="fc-modal-capilla-sel-wrap" style="display:none;">
+                        <label for="fc-modal-capilla-sel">Capilla</label>
+                        <select id="fc-modal-capilla-sel"></select>
+                    </div>
+                    <div class="fc-form-group" id="fc-modal-capilla-txt-wrap" style="display:none;">
+                        <label for="fc-modal-capilla-txt">Funeraria y capilla</label>
+                        <input type="text" id="fc-modal-capilla-txt" placeholder="Ej: Capilla 1" />
+                    </div>
+                    <div class="fc-form-group">
+                        <label for="fc-modal-difunto">Nombre del difunto <small style="color:#718096;font-weight:400;">(opcional)</small></label>
+                        <input type="text" id="fc-modal-difunto" name="difunto" placeholder="Nombre de la persona" />
+                    </div>
+                </div>
+
                 <!-- Tipo de pedido -->
-                <div class="fc-form-group">
+                <div class="fc-form-group fc-oculto-funeral">
                     <label>Tipo de pedido</label>
                     <div class="fc-tipo-toggle">
                         <button type="button" class="fc-tipo-option active" data-pedido-tipo="normal">Pedido normal</button>
@@ -168,7 +201,7 @@ $status_labels = fc_pedido_status_labels();
                 </div>
 
                 <!-- Canal de contacto (obligatorio) -->
-                <div class="fc-form-group">
+                <div class="fc-form-group fc-oculto-funeral">
                     <label for="fc-modal-canal">Canal de contacto <span style="color:#b91c1c;">*</span></label>
                     <select id="fc-modal-canal" name="canal" required>
                         <option value="">-- ¿Por dónde contactó? --</option>
@@ -179,17 +212,17 @@ $status_labels = fc_pedido_status_labels();
                         <option value="otro">Otro</option>
                     </select>
                 </div>
-                <div class="fc-form-group" id="fc-canal-nombre-group" style="display:none;">
+                <div class="fc-form-group fc-oculto-funeral" id="fc-canal-nombre-group" style="display:none;">
                     <label for="fc-modal-canal-nombre">Nombre del contacto</label>
                     <input type="text" id="fc-modal-canal-nombre" name="canal_nombre" placeholder="Nombre completo" />
                 </div>
-                <div class="fc-form-group" id="fc-canal-contacto-group" style="display:none;">
+                <div class="fc-form-group fc-oculto-funeral" id="fc-canal-contacto-group" style="display:none;">
                     <label for="fc-modal-canal-contacto" id="fc-canal-contacto-label">Contacto</label>
                     <input type="text" id="fc-modal-canal-contacto" name="canal_contacto" placeholder="" />
                 </div>
 
                 <!-- Tipo -->
-                <div class="fc-form-group">
+                <div class="fc-form-group fc-oculto-funeral">
                     <label>Tipo de entrega</label>
                     <div class="fc-tipo-toggle">
                         <button type="button" class="fc-tipo-option active" data-tipo="envio">Envío a domicilio</button>
@@ -204,7 +237,7 @@ $status_labels = fc_pedido_status_labels();
                 </div>
 
                 <!-- Envío section -->
-                <div id="fc-modal-envio-section">
+                <div id="fc-modal-envio-section" class="fc-oculto-funeral">
                     <div class="fc-form-group">
                         <label>Horario de entrega</label>
                         <div class="fc-tipo-toggle">
@@ -227,7 +260,7 @@ $status_labels = fc_pedido_status_labels();
                 </div>
 
                 <!-- Recolección section -->
-                <div id="fc-modal-recoleccion-section" style="display:none;">
+                <div id="fc-modal-recoleccion-section" class="fc-oculto-funeral" style="display:none;">
                     <div class="fc-form-group">
                         <label for="fc-modal-hora-recoleccion">Hora de recolección</label>
                         <input type="time" id="fc-modal-hora-recoleccion" name="hora_recoleccion" />
@@ -235,7 +268,7 @@ $status_labels = fc_pedido_status_labels();
                 </div>
 
                 <!-- Referencias de entrega -->
-                <div class="fc-form-group">
+                <div class="fc-form-group fc-oculto-funeral">
                     <label for="fc-modal-referencias">Referencias de entrega <small style="color:#718096;font-weight:400;">(opcional)</small></label>
                     <textarea id="fc-modal-referencias" name="referencias" rows="2" placeholder="Casa azul con portón negro, frente al OXXO…"></textarea>
                 </div>
@@ -257,13 +290,13 @@ $status_labels = fc_pedido_status_labels();
                 </div>
 
                 <!-- ── Anticipo ── -->
-                <div class="fc-form-group">
+                <div class="fc-form-group fc-oculto-funeral">
                     <label class="fc-check-label">
                         <input type="checkbox" id="fc-modal-anticipo-check" style="width:auto;margin:0;">
                         El cliente dio anticipo
                     </label>
                 </div>
-                <div id="fc-modal-anticipo-wrap" style="display:none">
+                <div id="fc-modal-anticipo-wrap" class="fc-oculto-funeral" style="display:none">
                     <div class="fc-form-group">
                         <label for="fc-modal-total">Total del pedido</label>
                         <input type="number" id="fc-modal-total" name="monto_total" min="0" step="0.01" placeholder="0.00">
