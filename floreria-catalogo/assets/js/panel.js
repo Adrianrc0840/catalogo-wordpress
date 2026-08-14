@@ -1111,10 +1111,10 @@
                 if (mSel)     mSel.style.display     = esFuneral ? 'none' : '';
                 if (sortWrap) sortWrap.style.display = esFuneral ? 'none' : '';
 
-                // Al entrar a funeral se limpia la fecha para ver todos; al volver,
-                // la sección regular necesita una fecha o mostraría de hoy en adelante.
+                // Las dos secciones arrancan en la fecha de hoy. En funeral se puede
+                // limpiar para ver el historial completo.
                 const fechaInput = $('#fc-fecha-filter');
-                if (fechaInput) fechaInput.value = esFuneral ? '' : (today || '');
+                if (fechaInput) fechaInput.value = today || '';
 
                 loadPedidos(currentFilter, getCurrentFecha());
             });

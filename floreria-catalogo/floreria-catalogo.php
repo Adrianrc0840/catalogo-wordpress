@@ -3,7 +3,7 @@
  * Plugin Name: Florería Monarca
  * Plugin URI:  https://github.com/Adrianrc0840/catalogo-wordpress
  * Description: Sistema completo para florerías: catálogo, pedidos por WhatsApp, punto de venta, panel de floristas y gestión de caja.
- * Version:     5.3
+ * Version:     5.3.1
  * Author:      Adrián Rodríguez
  * Text Domain: floreria-catalogo
  * Requires at least: 6.0
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FC_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'FC_URL',     plugin_dir_url( __FILE__ ) );
-define( 'FC_VERSION', '5.3' );
+define( 'FC_VERSION', '5.3.1' );
 
 require_once FC_PATH . 'includes/cpt.php';
 require_once FC_PATH . 'includes/meta-boxes.php';
@@ -158,6 +158,51 @@ add_filter( 'show_admin_bar', function( $show ) {
     }
     return $show;
 } );
+
+// ── Aligerar las pantallas internas ──────────────────────────────────────────
+// El PDV, el panel y el kiosco son aplicaciones propias: solo necesitan sus
+// assets y Google Maps. Sin esto WordPress les encola todo lo del sitio —
+// Elementor y sus complementos, el feed de Instagram, el visor de PDF, React,
+// Backbone, fuentes completas— que ahí no pintan nada. Medido en /pdv/: 123
+// peticiones y ~20 s hasta DOMContentLoaded con caché frío.
+//
+// Se corre en prioridad alta para pasar después de que todos hayan encolado.
+//
+// Ojo con el kiosco: si se renderiza por wrapper de Elementor, la página SÍ
+// necesita los assets de Elementor para verse bien, así que ahí no se toca.
+add_action( 'wp_enqueue_scripts', 'fc_aligerar_pantallas_internas', 9999 );
+function fc_aligerar_pantallas_internas() {
+    $asistencia_con_wrapper = ! empty( $GLOBALS['fc_is_asistencia_wrapper'] );
+
+    $es_interna = get_query_var( 'fc_pdv' )
+               || get_query_var( 'fc_panel_florista' )
+               || ( get_query_var( 'fc_asistencia' ) && ! $asistencia_con_wrapper );
+
+    if ( ! $es_interna ) return;
+
+    // Se conserva lo del plugin y Google Maps, que es la única dependencia
+    // externa que declaran estos scripts. No usan jQuery.
+    $conservar = static function ( $handle ) {
+        return strpos( $handle, 'fc-' ) === 0 || $handle === 'google-places';
+    };
+
+    global $wp_styles, $wp_scripts;
+
+    if ( $wp_styles instanceof WP_Styles ) {
+        foreach ( (array) $wp_styles->queue as $handle ) {
+            if ( ! $conservar( $handle ) ) wp_dequeue_style( $handle );
+        }
+    }
+    if ( $wp_scripts instanceof WP_Scripts ) {
+        foreach ( (array) $wp_scripts->queue as $handle ) {
+            if ( ! $conservar( $handle ) ) wp_dequeue_script( $handle );
+        }
+    }
+
+    // Los emojis se imprimen por su propio hook, fuera de la cola
+    remove_action( 'wp_head', 'print_emoji_detection_script', 7 );
+    remove_action( 'wp_print_styles', 'print_emoji_styles' );
+}
 
 // ── Páginas privadas fuera de buscadores ─────────────────────────────────────
 // Cubre PDV, panel de floristas, kiosco de asistencia y rastreo de pedido.
