@@ -100,6 +100,22 @@ function fc_onesignal_nuevo_pedido( $post_id ) {
     $hora_rec = get_post_meta( $post_id, '_fc_pedido_hora_recoleccion', true );
     $fecha    = get_post_meta( $post_id, '_fc_pedido_fecha',            true );
 
+    // Los de funeral no tienen tipo de entrega ni horario: sin este caso caerían
+    // en el genérico y anunciarían "Envío", que es falso. Se avisa lo que sirve
+    // para prepararlo: funeraria, capilla y difunto.
+    if ( get_post_meta( $post_id, '_fc_pedido_es_funeral', true ) === '1' ) {
+        $funeraria = get_post_meta( $post_id, '_fc_pedido_funeraria', true );
+        $capilla   = get_post_meta( $post_id, '_fc_pedido_capilla',   true );
+        $difunto   = get_post_meta( $post_id, '_fc_pedido_difunto',   true );
+
+        $title   = '🚨 Nuevo pedido de funeral' . ( $numero ? ' #' . $numero : '' );
+        $message = implode( ' · ', array_filter( [ $funeraria, $capilla, $difunto ] ) );
+
+        $result = fc_onesignal_send( $title, $message );
+        fc_push_debug( 'Resultado OneSignal pedido funeral ' . $post_id . ': ' . ( is_string( $result ) ? $result : wp_json_encode( $result ) ) );
+        return;
+    }
+
     $tipo_label = ( $tipo === 'recoleccion' ) ? 'Recolección' : 'Envío';
 
     // Hora de entrega
