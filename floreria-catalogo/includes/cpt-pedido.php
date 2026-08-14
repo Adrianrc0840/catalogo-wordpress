@@ -148,6 +148,22 @@ function fc_generar_numero_pendiente( $fecha = '' ) {
     return 'P-' . $date_key . '-' . str_pad( $counter, 3, '0', STR_PAD_LEFT );
 }
 
+// Número para pedidos de funeral (FN- en lugar de FL-).
+// Lleva su propio contador para que las dos series no se pisen y se distinga
+// de un vistazo en el ticket impreso.
+function fc_generar_numero_funeral( $fecha = '' ) {
+    if ( $fecha && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $fecha ) ) {
+        $date_key = str_replace( '-', '', $fecha );
+    } else {
+        $tz       = new DateTimeZone( 'America/Tijuana' );
+        $date_key = ( new DateTime( 'now', $tz ) )->format( 'Ymd' );
+    }
+    $option  = 'fc_funeral_counter_' . $date_key;
+    $counter = (int) get_option( $option, 0 ) + 1;
+    update_option( $option, $counter, false );
+    return 'FN-' . $date_key . '-' . str_pad( $counter, 3, '0', STR_PAD_LEFT );
+}
+
 function fc_generar_token() {
     $chars  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     $token  = '';
@@ -158,7 +174,7 @@ function fc_generar_token() {
 }
 
 function fc_pedido_status_label( $status ) {
-    $labels = fc_pedido_status_labels();
+    $labels = fc_pedido_status_labels() + fc_funeral_status_labels();
     return $labels[ $status ] ?? $status;
 }
 
@@ -248,6 +264,16 @@ function fc_pedido_status_labels() {
         'listo_recoleccion' => 'Listo para recolección',
         'entregado'         => 'Entregado',
         'no_entregado'      => 'No entregado',
+    ];
+}
+
+// Estados de los pedidos de funeral. Van aparte a propósito: esta lista alimenta
+// las pestañas y el selector del panel regular, y si se mezclaran aparecerían
+// filtros de funeral donde no corresponden.
+function fc_funeral_status_labels() {
+    return [
+        'funeral_pendiente' => 'Pendiente',
+        'funeral_entregado' => 'Entregado',
     ];
 }
 

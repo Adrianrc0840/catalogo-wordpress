@@ -268,9 +268,24 @@ function fc_ajax_pdv_crear_venta() {
     fc_pdv_verify_nonce();
     fc_pdv_require_admin();
 
-    $fecha_entrega = sanitize_text_field( wp_unslash( $_POST['fecha']    ?? '' ) );
-    $numero        = fc_generar_numero_pedido( $fecha_entrega );
-    $token         = fc_generar_token();
+    // Modo funeral: numeración propia (FN-), sin link de rastreo y sin datos de
+    // entrega. La fecha es siempre la del día y no se maneja hora, porque en un
+    // funeral no se compromete un horario.
+    $es_funeral = ( ( $_POST['modo'] ?? '' ) === 'funeral' );
+
+    $tz_num = new DateTimeZone( 'America/Tijuana' );
+    $hoy    = ( new DateTime( 'now', $tz_num ) )->format( 'Y-m-d' );
+
+    $fecha_entrega = $es_funeral
+        ? $hoy
+        : sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) );
+
+    $numero = $es_funeral
+        ? fc_generar_numero_funeral( $fecha_entrega )
+        : fc_generar_numero_pedido( $fecha_entrega );
+
+    // Sin token no hay página de rastreo pública para los de funeral
+    $token = $es_funeral ? '' : fc_generar_token();
 
     $post_id = wp_insert_post( [
         'post_type'   => 'pedido',
@@ -301,6 +316,8 @@ function fc_ajax_pdv_crear_venta() {
                 'destinatario_telefono'  => sanitize_text_field(     $item['destinatario_telefono']  ?? '' ),
                 'destinatario_telefono2' => sanitize_text_field(     $item['destinatario_telefono2'] ?? '' ),
                 'mensaje_tarjeta'        => sanitize_textarea_field( $item['mensaje_tarjeta']        ?? '' ),
+                // Texto del listón — solo en pedidos de funeral, uno por arreglo
+                'banda'                  => sanitize_text_field(     $item['banda']                  ?? '' ),
             ];
         }
     }
@@ -347,12 +364,17 @@ function fc_ajax_pdv_crear_venta() {
     $fields = [
         '_fc_pedido_numero'                  => $numero,
         '_fc_pedido_token'                   => $token,
-        '_fc_pedido_status'                  => 'aceptado',
-        '_fc_pedido_tipo'                    => sanitize_key(          $_POST['tipo']             ?? 'recoleccion' ),
+        // Estados propios para funeral: 'pendiente' ya significa otra cosa en el
+        // sistema (pedidos de WhatsApp esperando aceptación) y se mezclarían.
+        '_fc_pedido_status'                  => $es_funeral ? 'funeral_pendiente' : 'aceptado',
+        '_fc_pedido_es_funeral'              => $es_funeral ? '1' : '',
+        '_fc_pedido_funeraria'               => $es_funeral ? sanitize_text_field( wp_unslash( $_POST['funeraria'] ?? '' ) ) : '',
+        '_fc_pedido_capilla'                 => $es_funeral ? sanitize_text_field( wp_unslash( $_POST['capilla']   ?? '' ) ) : '',
+        '_fc_pedido_tipo'                    => $es_funeral ? 'funeral' : sanitize_key( $_POST['tipo'] ?? 'recoleccion' ),
         '_fc_pedido_fecha'                   => $fecha_entrega,
-        '_fc_pedido_horario'                 => sanitize_text_field(   $_POST['horario']          ?? '' ),
-        '_fc_pedido_direccion'               => sanitize_text_field(   $_POST['direccion']        ?? '' ),
-        '_fc_pedido_hora_recoleccion'        => sanitize_text_field(   $_POST['hora_recoleccion'] ?? '' ),
+        '_fc_pedido_horario'                 => $es_funeral ? '' : sanitize_text_field( $_POST['horario']          ?? '' ),
+        '_fc_pedido_direccion'               => $es_funeral ? '' : sanitize_text_field( $_POST['direccion']        ?? '' ),
+        '_fc_pedido_hora_recoleccion'        => $es_funeral ? '' : sanitize_text_field( $_POST['hora_recoleccion'] ?? '' ),
         '_fc_pedido_canal'                   => 'pdv',
         '_fc_pedido_canal_nombre'            => '',
         '_fc_pedido_canal_contacto'          => '',
@@ -392,7 +414,7 @@ function fc_ajax_pdv_crear_venta() {
 
     $current_user = wp_get_current_user();
     update_post_meta( $post_id, '_fc_pedido_historial', maybe_serialize( [ [
-        'status'    => 'aceptado',
+        'status'    => $es_funeral ? 'funeral_pendiente' : 'aceptado',
         'user_id'   => get_current_user_id(),
         'user_name' => $current_user->display_name,
         'timestamp' => $ts,
@@ -405,7 +427,9 @@ function fc_ajax_pdv_crear_venta() {
         'message'    => 'Venta registrada.',
         'numero'     => $numero,
         'token'      => $token,
-        'client_url' => home_url( '/pedido/' . $token ),
+        // Los de funeral no tienen página de rastreo
+        'client_url' => $es_funeral ? '' : home_url( '/pedido/' . $token ),
+        'es_funeral' => $es_funeral,
         'pedido_id'  => $post_id,
     ] );
 }

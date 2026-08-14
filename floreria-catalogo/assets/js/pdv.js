@@ -746,6 +746,15 @@
     }
 
     // ── CHECKOUT MODAL ──
+    // Capillas por funeraria. "Otro" no tiene lista: se escribe a mano.
+    const FUNERARIAS = {
+        'Moreno':          ['Capilla 1', 'Capilla 2', 'Capilla 3', 'Capilla 4'],
+        'El Ángel':        ['Capilla 1', 'Capilla 2', 'Capilla 3', 'Capilla 4', 'Capilla 5', 'Capilla 6'],
+        'Latinoamericana': ['Capilla 1'],
+        'Ensenada':        ['Capilla 1', 'Capilla 2'],
+        'Otro':            null,
+    };
+
     function showCheckoutModal() {
         if (!cart.length) return;
 
@@ -753,7 +762,21 @@
         backdrop.className = 'fc-pdv-modal-backdrop';
 
         const req = tipoPedido === 'envio';
-        const itemsCheckoutHtml = cart.map((it, i) => `
+
+        // En funeral cada arreglo solo pide su banda; en el modo normal se piden
+        // los datos del destinatario.
+        const itemsCheckoutHtml = modoFuneral
+            ? cart.map((it, i) => `
+            <div class="fc-pdv-checkout-item">
+                <div class="fc-pdv-checkout-item-title">${escHtml(it.arreglo_nombre)}${it.tamano ? ' — ' + escHtml(it.tamano) : ''} · ${fmt(it.precio)}</div>
+                <div class="fc-pdv-form-group">
+                    <label>Banda</label>
+                    <input type="text" class="pdv-co-banda" data-idx="${i}"
+                           placeholder="Texto del listón. Ej: Tus hijos, con amor"
+                           value="${escHtml(it.banda || '')}" />
+                </div>
+            </div>`).join('')
+            : cart.map((it, i) => `
             <div class="fc-pdv-checkout-item">
                 <div class="fc-pdv-checkout-item-title">${escHtml(it.arreglo_nombre)}${it.tamano ? ' — ' + escHtml(it.tamano) : ''} · ${fmt(it.precio)}</div>
                 <div class="fc-pdv-form-group">
@@ -781,13 +804,28 @@
                 </div>
             </div>`).join('');
 
-        backdrop.innerHTML = `
-            <div class="fc-pdv-modal">
-                <div class="fc-pdv-modal-header">
-                    <h3>Cobrar — ${fmt(cartTotal())}</h3>
-                    <button class="fc-pdv-modal-close">×</button>
-                </div>
-                <div class="fc-pdv-modal-body">
+        // Bloque de funeraria/capilla — global para todo el pedido
+        const funerariaHtml = modoFuneral ? `
+                    <div class="fc-pdv-section-title">Funeraria</div>
+                    <div class="fc-pdv-form-group">
+                        <label>Funeraria <span style="color:#ef4444">*</span></label>
+                        <select id="pdv-co-funeraria">
+                            <option value="">— Seleccionar —</option>
+                            ${Object.keys(FUNERARIAS).map(f => `<option value="${escHtml(f)}">${escHtml(f)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="fc-pdv-form-group" id="pdv-co-capilla-sel-wrap" style="display:none">
+                        <label>Capilla <span style="color:#ef4444">*</span></label>
+                        <select id="pdv-co-capilla-sel"></select>
+                    </div>
+                    <div class="fc-pdv-form-group" id="pdv-co-capilla-txt-wrap" style="display:none">
+                        <label>Funeraria y capilla <span style="color:#ef4444">*</span></label>
+                        <input type="text" id="pdv-co-capilla-txt" placeholder="Ej: Capilla 1" />
+                    </div>` : '';
+
+        // Datos de entrega: no aplican en funeral. La fecha se pone sola (hoy) y
+        // no se maneja hora, porque en un funeral no se compromete un horario.
+        const entregaHtml = modoFuneral ? '' : `
                     <div class="fc-pdv-section-title">Tipo de entrega</div>
                     <div class="fc-pdv-tipo-btns">
                         <button class="fc-pdv-tipo-btn ${tipoPedido === 'recoleccion' ? 'active' : ''}" data-tipo="recoleccion">🏪 Recolección</button>
@@ -835,12 +873,22 @@
                         <textarea id="pdv-co-referencias" rows="2"
                                   placeholder="Casa azul con portón negro, frente al OXXO…"
                                   style="resize:vertical"></textarea>
-                    </div>
+                    </div>`;
 
-                    <div class="fc-pdv-section-title">Detalles por arreglo</div>
+        backdrop.innerHTML = `
+            <div class="fc-pdv-modal">
+                <div class="fc-pdv-modal-header">
+                    <h3>Cobrar — ${fmt(cartTotal())}</h3>
+                    <button class="fc-pdv-modal-close">×</button>
+                </div>
+                <div class="fc-pdv-modal-body">
+                    ${funerariaHtml}
+                    ${entregaHtml}
+
+                    <div class="fc-pdv-section-title">${modoFuneral ? 'Banda por arreglo' : 'Detalles por arreglo'}</div>
                     ${itemsCheckoutHtml}
 
-                    <div class="fc-pdv-section-title">Extras y anticipo</div>
+                    <div class="fc-pdv-section-title">${modoFuneral ? 'Extras' : 'Extras y anticipo'}</div>
                     <div class="fc-pdv-form-group">
                         <label class="fc-pdv-check-label">
                             <input type="checkbox" id="pdv-co-extras-check" style="width:auto;margin:0;">
@@ -856,6 +904,7 @@
                         </div>
                         <input type="hidden" id="pdv-co-extras-json" value="[]">
                     </div>
+                    ${modoFuneral ? '' : `
                     <div class="fc-pdv-form-group" style="margin-top:8px">
                         <label class="fc-pdv-check-label">
                             <input type="checkbox" id="pdv-co-anticipo-check" style="width:auto;margin:0;">
@@ -870,7 +919,7 @@
                         <div class="fc-anticipo-saldo" id="pdv-co-saldo-row" style="display:none">
                             Saldo pendiente: <strong id="pdv-co-saldo-val"></strong>
                         </div>
-                    </div>
+                    </div>`}
 
                     <div class="fc-pdv-section-title">Facturación</div>
                     <div class="fc-pdv-form-group">
@@ -943,6 +992,26 @@
 
         // Populate horarios on open (fecha defaults to today)
         updateHorariosModal(backdrop);
+
+        // Funeraria → capillas. "Otro" cambia el selector por un campo de texto.
+        $('#pdv-co-funeraria', backdrop)?.addEventListener('change', function() {
+            const capillas = FUNERARIAS[this.value];
+            const selWrap  = $('#pdv-co-capilla-sel-wrap', backdrop);
+            const txtWrap  = $('#pdv-co-capilla-txt-wrap', backdrop);
+            const sel      = $('#pdv-co-capilla-sel', backdrop);
+
+            if (!this.value) {                      // sin funeraria elegida
+                selWrap.style.display = 'none';
+                txtWrap.style.display = 'none';
+            } else if (capillas) {                  // funeraria con capillas fijas
+                sel.innerHTML = capillas.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+                selWrap.style.display = '';
+                txtWrap.style.display = 'none';
+            } else {                                // "Otro" → se escribe
+                selWrap.style.display = 'none';
+                txtWrap.style.display = '';
+            }
+        });
 
         // Fecha change → rebuild slots (input cubre teclado; change cubre el picker)
         const fechaInputEl = $('#pdv-co-fecha', backdrop);
@@ -1226,11 +1295,32 @@
         // Confirm
         const confirmBtn = $('#pdv-co-confirm', backdrop);
         confirmBtn.addEventListener('click', async () => {
-            const fecha    = $('#pdv-co-fecha', backdrop)?.value || '';
-            const isEnvio  = tipoPedido === 'envio';
-            if (!fecha) { showToast('Selecciona la fecha de entrega', 'error'); return; }
+            const isEnvio = tipoPedido === 'envio';
 
-            if (isEnvio) {
+            // En funeral la fecha la pone el servidor (hoy) y no hay datos de entrega:
+            // lo único obligatorio es funeraria y capilla.
+            let funeraria = '', capilla = '';
+            if (modoFuneral) {
+                funeraria = $('#pdv-co-funeraria', backdrop)?.value || '';
+                if (!funeraria) {
+                    showToast('Selecciona la funeraria', 'error');
+                    $('#pdv-co-funeraria', backdrop)?.focus();
+                    return;
+                }
+                capilla = funeraria === 'Otro'
+                    ? ($('#pdv-co-capilla-txt', backdrop)?.value || '').trim()
+                    : ($('#pdv-co-capilla-sel', backdrop)?.value || '');
+                if (!capilla) {
+                    showToast('Indica la capilla', 'error');
+                    (funeraria === 'Otro' ? $('#pdv-co-capilla-txt', backdrop) : $('#pdv-co-capilla-sel', backdrop))?.focus();
+                    return;
+                }
+            }
+
+            const fecha = modoFuneral ? today : ($('#pdv-co-fecha', backdrop)?.value || '');
+            if (!modoFuneral && !fecha) { showToast('Selecciona la fecha de entrega', 'error'); return; }
+
+            if (!modoFuneral && isEnvio) {
                 // Dirección obligatoria
                 const dirInput = $('#pdv-co-direccion', backdrop);
                 if (!(dirInput?.value || '').trim()) {
@@ -1254,7 +1344,10 @@
             }
 
             // Collect item details from modal
-            const itemsFinal = cart.map((it, i) => ({
+            const itemsFinal = cart.map((it, i) => modoFuneral ? ({
+                ...it,
+                banda: ($('.pdv-co-banda[data-idx="' + i + '"]', backdrop)?.value || '').trim(),
+            }) : ({
                 ...it,
                 destinatario:           ($('.pdv-co-dest[data-idx="'     + i + '"]', backdrop)?.value || '').trim(),
                 destinatario_telefono:  ($('.pdv-co-dest-tel[data-idx="' + i + '"]', backdrop)?.value || '').replace(/\D/g, ''),
@@ -1275,6 +1368,9 @@
 
             try {
                 const data = await ajax('fc_pdv_crear_venta', {
+                    modo:            modoFuneral ? 'funeral' : 'normal',
+                    funeraria,
+                    capilla,
                     tipo:            tipoPedido,
                     fecha,
                     horario:         ($('.fc-pdv-horario-modo[data-modo="personalizado"].active', backdrop) ? $('#pdv-co-horario-custom', backdrop)?.value : $('#pdv-co-horario', backdrop)?.value) || '',
@@ -1324,9 +1420,11 @@
                     <h3>¡Venta registrada!</h3>
                     <div class="fc-pdv-numero">${escHtml(numero)}</div>
                     ${cambio > 0 ? `<div class="fc-pdv-cambio-ok">Cambio: ${fmt(cambio)}</div>` : ''}
+                    ${clientUrl ? `
                     <p>Link de rastreo para el cliente:</p>
                     <div class="fc-pdv-link-box" id="pdv-ok-link" title="Clic para copiar">${escHtml(clientUrl)}</div>
-                    <p style="font-size:12px;color:#94a3b8;">Clic en el link para copiar</p>
+                    <p style="font-size:12px;color:#94a3b8;">Clic en el link para copiar</p>` : `
+                    <p style="font-size:13px;color:#94a3b8;">Los pedidos de funeral no llevan link de rastreo.</p>`}
                 </div>`;
         }
         $('#pdv-ok-link', backdrop)?.addEventListener('click', () => {
