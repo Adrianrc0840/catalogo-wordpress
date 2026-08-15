@@ -3,7 +3,7 @@
  * Plugin Name: Florería Monarca
  * Plugin URI:  https://github.com/Adrianrc0840/catalogo-wordpress
  * Description: Sistema completo para florerías: catálogo, pedidos por WhatsApp, punto de venta, panel de floristas y gestión de caja.
- * Version:     5.3.2
+ * Version:     5.3.3
  * Author:      Adrián Rodríguez
  * Text Domain: floreria-catalogo
  * Requires at least: 6.0
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FC_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'FC_URL',     plugin_dir_url( __FILE__ ) );
-define( 'FC_VERSION', '5.3.2' );
+define( 'FC_VERSION', '5.3.3' );
 
 require_once FC_PATH . 'includes/cpt.php';
 require_once FC_PATH . 'includes/meta-boxes.php';
@@ -203,6 +203,44 @@ function fc_aligerar_pantallas_internas() {
     // Los emojis se imprimen por su propio hook, fuera de la cola
     remove_action( 'wp_head', 'print_emoji_detection_script', 7 );
     remove_action( 'wp_print_styles', 'print_emoji_styles' );
+}
+
+// ── Quitar los assets de WP Fastest Cache del PDV y el panel ─────────────────
+// Ese plugin encola cuatro archivos propios (toolbar, style, column) para su
+// barra de administrador. En estas dos pantallas la barra ya está oculta, así
+// que son peso muerto — y además el peor tipo de peso: su versión es una marca
+// de tiempo que cambia en cada carga, o sea que nunca se pueden cachear ni en
+// el navegador ni en Cloudflare. Siempre viajan al servidor, y cuando este se
+// satura devuelven 522 tras ~19 s bloqueando el renderizado de la página.
+//
+// Se filtra por la ruta del archivo y no por el nombre del handle, que puede
+// cambiar entre versiones del plugin. Ojo: la ruta de sus archivos propios es
+// /plugins/wp-fastest-cache/, distinta de /cache/wpfc-minified/ donde deja el
+// CSS combinado de los demás — eso no se toca.
+add_action( 'wp_enqueue_scripts', 'fc_quitar_toolbar_cache', 9999 );
+function fc_quitar_toolbar_cache() {
+    if ( ! get_query_var( 'fc_pdv' ) && ! get_query_var( 'fc_panel_florista' ) ) return;
+
+    global $wp_styles, $wp_scripts;
+
+    $es_del_plugin_cache = static function ( $src ) {
+        return $src && strpos( $src, '/plugins/wp-fastest-cache/' ) !== false;
+    };
+
+    if ( $wp_styles instanceof WP_Styles ) {
+        foreach ( (array) $wp_styles->queue as $handle ) {
+            if ( $es_del_plugin_cache( $wp_styles->registered[ $handle ]->src ?? '' ) ) {
+                wp_dequeue_style( $handle );
+            }
+        }
+    }
+    if ( $wp_scripts instanceof WP_Scripts ) {
+        foreach ( (array) $wp_scripts->queue as $handle ) {
+            if ( $es_del_plugin_cache( $wp_scripts->registered[ $handle ]->src ?? '' ) ) {
+                wp_dequeue_script( $handle );
+            }
+        }
+    }
 }
 
 // ── Páginas privadas fuera de buscadores ─────────────────────────────────────
