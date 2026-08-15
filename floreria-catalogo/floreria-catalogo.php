@@ -3,7 +3,7 @@
  * Plugin Name: Florería Monarca
  * Plugin URI:  https://github.com/Adrianrc0840/catalogo-wordpress
  * Description: Sistema completo para florerías: catálogo, pedidos por WhatsApp, punto de venta, panel de floristas y gestión de caja.
- * Version:     5.3.1
+ * Version:     5.3.2
  * Author:      Adrián Rodríguez
  * Text Domain: floreria-catalogo
  * Requires at least: 6.0
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FC_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'FC_URL',     plugin_dir_url( __FILE__ ) );
-define( 'FC_VERSION', '5.3.1' );
+define( 'FC_VERSION', '5.3.2' );
 
 require_once FC_PATH . 'includes/cpt.php';
 require_once FC_PATH . 'includes/meta-boxes.php';
@@ -159,24 +159,25 @@ add_filter( 'show_admin_bar', function( $show ) {
     return $show;
 } );
 
-// ── Aligerar las pantallas internas ──────────────────────────────────────────
-// El PDV, el panel y el kiosco son aplicaciones propias: solo necesitan sus
-// assets y Google Maps. Sin esto WordPress les encola todo lo del sitio —
-// Elementor y sus complementos, el feed de Instagram, el visor de PDF, React,
-// Backbone, fuentes completas— que ahí no pintan nada. Medido en /pdv/: 123
-// peticiones y ~20 s hasta DOMContentLoaded con caché frío.
+// ── Aligerar el kiosco de asistencia ─────────────────────────────────────────
+// Solo necesita sus propios assets, así que se descarga todo lo demás que
+// WordPress le encola (Elementor y complementos, feed de Instagram, visor de
+// PDF, React, Backbone, fuentes completas). Baja de ~120 peticiones a ~15.
 //
 // Se corre en prioridad alta para pasar después de que todos hayan encolado.
 //
-// Ojo con el kiosco: si se renderiza por wrapper de Elementor, la página SÍ
-// necesita los assets de Elementor para verse bien, así que ahí no se toca.
+// NO se aplica al PDV ni al panel: ahí la hoja del tema aporta la base del
+// layout (alto completo y scroll) y las fuentes, así que quitarla los rompe.
+// Se probó y se revirtió — si algún día se quiere aligerarlos, hay que
+// identificar en local qué handles del tema hacen falta y conservarlos.
+//
+// Tampoco al kiosco si se renderiza por wrapper de Elementor: en ese caso la
+// página sí necesita los assets de Elementor para verse bien.
 add_action( 'wp_enqueue_scripts', 'fc_aligerar_pantallas_internas', 9999 );
 function fc_aligerar_pantallas_internas() {
     $asistencia_con_wrapper = ! empty( $GLOBALS['fc_is_asistencia_wrapper'] );
 
-    $es_interna = get_query_var( 'fc_pdv' )
-               || get_query_var( 'fc_panel_florista' )
-               || ( get_query_var( 'fc_asistencia' ) && ! $asistencia_con_wrapper );
+    $es_interna = get_query_var( 'fc_asistencia' ) && ! $asistencia_con_wrapper;
 
     if ( ! $es_interna ) return;
 
