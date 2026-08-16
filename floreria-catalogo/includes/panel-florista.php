@@ -287,6 +287,10 @@ function fc_ajax_get_pedidos() {
     $valid   = array_keys( fc_pedido_status_labels() );
     $seccion = ( ( $_POST['seccion'] ?? '' ) === 'funeral' ) ? 'funeral' : 'regular';
 
+    // Se calcula antes de cualquier consulta: las dos secciones lo usan
+    $tz    = new DateTimeZone( 'America/Tijuana' );
+    $today = ( new DateTime( 'now', $tz ) )->format( 'Y-m-d' );
+
     // ── Sección de funeral: lista aparte, siempre ordenada por número ──
     // Sin filtro de estado (solo tienen dos) pero sí por fecha, con el mismo
     // criterio que la sección regular: con fecha, solo ese día; sin fecha, de hoy
@@ -311,9 +315,6 @@ function fc_ajax_get_pedidos() {
         echo json_encode( [ 'success' => true, 'data' => [ 'pedidos' => $pedidos ] ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
         wp_die();
     }
-
-    $tz    = new DateTimeZone( 'America/Tijuana' );
-    $today = ( new DateTime( 'now', $tz ) )->format( 'Y-m-d' );
 
     $args = [
         'post_type'      => 'pedido',
