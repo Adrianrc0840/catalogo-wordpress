@@ -1566,14 +1566,17 @@
             if (cajasSeleccionadas.size) showBorrarBulkModal([...cajasSeleccionadas]);
         });
 
-        // Toggle expandir cajas cerradas
+        // Toggle expandir movimientos (tanto en la caja abierta como en las cerradas)
         $$('.fc-pdv-caja-toggle', wrap).forEach(btn => {
+            // Cada botón conserva su propia etiqueta: la abierta dice "Ver
+            // movimientos" y las cerradas "Ver detalles".
+            const etiqueta = btn.textContent.trim();
             btn.addEventListener('click', () => {
                 const body = btn.closest('.fc-pdv-caja-card').querySelector('.fc-pdv-caja-expandable');
                 if (!body) return;
                 const open = body.style.display !== 'none';
                 body.style.display = open ? 'none' : 'block';
-                btn.textContent = open ? '▼ Ver detalles' : '▲ Ocultar';
+                btn.textContent = open ? etiqueta : '▲ Ocultar';
             });
         });
     }
@@ -1628,6 +1631,7 @@
                     <button class="fc-pdv-btn-sm success" id="fc-pdv-btn-entrada-${caja.id}">+ Entrada</button>
                     <button class="fc-pdv-btn-sm danger"  id="fc-pdv-btn-salida-${caja.id}">− Salida</button>
                     <button class="fc-pdv-btn-sm outline" id="fc-pdv-btn-cerrar-${caja.id}">Cerrar caja</button>
+                    <button class="fc-pdv-caja-toggle fc-pdv-btn-sm outline">▼ Ver movimientos</button>
                 </div>` : `
                 <div class="fc-pdv-caja-actions">
                     <button class="fc-pdv-caja-toggle fc-pdv-btn-sm outline">▼ Ver detalles</button>
@@ -1648,7 +1652,10 @@
                 <div class="fc-pdv-modal-body">
                     <div class="fc-pdv-form-group">
                         <label>Saldo inicial en caja ($)</label>
-                        <input type="number" id="pdv-caja-saldo" min="0" step="0.01" placeholder="0.00" value="0" />
+                        ${/* Sin value="0": con el cero puesto y el cursor a su izquierda,
+                             teclear 500 dejaba 5000 sin que nadie lo notara. Vacío se
+                             guarda como 0 igual. */''}
+                        <input type="number" id="pdv-caja-saldo" min="0" step="0.01" placeholder="0.00" autofocus />
                     </div>
                 </div>
                 <div class="fc-pdv-modal-footer">

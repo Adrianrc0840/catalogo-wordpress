@@ -288,13 +288,15 @@ function fc_ajax_get_pedidos() {
     $seccion = ( ( $_POST['seccion'] ?? '' ) === 'funeral' ) ? 'funeral' : 'regular';
 
     // ── Sección de funeral: lista aparte, siempre ordenada por número ──
-    // Sin filtro de estado (solo tienen dos) pero sí por fecha. A diferencia de la
-    // sección regular, sin fecha se muestran todos y no solo de hoy en adelante,
-    // porque la fecha de un pedido de funeral es la del día en que se capturó.
+    // Sin filtro de estado (solo tienen dos) pero sí por fecha, con el mismo
+    // criterio que la sección regular: con fecha, solo ese día; sin fecha, de hoy
+    // en adelante (no se arrastran los pasados).
     if ( $seccion === 'funeral' ) {
         $meta_funeral = [ [ 'key' => '_fc_pedido_es_funeral', 'value' => '1' ] ];
         if ( $fecha ) {
             $meta_funeral[] = [ 'key' => '_fc_pedido_fecha', 'value' => $fecha, 'compare' => '=' ];
+        } else {
+            $meta_funeral[] = [ 'key' => '_fc_pedido_fecha', 'value' => $today, 'compare' => '>=' ];
         }
         $pedidos_query = get_posts( [
             'post_type'      => 'pedido',
