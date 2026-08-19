@@ -178,11 +178,11 @@ $status_labels = fc_pedido_status_labels();
                         </select>
                     </div>
                     <div class="fc-form-group" id="fc-modal-capilla-sel-wrap" style="display:none;">
-                        <label for="fc-modal-capilla-sel">Capilla</label>
+                        <label for="fc-modal-capilla-sel">Capilla <small style="color:#718096;font-weight:400;">(opcional)</small></label>
                         <select id="fc-modal-capilla-sel"></select>
                     </div>
                     <div class="fc-form-group" id="fc-modal-capilla-txt-wrap" style="display:none;">
-                        <label for="fc-modal-capilla-txt">Funeraria y capilla</label>
+                        <label for="fc-modal-capilla-txt">Funeraria y capilla <small style="color:#718096;font-weight:400;">(opcional)</small></label>
                         <input type="text" id="fc-modal-capilla-txt" placeholder="Ej: Capilla 1" />
                     </div>
                     <div class="fc-form-group">

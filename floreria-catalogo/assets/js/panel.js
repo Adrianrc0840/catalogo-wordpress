@@ -2082,7 +2082,9 @@
             txtWrap.style.display = 'none';
         } else if (capillas) {
             if (sel) {
-                sel.innerHTML = capillas.map(c => `<option value="${escAttr(c)}">${escHtml(c)}</option>`).join('');
+                // La opción vacía va primero: la capilla es opcional
+                sel.innerHTML = '<option value="">— Sin especificar —</option>'
+                              + capillas.map(c => `<option value="${escAttr(c)}">${escHtml(c)}</option>`).join('');
                 if (capillaActual && capillas.includes(capillaActual)) sel.value = capillaActual;
             }
             selWrap.style.display = '';

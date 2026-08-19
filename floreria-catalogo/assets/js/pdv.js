@@ -815,11 +815,11 @@
                         </select>
                     </div>
                     <div class="fc-pdv-form-group" id="pdv-co-capilla-sel-wrap" style="display:none">
-                        <label>Capilla <span style="color:#ef4444">*</span></label>
+                        <label>Capilla <small style="color:var(--pdv-muted)">(opcional)</small></label>
                         <select id="pdv-co-capilla-sel"></select>
                     </div>
                     <div class="fc-pdv-form-group" id="pdv-co-capilla-txt-wrap" style="display:none">
-                        <label>Funeraria y capilla <span style="color:#ef4444">*</span></label>
+                        <label>Funeraria y capilla <small style="color:var(--pdv-muted)">(opcional)</small></label>
                         <input type="text" id="pdv-co-capilla-txt" placeholder="Ej: Capilla 1" />
                     </div>
                     <div class="fc-pdv-form-group">
@@ -1008,7 +1008,10 @@
                 selWrap.style.display = 'none';
                 txtWrap.style.display = 'none';
             } else if (capillas) {                  // funeraria con capillas fijas
-                sel.innerHTML = capillas.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+                // La opción vacía va primero: la capilla es opcional porque a veces
+                // el cliente no la sabe.
+                sel.innerHTML = '<option value="">— Sin especificar —</option>'
+                              + capillas.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
                 selWrap.style.display = '';
                 txtWrap.style.display = 'none';
             } else {                                // "Otro" → se escribe
@@ -1301,8 +1304,9 @@
         confirmBtn.addEventListener('click', async () => {
             const isEnvio = tipoPedido === 'envio';
 
-            // En funeral la fecha la pone el servidor (hoy) y no hay datos de entrega:
-            // lo único obligatorio es funeraria y capilla.
+            // En funeral la fecha la pone el servidor (hoy) y no hay datos de entrega.
+            // Solo la funeraria es obligatoria: capilla y difunto quedan opcionales
+            // porque el cliente a veces sabe una y no la otra.
             let funeraria = '', capilla = '', difunto = '';
             if (modoFuneral) {
                 difunto = ($('#pdv-co-difunto', backdrop)?.value || '').trim();
@@ -1315,11 +1319,6 @@
                 capilla = funeraria === 'Otro'
                     ? ($('#pdv-co-capilla-txt', backdrop)?.value || '').trim()
                     : ($('#pdv-co-capilla-sel', backdrop)?.value || '');
-                if (!capilla) {
-                    showToast('Indica la capilla', 'error');
-                    (funeraria === 'Otro' ? $('#pdv-co-capilla-txt', backdrop) : $('#pdv-co-capilla-sel', backdrop))?.focus();
-                    return;
-                }
             }
 
             const fecha = modoFuneral ? today : ($('#pdv-co-fecha', backdrop)?.value || '');
