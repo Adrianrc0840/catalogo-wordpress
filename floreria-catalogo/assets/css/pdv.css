@@ -30,6 +30,18 @@ body.fc-pdv-page {
     background: var(--pdv-bg);
     color: var(--pdv-text);
     -webkit-font-smoothing: antialiased;
+    /* El !important es a propósito: en producción algo dejaba el body en
+       overflow:hidden (en local no pasa, así que viene del tema o de un plugin
+       que imprime estilos fuera de la cola, donde el aligeramiento no llega).
+       Esta pantalla es nuestra, así que afirma su propio comportamiento. */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+
+/* Red de seguridad del scroll interno: si algo externo pisa el overflow de la
+   rejilla de arreglos, el catálogo queda con contenido inalcanzable. */
+.fc-pdv-catalog-content.is-grid {
+    overflow-y: auto !important;
 }
 
 .fc-pdv-body {

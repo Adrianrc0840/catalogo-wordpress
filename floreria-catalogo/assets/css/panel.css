@@ -27,6 +27,13 @@ body.fc-panel-page {
     background: #f4f5f7;
     color: #1a202c;
     -webkit-font-smoothing: antialiased;
+    /* El !important es a propósito: en producción algo dejaba el body en
+       overflow:hidden y mataba el scroll del panel (en local no pasaba, así que
+       viene del tema o de un plugin que imprime estilos fuera de la cola y que
+       el aligeramiento no alcanza a quitar). Esta pantalla es nuestra, así que
+       afirmamos su comportamiento en vez de depender de quién gane la cascada. */
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 
 /* ── Reset for panel scope ── */
