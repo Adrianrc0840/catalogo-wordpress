@@ -16,6 +16,22 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* El <body> lleva la clase fc-pdv-page; .fc-pdv-body es un div interno.
+   Sin estas reglas el elemento body quedaba sin estilos propios y la pantalla
+   dependía del reset del tema para el margen y la altura — al aligerar la
+   página se perdían el alto completo, el scroll y las fuentes. */
+html, body.fc-pdv-page {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+body.fc-pdv-page {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--pdv-bg);
+    color: var(--pdv-text);
+    -webkit-font-smoothing: antialiased;
+}
+
 .fc-pdv-body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--pdv-bg);

@@ -3,7 +3,7 @@
  * Plugin Name: Florería Monarca
  * Plugin URI:  https://github.com/Adrianrc0840/catalogo-wordpress
  * Description: Sistema completo para florerías: catálogo, pedidos por WhatsApp, punto de venta, panel de floristas y gestión de caja.
- * Version:     5.3.5
+ * Version:     5.4
  * Author:      Adrián Rodríguez
  * Text Domain: floreria-catalogo
  * Requires at least: 6.0
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 define( 'FC_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'FC_URL',     plugin_dir_url( __FILE__ ) );
-define( 'FC_VERSION', '5.3.5' );
+define( 'FC_VERSION', '5.4' );
 
 require_once FC_PATH . 'includes/cpt.php';
 require_once FC_PATH . 'includes/meta-boxes.php';
@@ -159,25 +159,29 @@ add_filter( 'show_admin_bar', function( $show ) {
     return $show;
 } );
 
-// ── Aligerar el kiosco de asistencia ─────────────────────────────────────────
-// Solo necesita sus propios assets, así que se descarga todo lo demás que
-// WordPress le encola (Elementor y complementos, feed de Instagram, visor de
-// PDF, React, Backbone, fuentes completas). Baja de ~120 peticiones a ~15.
+// ── Aligerar las pantallas internas ──────────────────────────────────────────
+// El PDV, el panel y el kiosco solo necesitan sus propios assets, así que se
+// descarga todo lo demás que WordPress les encola (Elementor y complementos,
+// feed de Instagram, visor de PDF, React, Backbone, fuentes completas). Baja de
+// ~120 peticiones a ~15.
 //
 // Se corre en prioridad alta para pasar después de que todos hayan encolado.
 //
-// NO se aplica al PDV ni al panel: ahí la hoja del tema aporta la base del
-// layout (alto completo y scroll) y las fuentes, así que quitarla los rompe.
-// Se probó y se revirtió — si algún día se quiere aligerarlos, hay que
-// identificar en local qué handles del tema hacen falta y conservarlos.
+// Un intento anterior rompió el PDV y el panel: sus plantillas ponen la clase
+// en el <body> (fc-pdv-page / fc-panel-page) pero el CSS solo estilizaba un div
+// interno, así que el margen y la altura del body los aportaba el tema. Ya se
+// corrigió en pdv.css y panel.css — si se vuelven a tocar esas reglas, esto se
+// rompe de nuevo. El kiosco nunca falló porque su CSS sí estiliza el body.
 //
-// Tampoco al kiosco si se renderiza por wrapper de Elementor: en ese caso la
-// página sí necesita los assets de Elementor para verse bien.
+// No se aplica al kiosco si se renderiza por wrapper de Elementor: en ese caso
+// la página sí necesita los assets de Elementor para verse bien.
 add_action( 'wp_enqueue_scripts', 'fc_aligerar_pantallas_internas', 9999 );
 function fc_aligerar_pantallas_internas() {
     $asistencia_con_wrapper = ! empty( $GLOBALS['fc_is_asistencia_wrapper'] );
 
-    $es_interna = get_query_var( 'fc_asistencia' ) && ! $asistencia_con_wrapper;
+    $es_interna = get_query_var( 'fc_pdv' )
+               || get_query_var( 'fc_panel_florista' )
+               || ( get_query_var( 'fc_asistencia' ) && ! $asistencia_con_wrapper );
 
     if ( ! $es_interna ) return;
 
@@ -203,44 +207,6 @@ function fc_aligerar_pantallas_internas() {
     // Los emojis se imprimen por su propio hook, fuera de la cola
     remove_action( 'wp_head', 'print_emoji_detection_script', 7 );
     remove_action( 'wp_print_styles', 'print_emoji_styles' );
-}
-
-// ── Quitar los assets de WP Fastest Cache del PDV y el panel ─────────────────
-// Ese plugin encola cuatro archivos propios (toolbar, style, column) para su
-// barra de administrador. En estas dos pantallas la barra ya está oculta, así
-// que son peso muerto — y además el peor tipo de peso: su versión es una marca
-// de tiempo que cambia en cada carga, o sea que nunca se pueden cachear ni en
-// el navegador ni en Cloudflare. Siempre viajan al servidor, y cuando este se
-// satura devuelven 522 tras ~19 s bloqueando el renderizado de la página.
-//
-// Se filtra por la ruta del archivo y no por el nombre del handle, que puede
-// cambiar entre versiones del plugin. Ojo: la ruta de sus archivos propios es
-// /plugins/wp-fastest-cache/, distinta de /cache/wpfc-minified/ donde deja el
-// CSS combinado de los demás — eso no se toca.
-add_action( 'wp_enqueue_scripts', 'fc_quitar_toolbar_cache', 9999 );
-function fc_quitar_toolbar_cache() {
-    if ( ! get_query_var( 'fc_pdv' ) && ! get_query_var( 'fc_panel_florista' ) ) return;
-
-    global $wp_styles, $wp_scripts;
-
-    $es_del_plugin_cache = static function ( $src ) {
-        return $src && strpos( $src, '/plugins/wp-fastest-cache/' ) !== false;
-    };
-
-    if ( $wp_styles instanceof WP_Styles ) {
-        foreach ( (array) $wp_styles->queue as $handle ) {
-            if ( $es_del_plugin_cache( $wp_styles->registered[ $handle ]->src ?? '' ) ) {
-                wp_dequeue_style( $handle );
-            }
-        }
-    }
-    if ( $wp_scripts instanceof WP_Scripts ) {
-        foreach ( (array) $wp_scripts->queue as $handle ) {
-            if ( $es_del_plugin_cache( $wp_scripts->registered[ $handle ]->src ?? '' ) ) {
-                wp_dequeue_script( $handle );
-            }
-        }
-    }
 }
 
 // ── Páginas privadas fuera de buscadores ─────────────────────────────────────

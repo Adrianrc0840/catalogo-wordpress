@@ -14,6 +14,21 @@
     --fc-s-no_entregado:      #ef4444;
 }
 
+/* El <body> lleva la clase fc-panel-page; .fc-panel-body es un div interno.
+   Sin estas reglas el elemento body quedaba sin estilos propios y la pantalla
+   dependía del reset del tema para el margen y la altura — al aligerar la
+   página se perdían el alto completo, el scroll y las fuentes. */
+html, body.fc-panel-page {
+    margin: 0;
+    padding: 0;
+}
+body.fc-panel-page {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f4f5f7;
+    color: #1a202c;
+    -webkit-font-smoothing: antialiased;
+}
+
 /* ── Reset for panel scope ── */
 .fc-panel-body * {
     box-sizing: border-box;
