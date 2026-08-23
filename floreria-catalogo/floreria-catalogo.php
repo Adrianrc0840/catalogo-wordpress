@@ -3,7 +3,7 @@
  * Plugin Name: Florería Monarca
  * Plugin URI:  https://github.com/Adrianrc0840/catalogo-wordpress
  * Description: Sistema completo para florerías: catálogo, pedidos por WhatsApp, punto de venta, panel de floristas y gestión de caja.
- * Version:     5.4.1
+ * Version:     5.4.2
  * Author:      Adrián Rodríguez
  * Text Domain: floreria-catalogo
  * Requires at least: 6.0
@@ -13,9 +13,38 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+// ── xmlrpc.php cerrado ───────────────────────────────────────────────────────
+// Nada de este sitio lo usa: no hay Jetpack ni se administra desde la app de
+// WordPress. En cambio es el blanco favorito de los bots, porque permite meter
+// cientos de intentos de contraseña en una sola petición (saltándose cualquier
+// límite que cuente peticiones), y su función de pingback sirve para atacar a
+// terceros usando este servidor como intermediario.
+//
+// Se corta aquí, al cargar el plugin, para que el bot que lo golpea cada pocos
+// segundos consuma lo mínimo posible. Cloudflare ya lo bloquea en el borde, pero
+// esto cubre a quien llegue directo a la IP del servidor saltándose el proxy.
+//
+// Se compara el nombre del archivo y no la URL completa, para no rechazar por
+// error una página cuya dirección solo contenga ese texto.
+$fc_ruta = parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH );
+if ( $fc_ruta && basename( $fc_ruta ) === 'xmlrpc.php' ) {
+    http_response_code( 403 );
+    header( 'Content-Type: text/plain; charset=UTF-8' );
+    exit( 'Forbidden' );
+}
+unset( $fc_ruta );
+
+// Cerrojos de respaldo, por si algo alcanzara XML-RPC por otra vía:
+// se desactivan los métodos que piden contraseña y se quita el pingback.
+add_filter( 'xmlrpc_enabled', '__return_false' );
+add_filter( 'xmlrpc_methods', function ( $metodos ) {
+    unset( $metodos['pingback.ping'], $metodos['pingback.extensions.getPingbacks'] );
+    return $metodos;
+} );
+
 define( 'FC_PATH',    plugin_dir_path( __FILE__ ) );
 define( 'FC_URL',     plugin_dir_url( __FILE__ ) );
-define( 'FC_VERSION', '5.4.1' );
+define( 'FC_VERSION', '5.4.2' );
 
 require_once FC_PATH . 'includes/cpt.php';
 require_once FC_PATH . 'includes/meta-boxes.php';
