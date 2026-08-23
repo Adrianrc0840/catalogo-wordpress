@@ -187,10 +187,13 @@
 }
 
 /* ── Grid ── */
+/* Tarjetas angostas, como en el catálogo del PDV: mientras más angosta la
+   tarjeta, menos se desperdicia en una foto vertical. A 1200px de ancho salen
+   cinco columnas de ~216px. */
 .fc-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 26px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
 }
 
 /* ── Tarjeta ── */
@@ -217,10 +220,14 @@
     display: none;
 }
 
+/* Caja cuadrada, misma receta que .fc-pdv-card-img-wrap. Antes era una franja
+   horizontal de 220px de alto: como las fotos de los arreglos son verticales,
+   `cover` las agrandaba hasta llenar el ancho y se comía más de la mitad del
+   arreglo. Con la caja cuadrada y la tarjeta angosta el recorte es mínimo. */
 .fc-card-img {
     position: relative;
     width: 100%;
-    height: 220px;
+    aspect-ratio: 1 / 1;
     overflow: hidden;
     background: var(--fc-light-bg);
 }
