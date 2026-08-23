@@ -301,7 +301,7 @@
                 ? `<span class="fc-card-item-dest">Para: ${escHtml(capitalize(item.destinatario))}${item.destinatario_telefono ? ' · ' + telLink(item.destinatario_telefono) : ''}${item.destinatario_telefono2 ? ' · ' + telLink(item.destinatario_telefono2) : ''}</span>`
                 : '';
             const tarjetaLine = item.mensaje_tarjeta
-                ? `<span class="fc-card-item-tarjeta">"${escHtml(capitalize(item.mensaje_tarjeta))}"</span>`
+                ? `<span class="fc-card-item-tarjeta">Tarjeta: <em>${escHtml(capitalize(item.mensaje_tarjeta))}</em></span>`
                 : '';
             return `
             <div class="fc-card-item">
