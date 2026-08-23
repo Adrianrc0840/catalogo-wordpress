@@ -1389,10 +1389,12 @@ body.fc-panel-page {
     font-weight: 600;
 }
 
+/* La etiqueta "Tarjeta:" va derecha, como el "Para:" del destinatario, y solo
+   el mensaje va en cursiva — así se distingue de un vistazo qué es rótulo y
+   qué es el texto que se escribe en la tarjeta. */
 .fc-card-item-tarjeta {
     font-size: 11px;
     color: #4a5568;
-    font-style: italic;
 }
 
 /* ── Referencias de entrega ── */
