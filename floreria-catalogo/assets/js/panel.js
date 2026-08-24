@@ -296,7 +296,16 @@
             const colorParaMostrar = item.notas !== undefined
                 ? item.color
                 : (item.color ? item.color.split(' · ')[0] : '');
-            const sub = [item.tamano, (colorParaMostrar && !colorParaMostrar.startsWith('--')) ? colorParaMostrar : ''].filter(Boolean).join(' · ');
+            // El tamaño se separa del color: a la hora de preparar el arreglo
+            // pesa tanto como el nombre, así que va con su mismo formato y no
+            // perdido en la línea de datos secundarios.
+            const colorSolo = (colorParaMostrar && !colorParaMostrar.startsWith('--')) ? colorParaMostrar : '';
+            const tamanoLine = item.tamano
+                ? `<span class="fc-card-item-tamano">${escHtml(item.tamano)}</span>`
+                : '';
+            const colorLine = colorSolo
+                ? `<span class="fc-card-item-sub">${escHtml(colorSolo)}</span>`
+                : '';
             const destLine = item.destinatario
                 ? `<span class="fc-card-item-dest">Para: ${escHtml(capitalize(item.destinatario))}${item.destinatario_telefono ? ' · ' + telLink(item.destinatario_telefono) : ''}${item.destinatario_telefono2 ? ' · ' + telLink(item.destinatario_telefono2) : ''}</span>`
                 : '';
@@ -314,7 +323,8 @@
                 </div>
                 <div class="fc-card-item-info">
                     <strong class="fc-card-item-nombre">${escHtml(item.arreglo_nombre)}</strong>
-                    ${sub ? `<span class="fc-card-item-sub">${escHtml(sub)}</span>` : ''}
+                    ${tamanoLine}
+                    ${colorLine}
                     ${item.notas ? `<span class="fc-card-item-modificaciones">${escHtml(item.notas)}</span>` : ''}
                     ${destLine}
                     ${tarjetaLine}
@@ -414,13 +424,21 @@
                        <img class="fc-card-item-thumb" src="${escAttr(allPhotos[0])}" alt="" loading="lazy" />
                    </div>`
                 : `<div class="fc-card-item-thumb-empty">&#127800;</div>`;
-            const sub = [item.tamano, item.color].filter(Boolean).join(' · ');
+            // Mismo criterio que en las tarjetas regulares: el tamaño con el
+            // formato del nombre, el color como dato secundario.
+            const tamanoLine = item.tamano
+                ? `<span class="fc-card-item-tamano">${escHtml(item.tamano)}</span>`
+                : '';
+            const colorLine = item.color
+                ? `<span class="fc-card-item-sub">${escHtml(item.color)}</span>`
+                : '';
             return `
                 <div class="fc-card-item">
                     ${thumb}
                     <div class="fc-card-item-info">
                         <strong class="fc-card-item-nombre">${escHtml(item.arreglo_nombre)}</strong>
-                        ${sub ? `<span class="fc-card-item-sub">${escHtml(sub)}</span>` : ''}
+                        ${tamanoLine}
+                        ${colorLine}
                         ${item.notas ? `<span class="fc-card-item-modificaciones">${escHtml(item.notas)}</span>` : ''}
                         ${item.banda ? `<span class="fc-card-item-banda"><strong>Banda:</strong> ${escHtml(capitalize(item.banda))}</span>` : ''}
                     </div>

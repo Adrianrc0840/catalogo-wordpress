@@ -1378,6 +1378,14 @@ body.fc-panel-page {
     word-break: break-word;
 }
 
+/* El tamaño decide qué se prepara tanto como el nombre, así que lleva su
+   mismo formato en vez de ir gris y chico junto al color. */
+.fc-card-item-tamano {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2d3748;
+}
+
 .fc-card-item-sub {
     font-size: 11px;
     color: #718096;
