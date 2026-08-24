@@ -202,6 +202,9 @@
                     const idx = parseInt(row.dataset.idx);
                     const cartItem = cart[idx];
                     if (!cartItem) return;
+                    // En móvil la hoja tapa la pantalla: hay que bajarla para
+                    // que se vea el detalle que se va a editar.
+                    cerrarTicket();
                     // Ir a vista PDV si no está
                     switchView('pdv');
                     const arreglo = cartItem.arreglo_id
@@ -220,7 +223,29 @@
 
         const cobrarBtn = $('#fc-pdv-btn-cobrar');
         if (cobrarBtn) cobrarBtn.disabled = !cart.length;
+
+        // Barra del ticket (móvil): repite el total para tenerlo a la vista
+        // mientras se elige, sin abrir la hoja.
+        const barCount = $('#fc-pdv-ticket-bar-count');
+        const barTotal = $('#fc-pdv-ticket-bar-total');
+        if (barCount) {
+            barCount.textContent = !cart.length
+                ? 'Ticket vacío'
+                : cart.length + (cart.length === 1 ? ' artículo' : ' artículos');
+        }
+        if (barTotal) barTotal.textContent = fmt(cartTotal());
+
+        // Al vaciarse el ticket ya no hay nada que revisar. Cubre tanto quitar
+        // el último artículo como terminar una venta, que también re-renderiza.
+        if (!cart.length) cerrarTicket();
     }
+
+    // ── HOJA DEL TICKET (móvil) ──
+    // En escritorio el ticket es una columna siempre visible y estas funciones
+    // no hacen nada perceptible: la clase que alternan solo tiene efecto dentro
+    // del media query de móvil.
+    function abrirTicket()  { $('.fc-pdv-ticket')?.classList.add('is-open'); }
+    function cerrarTicket() { $('.fc-pdv-ticket')?.classList.remove('is-open'); }
 
     // Cambiar entre vistas PDV / Caja / Informes
     //
@@ -230,8 +255,9 @@
     function switchView(view) {
         $$('.fc-pdv-nav-btn').forEach(b => b.classList.remove('active'));
         $$('.fc-pdv-view').forEach(v => v.classList.remove('active'));
-        const btn = $(`.fc-pdv-nav-btn[data-view="${view}"]`);
-        if (btn) btn.classList.add('active');
+        // Funeral e Informes tienen dos botones: el de la barra y el del menú
+        // "Más" en móvil. Se marcan todos, no solo el primero.
+        $$(`.fc-pdv-nav-btn[data-view="${view}"]`).forEach(b => b.classList.add('active'));
         const panelId = view === 'funeral' ? 'pdv' : view;
         const panel   = $(`#fc-pdv-view-${panelId}`);
         if (panel) panel.classList.add('active');
@@ -1239,6 +1265,28 @@
                         });
                     });
 
+                    // iOS: Google abre su lista de sugerencias como un diálogo a
+                    // pantalla completa anclado en y=0 del documento. Si la página
+                    // está desplazada, el diálogo queda arriba, fuera de vista, y
+                    // parece que el buscador no responde. Subir al tope en la
+                    // primera tecla lo deja a la vista.
+                    //
+                    // Se engancha en fase de captura y solo tras tocar el campo,
+                    // para no escuchar el teclado de toda la pantalla; se
+                    // desengancha en cuanto cumple, porque basta una vez.
+                    // Mismo arreglo que ya lleva cart.js.
+                    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                        const iosKeydown = e => {
+                            const path = e.composedPath ? e.composedPath() : [];
+                            if (path.indexOf(pac) === -1) return;
+                            document.removeEventListener('keydown', iosKeydown, true);
+                            window.scrollTo(0, 0);
+                        };
+                        pac.addEventListener('touchend', () => {
+                            document.addEventListener('keydown', iosKeydown, true);
+                        }, { passive: true });
+                    }
+
                     // Sincronizar texto mientras escribe (dentro del shadow DOM)
                     const syncShadow = () => {
                         const si = pac.shadowRoot && pac.shadowRoot.querySelector('input');
@@ -2136,6 +2184,54 @@
                 if (view === 'transacciones') loadTransacciones();
                 if (view === 'informes')      loadInformes();
             });
+        });
+
+        // ── Menú "Más" (solo móvil) ──
+        // En la barra de abajo no caben las cinco secciones, así que Modo
+        // funeral e Informes viven aquí. Sus botones ya quedaron enganchados
+        // arriba por compartir clase y data-view; esto solo abre y cierra.
+        const masBtn      = $('#fc-pdv-btn-mas');
+        const masMenu     = $('#fc-pdv-mas-menu');
+        const masBackdrop = $('#fc-pdv-mas-backdrop');
+
+        function cerrarMas() {
+            if (!masMenu) return;
+            masMenu.hidden = true;
+            if (masBackdrop) masBackdrop.hidden = true;
+            masBtn?.setAttribute('aria-expanded', 'false');
+        }
+
+        function abrirMas() {
+            if (!masMenu) return;
+            masMenu.hidden = false;
+            if (masBackdrop) masBackdrop.hidden = false;
+            masBtn?.setAttribute('aria-expanded', 'true');
+        }
+
+        masBtn?.addEventListener('click', () => {
+            if (masMenu?.hidden) abrirMas(); else cerrarMas();
+        });
+        masBackdrop?.addEventListener('click', cerrarMas);
+        masMenu?.addEventListener('click', e => {
+            if (e.target.closest('.fc-pdv-mas-item')) cerrarMas();
+        });
+        // La barra de pestañas queda por encima del fondo oscuro, así que un
+        // toque en otra sección no pasa por el backdrop: se cierra aquí.
+        $('.fc-pdv-nav')?.addEventListener('click', e => {
+            if (e.target.closest('.fc-pdv-nav-btn')) cerrarMas();
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && masMenu && !masMenu.hidden) cerrarMas();
+        });
+
+        // ── Hoja del ticket (solo móvil) ──
+        $('#fc-pdv-ticket-bar')?.addEventListener('click', () => {
+            cerrarMas();
+            abrirTicket();
+        });
+        $('#fc-pdv-ticket-close')?.addEventListener('click', cerrarTicket);
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') cerrarTicket();
         });
 
         // Logout

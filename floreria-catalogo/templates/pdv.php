@@ -61,15 +61,37 @@ $today        = current_time( 'Y-m-d' );
             <span>🌸</span>
             <span><?php echo esc_html( $shop_name ); ?></span>
         </div>
+        <?php
+        /*
+         * El icono y el texto van en <span> separados para que en móvil se
+         * puedan apilar como pestaña. En escritorio el espacio entre ambos
+         * los deja igual que antes.
+         */
+        ?>
         <nav class="fc-pdv-nav">
-            <button class="fc-pdv-nav-btn active" data-view="pdv">🛒 PDV</button>
-            <button class="fc-pdv-nav-btn" data-view="funeral">🚨 Modo funeral</button>
-            <button class="fc-pdv-nav-btn" data-view="caja">💰 Caja</button>
-            <button class="fc-pdv-nav-btn" data-view="transacciones">📋 Ventas</button>
-            <button class="fc-pdv-nav-btn" data-view="informes">📊 Informes</button>
+            <button class="fc-pdv-nav-btn active" data-view="pdv"><span class="fc-pdv-nav-ico">🛒</span> <span class="fc-pdv-nav-txt">PDV</span></button>
+            <button class="fc-pdv-nav-btn" data-view="funeral"><span class="fc-pdv-nav-ico">🚨</span> <span class="fc-pdv-nav-txt">Modo funeral</span></button>
+            <button class="fc-pdv-nav-btn" data-view="caja"><span class="fc-pdv-nav-ico">💰</span> <span class="fc-pdv-nav-txt">Caja</span></button>
+            <button class="fc-pdv-nav-btn" data-view="transacciones"><span class="fc-pdv-nav-ico">📋</span> <span class="fc-pdv-nav-txt">Ventas</span></button>
+            <button class="fc-pdv-nav-btn" data-view="informes"><span class="fc-pdv-nav-ico">📊</span> <span class="fc-pdv-nav-txt">Informes</span></button>
+            <?php // Solo móvil: en la barra de abajo no caben las cinco secciones. ?>
+            <button type="button" id="fc-pdv-btn-mas" class="fc-pdv-nav-mas" aria-expanded="false" aria-controls="fc-pdv-mas-menu"><span class="fc-pdv-nav-ico">☰</span> <span class="fc-pdv-nav-txt">Más</span></button>
         </nav>
         <button id="fc-pdv-btn-logout" class="fc-pdv-btn-header">Salir</button>
     </header>
+
+    <?php
+    /*
+     * Menú "Más" — solo móvil. Sus botones llevan la misma clase y el mismo
+     * data-view que los de la barra, así que el manejador de navegación que ya
+     * existe los toma solos; aquí únicamente se cierra el menú al elegir.
+     */
+    ?>
+    <div id="fc-pdv-mas-menu" class="fc-pdv-mas-menu" hidden>
+        <button class="fc-pdv-nav-btn fc-pdv-mas-item" data-view="funeral"><span class="fc-pdv-nav-ico">🚨</span> <span class="fc-pdv-nav-txt">Modo funeral</span></button>
+        <button class="fc-pdv-nav-btn fc-pdv-mas-item" data-view="informes"><span class="fc-pdv-nav-ico">📊</span> <span class="fc-pdv-nav-txt">Informes</span></button>
+    </div>
+    <div id="fc-pdv-mas-backdrop" class="fc-pdv-mas-backdrop" hidden></div>
 
     <!-- ── VIEW: PDV (catálogo + ticket) ── -->
     <div id="fc-pdv-view-pdv" class="fc-pdv-view active">
@@ -87,8 +109,18 @@ $today        = current_time( 'Y-m-d' );
         </div>
 
         <!-- Ticket -->
+        <?php
+        /*
+         * En escritorio es la columna de la derecha. En móvil el mismo bloque
+         * se convierte en la hoja que sube desde abajo, así que el botón de
+         * cerrar solo aparece ahí.
+         */
+        ?>
         <div class="fc-pdv-ticket">
-            <div class="fc-pdv-ticket-header"><span>Ticket</span></div>
+            <div class="fc-pdv-ticket-header">
+                <span>Ticket</span>
+                <button type="button" id="fc-pdv-ticket-close" class="fc-pdv-ticket-close" aria-label="Cerrar ticket">&times;</button>
+            </div>
             <div id="fc-pdv-ticket-items" class="fc-pdv-ticket-items">
                 <div class="fc-pdv-ticket-empty">
                     <div class="fc-pdv-ticket-empty-icon">🛒</div>
@@ -103,6 +135,18 @@ $today        = current_time( 'Y-m-d' );
                 <button id="fc-pdv-btn-cobrar" class="fc-pdv-btn-cobrar" disabled>Cobrar</button>
             </div>
         </div>
+
+        <?php
+        /*
+         * Barra del ticket — solo móvil. Vive dentro de la vista del PDV a
+         * propósito: así desaparece sola al cambiar a Caja, Ventas o Informes,
+         * sin tener que esconderla desde el JS.
+         */
+        ?>
+        <button type="button" id="fc-pdv-ticket-bar" class="fc-pdv-ticket-bar">
+            <span class="fc-pdv-ticket-bar-count" id="fc-pdv-ticket-bar-count">Ticket vacío</span>
+            <span class="fc-pdv-ticket-bar-total" id="fc-pdv-ticket-bar-total">$0.00</span>
+        </button>
 
     </div><!-- /#fc-pdv-view-pdv -->
 
