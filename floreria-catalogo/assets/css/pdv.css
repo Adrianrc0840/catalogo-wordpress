@@ -116,6 +116,42 @@ body.fc-pdv-page input[type="number"] { -moz-appearance: textfield; appearance: 
 .fc-pdv-form-group select:focus,
 .fc-pdv-form-group textarea:focus { border-color: var(--pdv-primary); box-shadow: 0 0 0 3px rgba(200,24,90,0.1); }
 
+/* ── Google Places — gmp-place-autocomplete (tema claro) ───────────────────
+   El buscador de direcciones lo dibuja Google dentro de un shadow DOM y sigue
+   el tema del sistema: en un iPhone en modo oscuro se pinta negro y desentona
+   con todo el formulario. Las variables y `color-scheme: light` lo fuerzan a
+   claro. Es el mismo arreglo que ya llevan panel.css y detalle.css; faltaba
+   traerlo aquí. */
+gmp-place-autocomplete {
+    display: block;
+    width: 100%;
+    --gmpx-color-surface: #ffffff;
+    --gmpx-color-on-surface: #1a202c;
+    --gmpx-color-on-surface-variant: #666666;
+    --gmpx-color-primary: var(--pdv-primary);
+    background-color: #ffffff !important;
+    color-scheme: light;
+}
+
+/* ::part() alcanza el input real de adentro; sin esto queda con el estilo de
+   Google y no con el de los demás campos del PDV. */
+gmp-place-autocomplete::part(input) {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 13px;
+    border: 1.5px solid var(--pdv-border);
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--pdv-text);
+    background: #fff;
+    outline: none;
+}
+gmp-place-autocomplete::part(input):focus {
+    border-color: var(--pdv-primary);
+    box-shadow: 0 0 0 3px rgba(200,24,90,0.1);
+}
+
 .fc-pdv-btn-primary {
     width: 100%;
     padding: 12px;
@@ -187,6 +223,12 @@ body.fc-pdv-page input[type="number"] { -moz-appearance: textfield; appearance: 
 }
 .fc-pdv-nav-btn:hover { background: rgba(255,255,255,0.22); color: #fff; }
 .fc-pdv-nav-btn.active { background: rgba(255,255,255,0.32); color: #fff; }
+
+/* El botón "Más" y su menú son de la barra de pestañas de móvil: en escritorio
+   caben las cinco secciones en el header y no hacen falta. */
+.fc-pdv-nav-mas,
+.fc-pdv-mas-menu,
+.fc-pdv-mas-backdrop { display: none; }
 
 .fc-pdv-btn-header {
     background: rgba(255,255,255,0.15);
@@ -918,6 +960,11 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
     flex-shrink: 0;
 }
 
+/* La barra del ticket y el botón de cerrar pertenecen a la hoja de móvil. En
+   escritorio el ticket es una columna siempre visible y no hacen falta. */
+.fc-pdv-ticket-bar,
+.fc-pdv-ticket-close { display: none; }
+
 .fc-pdv-ticket-items {
     flex: 1;
     overflow-y: auto;
@@ -1454,6 +1501,10 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 }
 .fc-extras-add-row input {
     flex: 1;
+    /* Un elemento flex no se encoge por debajo de su tamaño natural, y el de un
+       <input> ronda los 180px. Sin esto la fila se desborda en pantallas
+       angostas. En escritorio sobra espacio y no cambia nada. */
+    min-width: 0;
     padding: 7px 10px;
     border: 1.5px solid var(--pdv-border);
     border-radius: 8px;
@@ -1466,19 +1517,11 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
     outline: none;
     border-color: var(--pdv-primary);
 }
-.fc-pdv-btn-sm {
-    background: var(--pdv-primary);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 7px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-    white-space: nowrap;
-}
-.fc-pdv-btn-sm:hover { background: var(--pdv-dark); }
+/* Este botón usa la variante `primary` como todos los demás. Antes redefinía
+   .fc-pdv-btn-sm entero para pintarse de rosa, y ese `border: none` le quitaba
+   el borde a TODOS los botones pequeños del PDV — por eso los "Buscar" y los
+   "Limpiar" salían sin contorno. */
+.fc-extras-add-row .fc-pdv-btn-sm { white-space: nowrap; }
 
 /* ── Anticipo saldo (PDV) ── */
 .fc-anticipo-saldo {
@@ -1683,4 +1726,461 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
 @media (max-width: 768px) {
     :root { --pdv-ticket-w: 260px; --pdv-bottom-h: 280px; }
     .fc-pdv-btn-personalizado span { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MÓVIL — etapa 1: esqueleto
+   ══════════════════════════════════════════════════════════════════════════
+   Todo lo de este bloque vive dentro del media query, así que el PDV de
+   escritorio —la herramienta diaria de la tienda— no cambia ni una línea.
+
+   El corte son 767px para dejar fuera la tablet: un iPad tiene espacio de
+   sobra para las dos columnas y ahí el layout de escritorio funciona bien.
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 767px) {
+
+    :root {
+        --pdv-header-h:    52px;
+        --pdv-tabbar-h:    56px;
+        --pdv-ticketbar-h: 54px;
+        /* El indicador de inicio del iPhone tapa lo que quede pegado al borde
+           inferior. En pantallas sin él, env() vale 0 y no estorba. */
+        --pdv-safe-b:      env(safe-area-inset-bottom, 0px);
+        /* Todo lo que se ancla abajo parte de aquí: alto de las pestañas más
+           la franja del iPhone. */
+        --pdv-bottom-off:  calc(var(--pdv-tabbar-h) + var(--pdv-safe-b));
+    }
+
+    /* 100vh en móvil incluye la barra de direcciones del navegador, así que el
+       contenido queda cortado por debajo. dvh mide lo que de verdad se ve. */
+    #fc-pdv-main,
+    .fc-pdv-main,
+    .fc-pdv-body { height: 100dvh; min-height: 100dvh; }
+
+    /* ── Header: solo marca y salir ── */
+    .fc-pdv-header       { padding: 0 14px; }
+    .fc-pdv-header-brand { font-size: 15px; gap: 7px; }
+    .fc-pdv-btn-header   { padding: 7px 14px; font-size: 14px; }
+
+    /* ── Barra de pestañas fija abajo ──────────────────────────────────────
+       Los botones ya existen dentro del header; en vez de duplicarlos en el
+       HTML se sacan de esa fila con position:fixed y se anclan al borde
+       inferior, que es donde alcanza el pulgar. */
+    .fc-pdv-nav {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 200;
+        gap: 0;
+        justify-content: space-around;
+        background: var(--pdv-card);
+        border-top: 1px solid var(--pdv-border);
+        padding-bottom: var(--pdv-safe-b);
+        box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+    }
+
+    /* Modo funeral e Informes no caben en la barra: viven en "Más" */
+    .fc-pdv-nav > .fc-pdv-nav-btn[data-view="funeral"],
+    .fc-pdv-nav > .fc-pdv-nav-btn[data-view="informes"] { display: none; }
+
+    .fc-pdv-nav > .fc-pdv-nav-btn,
+    .fc-pdv-nav-mas {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        min-width: 0;
+        height: var(--pdv-tabbar-h);
+        padding: 0 2px;
+        border: none;
+        border-radius: 0;
+        background: none;
+        color: var(--pdv-muted);
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .fc-pdv-nav > .fc-pdv-nav-btn .fc-pdv-nav-ico,
+    .fc-pdv-nav-mas .fc-pdv-nav-ico { font-size: 19px; line-height: 1; }
+    .fc-pdv-nav > .fc-pdv-nav-btn .fc-pdv-nav-txt,
+    .fc-pdv-nav-mas .fc-pdv-nav-txt {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+    }
+
+    /* El estado activo de escritorio es blanco translúcido sobre el header
+       rosa; aquí la barra es blanca, así que se marca con el color de marca. */
+    .fc-pdv-nav > .fc-pdv-nav-btn:hover,
+    .fc-pdv-nav-mas:hover { background: none; color: var(--pdv-muted); }
+    .fc-pdv-nav > .fc-pdv-nav-btn.active {
+        background: none;
+        color: var(--pdv-primary);
+    }
+
+    /* ── Menú "Más" ── */
+    .fc-pdv-nav-mas { display: flex; }
+
+    .fc-pdv-mas-menu {
+        position: fixed;
+        left: 8px;
+        right: 8px;
+        bottom: calc(var(--pdv-tabbar-h) + var(--pdv-safe-b) + 8px);
+        z-index: 201;
+        display: flex;
+        flex-direction: column;
+        background: var(--pdv-card);
+        border: 1px solid var(--pdv-border);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    .fc-pdv-mas-menu[hidden] { display: none; }
+
+    .fc-pdv-mas-menu .fc-pdv-mas-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 15px 18px;
+        border: none;
+        border-radius: 0;
+        background: none;
+        color: var(--pdv-text);
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+    }
+    .fc-pdv-mas-menu .fc-pdv-mas-item + .fc-pdv-mas-item {
+        border-top: 1px solid var(--pdv-border);
+    }
+    .fc-pdv-mas-menu .fc-pdv-mas-item .fc-pdv-nav-ico { font-size: 19px; }
+    .fc-pdv-mas-menu .fc-pdv-mas-item.active { color: var(--pdv-primary); }
+
+    .fc-pdv-mas-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 199;
+        background: rgba(0,0,0,0.35);
+    }
+    .fc-pdv-mas-backdrop[hidden] { display: none; }
+
+    /* ── Contenido: que no quede debajo de la barra ────────────────────────
+       La barra flota encima, así que cada vista reserva su alto al final. */
+    .fc-pdv-view {
+        padding-bottom: var(--pdv-bottom-off);
+    }
+
+    /* ── Vista PDV: una sola columna ── */
+    /* Reserva de más porque aquí, además de las pestañas, va la barra del
+       ticket. Sin esto el último renglón del catálogo queda tapado. */
+    #fc-pdv-view-pdv {
+        flex-direction: column;
+        padding-bottom: calc(var(--pdv-bottom-off) + var(--pdv-ticketbar-h));
+    }
+    #fc-pdv-view-caja { padding: 16px 14px calc(var(--pdv-bottom-off) + 16px); }
+
+    .fc-pdv-catalog { border-right: none; }
+
+    /* ── Barra del ticket ──────────────────────────────────────────────────
+       Va pegada arriba de las pestañas y mantiene el total a la vista mientras
+       se elige, que era lo que se perdía al quitar la columna de la derecha. */
+    .fc-pdv-ticket-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: var(--pdv-bottom-off);
+        z-index: 190;
+        height: var(--pdv-ticketbar-h);
+        padding: 0 18px;
+        border: none;
+        border-top: 1px solid var(--pdv-dark);
+        background: var(--pdv-primary);
+        color: #fff;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 700;
+        text-align: left;
+        cursor: pointer;
+    }
+    .fc-pdv-ticket-bar-count { opacity: 0.9; font-weight: 600; }
+    .fc-pdv-ticket-bar-total { font-size: 17px; }
+
+    /* ── Hoja del ticket ───────────────────────────────────────────────────
+       Es el mismo bloque que en escritorio es la columna derecha; aquí se fija
+       a la pantalla y sube al abrirse. Se queda por debajo del header para no
+       perder de vista dónde estás, y por encima de las pestañas.
+       Se anima con transform y no con `top`, que el navegador puede mover sin
+       rehacer el layout en cada cuadro. */
+    .fc-pdv-ticket {
+        display: flex;
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: var(--pdv-header-h);
+        bottom: var(--pdv-bottom-off);
+        z-index: 195;
+        width: auto;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        box-shadow: 0 -6px 28px rgba(0,0,0,0.22);
+        transform: translateY(110%);
+        transition: transform .26s ease;
+    }
+    .fc-pdv-ticket.is-open { transform: translateY(0); }
+
+    .fc-pdv-ticket-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 12px 12px 18px;
+        font-size: 14px;
+    }
+    .fc-pdv-ticket-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        flex-shrink: 0;
+        border: none;
+        border-radius: 50%;
+        background: var(--pdv-bg);
+        color: var(--pdv-text);
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    /* Renglones y botón de cobrar más altos: aquí se tocan con el dedo. */
+    .fc-pdv-ticket-item        { padding: 13px 16px; }
+    .fc-pdv-ticket-item-remove { width: 34px; height: 34px; font-size: 22px; }
+    .fc-pdv-ticket-footer      { padding: 14px 16px 18px; }
+    .fc-pdv-btn-cobrar         { padding: 16px; font-size: 17px; }
+
+    /* ── Formularios y modales ─────────────────────────────────────────────
+       Safari en iPhone hace zoom automático al enfocar un campo cuya letra
+       mide menos de 16px, y ese zoom es lo que deja la página más ancha que la
+       pantalla y aparece el scroll horizontal. Subir el tamaño lo evita: es el
+       remedio para ese comportamiento, no un capricho tipográfico. */
+    .fc-pdv-form-group input,
+    .fc-pdv-form-group select,
+    .fc-pdv-form-group textarea,
+    .fc-extras-add-row input,
+    .fc-pdv-search {
+        font-size: 16px;
+    }
+    /* El buscador de direcciones vive en un shadow DOM: la regla de arriba no
+       lo alcanza y hay que subirle la letra por su ::part. */
+    gmp-place-autocomplete::part(input) { font-size: 16px; }
+
+    /* Fecha y hora son controles nativos y iOS les pone un ancho mínimo propio
+       que ignora el width:100%: eran los únicos campos que se salían del
+       formulario y empujaban el scroll horizontal.
+       `min-width: 0` les quita ese piso —sin él, `max-width` no alcanza— y
+       apagar la apariencia nativa los deja alinearse como los demás. El
+       selector del sistema sigue abriéndose igual al tocarlos. */
+    .fc-pdv-form-group input[type="date"],
+    .fc-pdv-form-group input[type="time"] {
+        -webkit-appearance: none;
+        appearance: none;
+        min-width: 0;
+        max-width: 100%;
+        width: 100%;
+        text-align: left;
+        background: #fff;
+    }
+
+    /* El modal ocupaba 88px de la pantalla solo en márgenes y padding: 40 del
+       fondo y 48 del cuerpo. En un teléfono de 390px eso dejaba 302px útiles
+       para los campos. Recortarlos devuelve 40px. */
+    .fc-pdv-modal-backdrop {
+        padding: 8px;
+        align-items: flex-end;   /* pegado abajo, donde alcanza el pulgar */
+    }
+    .fc-pdv-modal {
+        max-height: 92dvh;
+        border-bottom-left-radius: 10px;
+        border-bottom-right-radius: 10px;
+    }
+    .fc-pdv-modal-header { padding: 16px 16px 12px; }
+    .fc-pdv-modal-body   { padding: 16px; }
+    .fc-pdv-modal-footer { padding: 12px 16px calc(12px + var(--pdv-safe-b)); }
+
+    /* Botones de cobro más altos para el dedo */
+    .fc-pdv-modal-footer .fc-pdv-btn-primary,
+    .fc-pdv-modal-footer button:not(.fc-pdv-btn-primary) { padding: 14px 16px; }
+
+    /* La fila de extras no cabe en un renglón: el botón se va al siguiente. */
+    .fc-extras-add-row { flex-wrap: wrap; }
+    .fc-extras-add-row input { flex: 1 1 120px; }
+    .fc-extras-add-row .fc-pdv-btn-sm { flex: 1 0 100%; padding: 10px; }
+
+    /* Recolección / Envío y las formas de pago: que el texto largo baje de
+       renglón en vez de estirar la fila. */
+    .fc-pdv-tipo-btns,
+    .fc-pdv-pago-btns { flex-wrap: wrap; }
+    .fc-pdv-tipo-btn,
+    .fc-pdv-pago-btn  { flex: 1 1 90px; min-width: 0; }
+
+    /* ══ Etapa 3: detalle del arreglo ═══════════════════════════════════════
+       En escritorio son dos columnas simétricas —foto a la izquierda, datos a
+       la derecha—. En un teléfono eso deja dos columnas de ~170px: la foto
+       diminuta y los controles apretados. Se apilan. */
+    .fc-pdv-detail-inner {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        padding: 12px 14px 20px;
+    }
+
+    /* La foto cuadrada a todo lo ancho ocupa media pantalla y empuja los datos
+       fuera de vista. Más baja, se ve el arreglo y también los tamaños. */
+    .fc-pdv-img-wrap,
+    .fc-pdv-detail-photo-empty-col { aspect-ratio: 4 / 3; }
+
+    .fc-pdv-detail-info-col { padding-top: 0; }
+
+    /* Volver: en escritorio basta un enlace, con el dedo necesita área. */
+    .fc-pdv-detail-back    { padding: 8px 0 12px; font-size: 15px; }
+    .fc-pdv-detail-nombre  { font-size: 20px; }
+    .fc-pdv-precio-display { font-size: 28px; margin-bottom: 12px; }
+
+    /* Tamaños y colores: son los controles que más se tocan aquí. */
+    .fc-pdv-tamano-chip  { padding: 10px 16px; font-size: 14px; }
+    .fc-pdv-colores      { gap: 14px; }
+    .fc-pdv-color-swatch { width: 42px; height: 42px; }
+
+    /* ── Agregar al ticket, anclado abajo ──────────────────────────────────
+       Con la foto, los tamaños, los colores y las modificaciones, el botón
+       queda lejos del pulgar y hay que bajar hasta el final en cada arreglo.
+       Anclado, la acción principal siempre está a un toque.
+
+       Mientras el detalle está abierto se esconde la barra del total y el
+       botón ocupa exactamente su lugar y su alto: así no se apilan tres
+       franjas abajo y el espacio que ya reserva la vista sigue siendo el
+       correcto, sin cambiarlo entre un estado y otro.
+
+       Que el total desaparezca aquí no estorba: el número que importa
+       mientras se configura un arreglo es su precio, que va grande arriba. */
+    body.fc-pdv-detalle .fc-pdv-ticket-bar { display: none; }
+
+    body.fc-pdv-detalle .fc-pdv-btn-agregar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: var(--pdv-bottom-off);
+        z-index: 190;
+        height: var(--pdv-ticketbar-h);
+        margin: 0;
+        padding: 0 18px;
+        border-radius: 0;
+        font-size: 16px;
+        box-shadow: 0 -2px 12px rgba(0,0,0,0.12);
+    }
+
+    /* ══ Etapa 4: pantallas de consulta ═════════════════════════════════════
+       Caja, Ventas e Informes están pensadas para una pantalla ancha: columnas
+       laterales, rejillas de tarjetas grandes y una tabla de seis columnas. */
+
+    /* ── Caja ──────────────────────────────────────────────────────────────
+       La tarjeta de caja abierta exigía 280px mínimos, que en un teléfono
+       angosto la desbordaban. Aquí manda el ancho disponible. */
+    .fc-pdv-caja-wrap { gap: 16px; }
+
+    /* En escritorio las cajas abiertas se acomodan de lado y el botón de abrir
+       otra queda a su derecha. En un teléfono no caben dos a lo ancho: van una
+       debajo de otra, y el botón al final de la pila. */
+    .fc-pdv-caja-abierta-section {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    .fc-pdv-caja-card            { padding: 16px; }
+    .fc-pdv-caja-card.abierta    { min-width: 0; max-width: none; width: 100%; }
+    .fc-pdv-caja-saldo           { font-size: 26px; }
+    .fc-pdv-cajas-grid           { grid-template-columns: 1fr; gap: 12px; }
+
+    /* Movimientos: eran cuatro columnas —tipo, descripción, monto y fecha— en
+       un renglón. La fecha se pasa abajo y las otras tres respiran. */
+    .fc-pdv-mov-row {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 3px 8px;
+        padding: 10px 12px;
+    }
+    .fc-pdv-mov-ts { grid-column: 1 / -1; font-size: 11px; }
+
+    /* ── Ventas ────────────────────────────────────────────────────────────
+       En escritorio los filtros van en una columna lateral de 230px. Aquí esa
+       columna se convierte en una franja arriba. */
+    #fc-pdv-view-transacciones { flex-direction: column; }
+
+    #fc-pdv-view-transacciones .fc-pdv-informes-toolbar {
+        width: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 10px;
+        padding: 12px 14px;
+        border-right: none;
+        border-bottom: 1px solid var(--pdv-border);
+        overflow: visible;
+    }
+    #fc-pdv-view-transacciones .fc-pdv-informes-toolbar .fc-pdv-form-group {
+        margin-bottom: 0;
+        flex: 1 1 130px;
+    }
+    /* Buscar en su propio renglón: más fácil de atinar que apretado al lado
+       de dos campos de fecha. */
+    #fc-pdv-view-transacciones #fc-pdv-tx-buscar { flex: 1 0 100%; padding: 11px; }
+
+    /* El resumen del período pasa de columna a fila de chips. */
+    #fc-pdv-view-transacciones .fc-pdv-tx-resumen {
+        flex-direction: row;
+        flex-wrap: wrap;
+        width: 100%;
+        margin-top: 10px;
+        padding-top: 10px;
+        gap: 8px;
+    }
+    .fc-pdv-tx-res-chip { flex: 1 1 96px; font-size: 17px; padding: 10px 12px; }
+
+    .fc-pdv-tx-card        { padding: 14px 16px; }
+    .fc-pdv-tx-card-header { flex-wrap: wrap; gap: 8px; }
+    .fc-pdv-tx-grupo       { margin-bottom: 20px; }
+
+    /* ── Informes ──────────────────────────────────────────────────────────
+       Seis columnas de números no caben en un teléfono. Apilar cada fila en
+       seis renglones haría ilegible un mes de ventas, y esconder columnas es
+       esconder datos: la tabla se desplaza de lado dentro de su propia caja.
+       La página no se mueve, solo la tabla. */
+    .fc-pdv-informes-toolbar { padding: 12px 14px; }
+    .fc-pdv-informes-result  { padding: 14px; }
+
+    .fc-pdv-informe-totales {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px;
+    }
+    .fc-pdv-total-chip { padding: 12px 14px; font-size: 19px; }
+
+    .fc-pdv-informe-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        font-size: 13px;
+    }
+    .fc-pdv-informe-table th,
+    .fc-pdv-informe-table td { padding: 10px; }
 }
