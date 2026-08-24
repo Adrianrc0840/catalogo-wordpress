@@ -365,6 +365,9 @@
         const container = $('#fc-pdv-catalog-content');
         if (!container) return;
         container.classList.add('is-grid'); // padding + scroll para el grid
+        // En móvil el detalle ancla su propio botón abajo; al volver al grid
+        // se devuelve ese lugar a la barra del ticket.
+        document.body.classList.remove('fc-pdv-detalle');
 
         // Aplicar filtros de modo, categoría y búsqueda
         let arr = arreglosDelModo();
@@ -511,6 +514,11 @@
         const container = $('#fc-pdv-catalog-content');
         if (!container) return;
         container.classList.remove('is-grid'); // sin padding para el detalle 2-col
+        // Marca para el layout de móvil: mientras se configura un arreglo, el
+        // lugar de abajo lo ocupa "Agregar al ticket" en vez de la barra del
+        // total. Se apaga en renderCatalog, que corre tanto al volver como al
+        // terminar de agregar.
+        document.body.classList.add('fc-pdv-detalle');
 
         const isPersonalizado = !arreglo.id;
         const tamanos = arreglo.tamanos || [];
@@ -930,7 +938,7 @@
                         <div class="fc-extras-add-row">
                             <input type="text" id="pdv-co-extras-input" placeholder="Ej: Globo, Chocolates…">
                             <input type="number" id="pdv-co-extras-precio" placeholder="$0" min="0" step="0.01" class="fc-pdv-extras-precio">
-                            <button type="button" id="pdv-co-extras-add-btn" class="fc-pdv-btn-sm">+ Agregar</button>
+                            <button type="button" id="pdv-co-extras-add-btn" class="fc-pdv-btn-sm primary">+ Agregar</button>
                         </div>
                         <input type="hidden" id="pdv-co-extras-json" value="[]">
                     </div>

@@ -1517,19 +1517,11 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
     outline: none;
     border-color: var(--pdv-primary);
 }
-.fc-pdv-btn-sm {
-    background: var(--pdv-primary);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 7px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-    white-space: nowrap;
-}
-.fc-pdv-btn-sm:hover { background: var(--pdv-dark); }
+/* Este botón usa la variante `primary` como todos los demás. Antes redefinía
+   .fc-pdv-btn-sm entero para pintarse de rosa, y ese `border: none` le quitaba
+   el borde a TODOS los botones pequeños del PDV — por eso los "Buscar" y los
+   "Limpiar" salían sin contorno. */
+.fc-extras-add-row .fc-pdv-btn-sm { white-space: nowrap; }
 
 /* ── Anticipo saldo (PDV) ── */
 .fc-anticipo-saldo {
@@ -2043,4 +2035,152 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
     .fc-pdv-pago-btns { flex-wrap: wrap; }
     .fc-pdv-tipo-btn,
     .fc-pdv-pago-btn  { flex: 1 1 90px; min-width: 0; }
+
+    /* ══ Etapa 3: detalle del arreglo ═══════════════════════════════════════
+       En escritorio son dos columnas simétricas —foto a la izquierda, datos a
+       la derecha—. En un teléfono eso deja dos columnas de ~170px: la foto
+       diminuta y los controles apretados. Se apilan. */
+    .fc-pdv-detail-inner {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        padding: 12px 14px 20px;
+    }
+
+    /* La foto cuadrada a todo lo ancho ocupa media pantalla y empuja los datos
+       fuera de vista. Más baja, se ve el arreglo y también los tamaños. */
+    .fc-pdv-img-wrap,
+    .fc-pdv-detail-photo-empty-col { aspect-ratio: 4 / 3; }
+
+    .fc-pdv-detail-info-col { padding-top: 0; }
+
+    /* Volver: en escritorio basta un enlace, con el dedo necesita área. */
+    .fc-pdv-detail-back    { padding: 8px 0 12px; font-size: 15px; }
+    .fc-pdv-detail-nombre  { font-size: 20px; }
+    .fc-pdv-precio-display { font-size: 28px; margin-bottom: 12px; }
+
+    /* Tamaños y colores: son los controles que más se tocan aquí. */
+    .fc-pdv-tamano-chip  { padding: 10px 16px; font-size: 14px; }
+    .fc-pdv-colores      { gap: 14px; }
+    .fc-pdv-color-swatch { width: 42px; height: 42px; }
+
+    /* ── Agregar al ticket, anclado abajo ──────────────────────────────────
+       Con la foto, los tamaños, los colores y las modificaciones, el botón
+       queda lejos del pulgar y hay que bajar hasta el final en cada arreglo.
+       Anclado, la acción principal siempre está a un toque.
+
+       Mientras el detalle está abierto se esconde la barra del total y el
+       botón ocupa exactamente su lugar y su alto: así no se apilan tres
+       franjas abajo y el espacio que ya reserva la vista sigue siendo el
+       correcto, sin cambiarlo entre un estado y otro.
+
+       Que el total desaparezca aquí no estorba: el número que importa
+       mientras se configura un arreglo es su precio, que va grande arriba. */
+    body.fc-pdv-detalle .fc-pdv-ticket-bar { display: none; }
+
+    body.fc-pdv-detalle .fc-pdv-btn-agregar {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: var(--pdv-bottom-off);
+        z-index: 190;
+        height: var(--pdv-ticketbar-h);
+        margin: 0;
+        padding: 0 18px;
+        border-radius: 0;
+        font-size: 16px;
+        box-shadow: 0 -2px 12px rgba(0,0,0,0.12);
+    }
+
+    /* ══ Etapa 4: pantallas de consulta ═════════════════════════════════════
+       Caja, Ventas e Informes están pensadas para una pantalla ancha: columnas
+       laterales, rejillas de tarjetas grandes y una tabla de seis columnas. */
+
+    /* ── Caja ──────────────────────────────────────────────────────────────
+       La tarjeta de caja abierta exigía 280px mínimos, que en un teléfono
+       angosto la desbordaban. Aquí manda el ancho disponible. */
+    .fc-pdv-caja-wrap { gap: 16px; }
+
+    /* En escritorio las cajas abiertas se acomodan de lado y el botón de abrir
+       otra queda a su derecha. En un teléfono no caben dos a lo ancho: van una
+       debajo de otra, y el botón al final de la pila. */
+    .fc-pdv-caja-abierta-section {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    .fc-pdv-caja-card            { padding: 16px; }
+    .fc-pdv-caja-card.abierta    { min-width: 0; max-width: none; width: 100%; }
+    .fc-pdv-caja-saldo           { font-size: 26px; }
+    .fc-pdv-cajas-grid           { grid-template-columns: 1fr; gap: 12px; }
+
+    /* Movimientos: eran cuatro columnas —tipo, descripción, monto y fecha— en
+       un renglón. La fecha se pasa abajo y las otras tres respiran. */
+    .fc-pdv-mov-row {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 3px 8px;
+        padding: 10px 12px;
+    }
+    .fc-pdv-mov-ts { grid-column: 1 / -1; font-size: 11px; }
+
+    /* ── Ventas ────────────────────────────────────────────────────────────
+       En escritorio los filtros van en una columna lateral de 230px. Aquí esa
+       columna se convierte en una franja arriba. */
+    #fc-pdv-view-transacciones { flex-direction: column; }
+
+    #fc-pdv-view-transacciones .fc-pdv-informes-toolbar {
+        width: auto;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 10px;
+        padding: 12px 14px;
+        border-right: none;
+        border-bottom: 1px solid var(--pdv-border);
+        overflow: visible;
+    }
+    #fc-pdv-view-transacciones .fc-pdv-informes-toolbar .fc-pdv-form-group {
+        margin-bottom: 0;
+        flex: 1 1 130px;
+    }
+    /* Buscar en su propio renglón: más fácil de atinar que apretado al lado
+       de dos campos de fecha. */
+    #fc-pdv-view-transacciones #fc-pdv-tx-buscar { flex: 1 0 100%; padding: 11px; }
+
+    /* El resumen del período pasa de columna a fila de chips. */
+    #fc-pdv-view-transacciones .fc-pdv-tx-resumen {
+        flex-direction: row;
+        flex-wrap: wrap;
+        width: 100%;
+        margin-top: 10px;
+        padding-top: 10px;
+        gap: 8px;
+    }
+    .fc-pdv-tx-res-chip { flex: 1 1 96px; font-size: 17px; padding: 10px 12px; }
+
+    .fc-pdv-tx-card        { padding: 14px 16px; }
+    .fc-pdv-tx-card-header { flex-wrap: wrap; gap: 8px; }
+    .fc-pdv-tx-grupo       { margin-bottom: 20px; }
+
+    /* ── Informes ──────────────────────────────────────────────────────────
+       Seis columnas de números no caben en un teléfono. Apilar cada fila en
+       seis renglones haría ilegible un mes de ventas, y esconder columnas es
+       esconder datos: la tabla se desplaza de lado dentro de su propia caja.
+       La página no se mueve, solo la tabla. */
+    .fc-pdv-informes-toolbar { padding: 12px 14px; }
+    .fc-pdv-informes-result  { padding: 14px; }
+
+    .fc-pdv-informe-totales {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px;
+    }
+    .fc-pdv-total-chip { padding: 12px 14px; font-size: 19px; }
+
+    .fc-pdv-informe-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        font-size: 13px;
+    }
+    .fc-pdv-informe-table th,
+    .fc-pdv-informe-table td { padding: 10px; }
 }
