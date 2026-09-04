@@ -22,12 +22,27 @@ function fc_render_especial_meta_box( $post ) {
 
 function fc_render_disponible_meta_box( $post ) {
     $agotado = get_post_meta( $post->ID, '_fc_agotado', true );
+    $oculto  = get_post_meta( $post->ID, '_fc_oculto',  true );
     ?>
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
         <input type="checkbox" name="fc_agotado" value="1" <?php checked( $agotado, '1' ); ?> />
         <span>Marcar como <strong>Fuera de stock</strong></span>
     </label>
     <p style="margin:8px 0 0;font-size:12px;color:#888;">El arreglo seguirá visible pero sin opción de pedido.</p>
+
+    <hr style="margin:14px 0;border:none;border-top:1px solid #e0e0e0;" />
+
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" name="fc_oculto" value="1" <?php checked( $oculto, '1' ); ?> />
+        <span><strong>Ocultar</strong> del catálogo</span>
+    </label>
+    <p style="margin:8px 0 0;font-size:12px;color:#888;">
+        Desaparece del catálogo, del buscador, de los recomendados y del PDV, pero
+        no se borra: conserva sus fotos, sus precios y los pedidos que ya lo tienen.
+        Es distinto de <em>Fuera de stock</em>, que sí se sigue mostrando.<br />
+        <strong>Sigue disponible en el panel de floristas</strong>, para poder
+        añadirlo a un pedido a mano.
+    </p>
     <?php
 }
 
@@ -205,6 +220,7 @@ function fc_save_meta( $post_id ) {
 
     update_post_meta( $post_id, '_fc_agotado',   isset( $_POST['fc_agotado'] )   ? '1' : '0' );
     update_post_meta( $post_id, '_fc_especial',  isset( $_POST['fc_especial'] )  ? '1' : '0' );
+    update_post_meta( $post_id, '_fc_oculto',    isset( $_POST['fc_oculto'] )    ? '1' : '0' );
 
     $foto_catalogo_idx = isset( $_POST['fc_catalogo_foto'] ) ? intval( $_POST['fc_catalogo_foto'] ) : 0;
 

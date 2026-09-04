@@ -21,6 +21,14 @@ function fc_render_disponibilidad_column( $column, $post_id ) {
     } else {
         echo '<a href="' . esc_url( $url ) . '" style="color:#25a244;font-weight:600;" title="Clic para marcar como Agotado">&#10003; Disponible</a>';
     }
+
+    // Sin esto un arreglo oculto se vería idéntico a uno visible en la lista, y
+    // no habría forma de saber cuáles están fuera del catálogo sin abrirlos.
+    if ( get_post_meta( $post_id, '_fc_oculto', true ) === '1' ) {
+        $nonce_oc = wp_create_nonce( 'fc_toggle_oculto_' . $post_id );
+        $url_oc   = admin_url( 'edit.php?post_type=arreglo&fc_toggle_oculto=' . $post_id . '&_wpnonce=' . $nonce_oc );
+        echo '<br /><a href="' . esc_url( $url_oc ) . '" style="color:#8a6d3b;font-weight:600;" title="Clic para volver a mostrarlo">&#128065; Oculto</a>';
+    }
 }
 
 // ── Toggle individual desde la columna ──
@@ -39,11 +47,30 @@ function fc_handle_inline_toggle() {
     exit;
 }
 
+// ── Volver a mostrar desde la marca "Oculto" de la columna ──
+// Solo desoculta: para ocultar están la casilla del arreglo y la acción en
+// lote. Así un clic accidental en la lista nunca saca nada del catálogo.
+add_action( 'admin_init', 'fc_handle_inline_toggle_oculto' );
+function fc_handle_inline_toggle_oculto() {
+    if ( ! isset( $_GET['fc_toggle_oculto'], $_GET['_wpnonce'] ) ) return;
+
+    $post_id = intval( $_GET['fc_toggle_oculto'] );
+    if ( ! wp_verify_nonce( $_GET['_wpnonce'], 'fc_toggle_oculto_' . $post_id ) ) return;
+    if ( ! current_user_can( 'edit_post', $post_id ) ) return;
+
+    update_post_meta( $post_id, '_fc_oculto', '0' );
+
+    wp_safe_redirect( admin_url( 'edit.php?post_type=arreglo&fc_toggled=1' ) );
+    exit;
+}
+
 // ── Bulk actions ──
 add_filter( 'bulk_actions-edit-arreglo', 'fc_add_bulk_actions' );
 function fc_add_bulk_actions( $actions ) {
     $actions['fc_marcar_agotado']    = 'Marcar como Agotado';
     $actions['fc_marcar_disponible'] = 'Marcar como Disponible';
+    $actions['fc_ocultar']           = 'Ocultar del catálogo';
+    $actions['fc_mostrar']           = 'Mostrar en catálogo';
     return $actions;
 }
 
@@ -54,6 +81,12 @@ function fc_handle_bulk_actions( $redirect_url, $action, $post_ids ) {
         $redirect_url = add_query_arg( 'fc_bulk_updated', count( $post_ids ), $redirect_url );
     } elseif ( $action === 'fc_marcar_disponible' ) {
         foreach ( $post_ids as $id ) update_post_meta( $id, '_fc_agotado', '0' );
+        $redirect_url = add_query_arg( 'fc_bulk_updated', count( $post_ids ), $redirect_url );
+    } elseif ( $action === 'fc_ocultar' ) {
+        foreach ( $post_ids as $id ) update_post_meta( $id, '_fc_oculto', '1' );
+        $redirect_url = add_query_arg( 'fc_bulk_updated', count( $post_ids ), $redirect_url );
+    } elseif ( $action === 'fc_mostrar' ) {
+        foreach ( $post_ids as $id ) update_post_meta( $id, '_fc_oculto', '0' );
         $redirect_url = add_query_arg( 'fc_bulk_updated', count( $post_ids ), $redirect_url );
     }
     return $redirect_url;

@@ -56,6 +56,7 @@ function fc_render_detalle_arreglo_sc() {
                 'terms'    => $cat_slugs,
                 'operator' => 'IN',
             ] ],
+            'meta_query'     => fc_meta_query_no_ocultos(),
         ] );
     }
 
@@ -359,6 +360,7 @@ function fc_render_catalogo( $atts ) {
         'posts_per_page' => intval( $atts['limite'] ),
         'orderby'        => 'menu_order',
         'order'          => 'ASC',
+        'meta_query'     => fc_meta_query_no_ocultos(),
     ];
 
     if ( ! empty( $atts['categoria'] ) ) {

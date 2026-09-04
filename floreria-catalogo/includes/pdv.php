@@ -225,6 +225,7 @@ function fc_ajax_pdv_get_catalogo() {
         'posts_per_page' => -1,
         'orderby'        => 'menu_order',
         'order'          => 'ASC',
+        'meta_query'     => fc_meta_query_no_ocultos(),
     ] );
 
     // Categorías para los filtros
