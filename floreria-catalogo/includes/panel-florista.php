@@ -1240,6 +1240,9 @@ function fc_ajax_buscar_arreglos() {
     }
 
     $query = new WP_Query( [
+        // A propósito NO se filtran los ocultos aquí: este buscador es interno
+        // y a veces hay que meter a un pedido un arreglo que ya se retiró del
+        // catálogo. Es la única pantalla donde siguen apareciendo.
         'post_type'      => 'arreglo',
         'post_status'    => 'publish',
         'posts_per_page' => 10,

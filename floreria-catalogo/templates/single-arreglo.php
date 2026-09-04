@@ -44,6 +44,7 @@ while ( have_posts() ) : the_post();
                 'terms'    => $cat_slugs,
                 'operator' => 'IN',
             ] ],
+            'meta_query'     => fc_meta_query_no_ocultos(),
         ] );
     }
 ?>
