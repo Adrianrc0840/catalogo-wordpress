@@ -394,6 +394,7 @@
             </div>` : ''}
             <div class="fc-card-extra-actions">
                 <button class="fc-btn-sm fc-btn-imprimir" data-id="${p.id}" style="background:#2d6a4f;">&#128424; Imprimir</button>
+                <button class="fc-btn-sm fc-btn-imprimir-tarjeta" data-id="${p.id}" style="background:#b45309;">&#127873; Imprimir tarjeta</button>
                 ${p.pdf_url ? `<a class="fc-btn-sm fc-btn-ver-pdf" href="${escAttr(p.pdf_url)}" target="_blank" rel="noopener" style="background:#7c3aed;text-decoration:none;">&#128196; Ver PDF</a>` : ''}
                 <button class="fc-btn-sm fc-btn-editar-pedido" style="background:#4a5568;">&#9998; Editar</button>
                 ${p.anticipo > 0 && !p.anticipo_liquidado ? `<button class="fc-btn-sm fc-btn-liquidar" data-id="${p.id}" style="background:#d97706;">&#10003; Liquidado</button>` : ''}
@@ -509,6 +510,136 @@
 
     function escAttr(str) {
         return escHtml(str);
+    }
+
+    // ── Contador de la tarjeta ──
+    // Gemelo del que vive en pdv.js y cart.js: cada pantalla carga su propio
+    // archivo y no comparten utilidades. Si cambia el tope, cambiarlo en los
+    // tres. Solo avisa, nunca bloquea: hay pedidos viejos más largos.
+    const TARJETA_MAX = 500;
+
+    function contadorTarjetaHtml(texto) {
+        const n = String(texto || '').length;
+        return `<div class="fc-contador-tarjeta${n > TARJETA_MAX ? ' excedido' : ''}">${n} / ${TARJETA_MAX} caracteres</div>`;
+    }
+
+    // Delegado en el documento porque el bloque del arreglo se redibuja al
+    // agregar o quitar arreglos del pedido.
+    document.addEventListener('input', e => {
+        const ta = e.target.closest?.('.fc-item-tarjeta');
+        if (!ta) return;
+        const el = ta.nextElementSibling;
+        if (!el || !el.classList.contains('fc-contador-tarjeta')) return;
+        const n = ta.value.length;
+        el.textContent = `${n} / ${TARJETA_MAX} caracteres`;
+        el.classList.toggle('excedido', n > TARJETA_MAX);
+    });
+
+    // ── Imprimir tarjeta ──
+    // La fecha se escribe como en el formato de Word: "10 de Agosto 2026".
+    function fechaTarjeta(iso) {
+        if (!iso) return '';
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                       'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        const d = new Date(String(iso) + 'T00:00:00');
+        if (isNaN(d.getTime())) return String(iso);
+        return `${d.getDate()} de ${meses[d.getMonth()]} ${d.getFullYear()}`;
+    }
+
+    // Los tres campos se pueden corregir antes de imprimir y NO se guardan en el
+    // pedido: la tarjeta es el regalo, el pedido es el registro de la venta.
+    // Corregir una falta de ortografía no debe alterar lo que el cliente pidió.
+    function abrirModalTarjeta(p) {
+        if (!p) return;
+        const items = Array.isArray(p.items) ? p.items : [];
+        if (!items.length) { alert('Este pedido no tiene arreglos.'); return; }
+
+        // Con varios arreglos, cada uno lleva su propia tarjeta: hay que elegir.
+        const selectorHtml = items.length > 1 ? `
+            <div class="fc-form-group">
+                <label>¿De cuál arreglo?</label>
+                <select id="fc-tj-item">
+                    ${items.map((it, i) => `<option value="${i}">${escHtml(it.arreglo_nombre || 'Arreglo ' + (i + 1))}${it.destinatario ? ' — ' + escHtml(capitalize(it.destinatario)) : ''}</option>`).join('')}
+                </select>
+            </div>` : '';
+
+        const backdrop = document.createElement('div');
+        backdrop.className = 'fc-delivery-modal-backdrop';
+        backdrop.innerHTML = `
+            <div class="fc-delivery-modal" role="dialog" aria-modal="true">
+                <h3>&#127873; Imprimir tarjeta</h3>
+                <p>Puedes corregir el texto antes de imprimir. Los cambios no modifican el pedido.</p>
+                ${selectorHtml}
+                <div class="fc-form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="fc-tj-fecha" />
+                    <div class="fc-tj-fecha-prev" id="fc-tj-fecha-prev"></div>
+                </div>
+                <div class="fc-form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="fc-tj-nombre" />
+                </div>
+                <div class="fc-form-group">
+                    <label>Mensaje</label>
+                    <textarea id="fc-tj-texto" rows="5"></textarea>
+                    <div class="fc-contador-tarjeta"></div>
+                </div>
+                <div class="fc-dm-actions">
+                    <button class="fc-dm-cancel">Cancelar</button>
+                    <button class="fc-dm-confirm" style="background:#b45309">&#128424; Imprimir</button>
+                </div>
+            </div>`;
+        document.body.appendChild(backdrop);
+
+        const fechaEl  = backdrop.querySelector('#fc-tj-fecha');
+        const prevEl   = backdrop.querySelector('#fc-tj-fecha-prev');
+        const nombreEl = backdrop.querySelector('#fc-tj-nombre');
+        const textoEl  = backdrop.querySelector('#fc-tj-texto');
+        const contEl   = backdrop.querySelector('.fc-contador-tarjeta');
+        const selEl    = backdrop.querySelector('#fc-tj-item');
+
+        function pintarContador() {
+            const n = textoEl.value.length;
+            contEl.textContent = `${n} / ${TARJETA_MAX} caracteres`;
+            contEl.classList.toggle('excedido', n > TARJETA_MAX);
+        }
+
+        // Se elige con calendario y se transcribe solo al formato de la tarjeta.
+        // La vista previa está para confirmar cómo va a salir impreso antes de
+        // mandar: es lo único que se imprime, el valor ISO nunca se ve.
+        function pintarFecha() {
+            prevEl.textContent = fechaEl.value
+                ? 'Se imprimirá: ' + fechaTarjeta(fechaEl.value)
+                : 'Sin fecha';
+        }
+
+        function cargar(i) {
+            const it = items[i] || {};
+            fechaEl.value  = p.fecha || '';
+            nombreEl.value = capitalize(it.destinatario || '');
+            textoEl.value  = capitalize(it.mensaje_tarjeta || '');
+            pintarFecha();
+            pintarContador();
+        }
+
+        cargar(0);
+        selEl?.addEventListener('change', () => cargar(parseInt(selEl.value, 10) || 0));
+        textoEl.addEventListener('input', pintarContador);
+        fechaEl.addEventListener('change', pintarFecha);
+        fechaEl.addEventListener('input',  pintarFecha);
+
+        const cerrar = () => backdrop.remove();
+        backdrop.querySelector('.fc-dm-cancel').addEventListener('click', cerrar);
+        backdrop.addEventListener('click', e => { if (e.target === backdrop) cerrar(); });
+
+        backdrop.querySelector('.fc-dm-confirm').addEventListener('click', () => {
+            const url = `${siteurl}/?fc_print_tarjeta=${p.id}`
+                      + `&fecha=${encodeURIComponent(fechaTarjeta(fechaEl.value))}`
+                      + `&nombre=${encodeURIComponent(nombreEl.value)}`
+                      + `&texto=${encodeURIComponent(textoEl.value)}`;
+            window.open(url, '_blank', 'noopener');
+            cerrar();
+        });
     }
 
     function capitalize(str) {
@@ -805,6 +936,14 @@
                 e.stopPropagation();
                 const pedidoId = btn.dataset.id;
                 window.open(`${siteurl}/?fc_print_pedido=${pedidoId}`, '_blank', 'noopener');
+            });
+        });
+
+        // Imprimir tarjeta
+        $$('.fc-btn-imprimir-tarjeta', grid).forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                abrirModalTarjeta(pedidoDataMap[btn.dataset.id]);
             });
         });
 
@@ -1511,6 +1650,7 @@
             <div class="fc-form-group fc-oculto-funeral">
                 <label>Mensaje de tarjeta</label>
                 <textarea class="fc-item-tarjeta" rows="2" placeholder="Mensaje para incluir en la tarjeta...">${escHtml(prefill.mensaje_tarjeta || '')}</textarea>
+                ${contadorTarjetaHtml(prefill.mensaje_tarjeta)}
             </div>
             <div class="fc-form-group fc-solo-funeral">
                 <label>Banda</label>

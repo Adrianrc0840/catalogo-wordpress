@@ -82,6 +82,25 @@
         return new Date(str);
     }
 
+    /* ¿La fecha elegida cumple la anticipación de los arreglos sobre pedido?
+       Vive a nivel de módulo porque lo calcula checkEspecialAviso, al cambiar la
+       fecha, y lo consume el botón de enviar, que se arma en otra función. */
+    var anticipacionOk = true;
+
+    /* El botón de WhatsApp exige las dos cosas: políticas aceptadas Y fecha que
+       cumpla la anticipación. Antes solo miraba las políticas. */
+    function actualizarBotonEnviar() {
+        if (!drawerEl) return;
+        var cb  = drawerEl.querySelector('#fc-cart-politicas');
+        var btn = drawerEl.querySelector('#fc-cart-send-btn');
+        if (!btn) return;
+
+        var listo = !!(cb && cb.checked) && anticipacionOk;
+        btn.disabled      = !listo;
+        btn.style.opacity = listo ? '' : '0.5';
+        btn.style.cursor  = listo ? '' : 'not-allowed';
+    }
+
     /* Cuenta días hábiles desde 'from' (inclusive) hasta 'to' (exclusive).
        El día de inicio cuenta si el negocio aún está abierto (antes de 8pm Tijuana). */
     function countBusinessDays(from, to) {
@@ -115,6 +134,30 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;');
     }
+
+    /* ── Contador de la tarjeta ──
+       Gemelo del que vive en pdv.js y panel.js: cada pantalla carga su propio
+       archivo y no comparten utilidades. Si cambia el tope, cambiarlo en los
+       tres. Solo avisa, nunca bloquea el pedido. */
+    var TARJETA_MAX = 500;
+
+    function contadorTarjetaHtml(texto) {
+        var n = String(texto || '').length;
+        return '<div class="fc-contador-tarjeta' + (n > TARJETA_MAX ? ' excedido' : '') + '">' +
+               n + ' / ' + TARJETA_MAX + ' caracteres</div>';
+    }
+
+    /* Delegado en el documento: la lista del carrito se redibuja al agregar o
+       quitar arreglos, así no hay que reenganchar cada textarea. */
+    document.addEventListener('input', function (e) {
+        var ta = e.target && e.target.closest ? e.target.closest('.fc-cart-item-tarjeta') : null;
+        if (!ta) return;
+        var el = ta.nextElementSibling;
+        if (!el || !el.classList.contains('fc-contador-tarjeta')) return;
+        var n = ta.value.length;
+        el.textContent = n + ' / ' + TARJETA_MAX + ' caracteres';
+        el.classList.toggle('excedido', n > TARJETA_MAX);
+    });
 
     /* ── Collapse helpers ── */
     function setCollapsed(bodyEl, arrowEl, collapsed) {
@@ -324,14 +367,7 @@
 
         /* ── Políticas checkbox → habilitar botón WA ── */
         var politicasCb = drawerEl.querySelector('#fc-cart-politicas');
-        var sendBtn     = drawerEl.querySelector('#fc-cart-send-btn');
-        function checkSendReady() {
-            var checked = politicasCb && politicasCb.checked;
-            sendBtn.disabled = !checked;
-            sendBtn.style.opacity = checked ? '' : '0.5';
-            sendBtn.style.cursor  = checked ? '' : 'not-allowed';
-        }
-        if (politicasCb) politicasCb.addEventListener('change', checkSendReady);
+        if (politicasCb) politicasCb.addEventListener('change', actualizarBotonEnviar);
 
         /* ── WhatsApp del cliente ── */
         function initWaSelect(sel) {
@@ -462,24 +498,36 @@
         });
     }
 
-    /* ── Aviso de anticipación para arreglos especiales ── */
+    /* ── Aviso de anticipación para arreglos especiales ──
+       Además del aviso, deja el resultado en `anticipacionOk` para que el botón
+       de WhatsApp lo consulte: antes el aviso salía pero el botón seguía
+       habilitado, así que el cliente podía mandar un pedido que la tienda no
+       alcanzaba a preparar. Es la misma regla que ya aplicaba el detalle del
+       arreglo, que sí deshabilita el botón. */
     function checkEspecialAviso(fecha) {
         var avisoEl = document.getElementById('fc-cart-especial-aviso');
-        if (!avisoEl) return;
-        if (!fecha) { avisoEl.classList.remove('fc-aviso-visible'); return; }
 
-        var cartNow    = getCart();
+        var cartNow     = getCart();
         var hasEspecial = false;
         for (var ei = 0; ei < cartNow.length; ei++) {
             if (cartNow[ei].especial) { hasEspecial = true; break; }
         }
-        if (!hasEspecial) { avisoEl.classList.remove('fc-aviso-visible'); return; }
 
-        var hoyE  = getHoyParaAnticipacion();
-        var selE  = new Date(fecha + 'T00:00:00');
-        var diasE = countBusinessDays(hoyE, selE);
+        /* Sin arreglos sobre pedido, o sin fecha elegida todavía, no hay nada
+           que exigir: la fecha faltante ya la cubre la validación al enviar. */
+        var cumple = true;
+        if (hasEspecial && fecha) {
+            var hoyE = getHoyParaAnticipacion();
+            var selE = new Date(fecha + 'T00:00:00');
+            cumple   = countBusinessDays(hoyE, selE) >= 2;
+        }
 
-        if (diasE < 2) {
+        anticipacionOk = cumple;
+        actualizarBotonEnviar();
+
+        if (!avisoEl) return;
+
+        if (!cumple) {
             avisoEl.textContent = '⚠ Uno o más arreglos son sobre pedido y necesitan al menos 2 días hábiles de anticipación. Sábado y domingo no cuentan.';
             avisoEl.classList.add('fc-aviso-visible');
         } else {
@@ -680,6 +728,13 @@
         if (!drawerEl) buildDrawer();
         renderItems();
         applyPrefill();
+
+        /* Revalidar la anticipación al abrir. applyPrefill solo recalcula si el
+           campo de fecha venía vacío, así que sin esto una fecha ya elegida —o
+           un arreglo sobre pedido agregado después de elegirla— dejaría el
+           botón habilitado sin que se cumpla la regla. */
+        var fechaAct = drawerEl.querySelector('#fc-cart-fecha');
+        checkEspecialAviso(fechaAct ? fechaAct.value : '');
         /* Restore delivery collapse state */
         var deliveryBody  = document.getElementById('fc-delivery-body');
         var deliveryArrow = document.getElementById('fc-delivery-arrow');
@@ -777,6 +832,7 @@
                         '<div class="fc-form-group">' +
                             '<label>Mensaje de tarjeta</label>' +
                             '<textarea class="fc-cart-item-tarjeta" data-uid="' + escHtml(item.uid) + '" rows="2" placeholder="Mensaje para incluir en la tarjeta...">' + escHtml(item.mensajeTarjeta) + '</textarea>' +
+                            contadorTarjetaHtml(item.mensajeTarjeta) +
                         '</div>' +
                         (i > 0 && cart.length > 1
                             ? '<div class="fc-form-group fc-mismos-wrap">' +
@@ -818,6 +874,10 @@
                 saveCart(cart.filter(function (it) { return it.uid !== id; }));
                 updateFab();
                 renderItems();
+                /* Si el que se quitó era el arreglo sobre pedido, la regla de
+                   anticipación deja de aplicar y el botón vuelve a habilitarse. */
+                var fechaQuitar = document.getElementById('fc-cart-fecha');
+                checkEspecialAviso(fechaQuitar ? fechaQuitar.value : '');
             });
         });
 

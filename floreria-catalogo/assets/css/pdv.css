@@ -2184,3 +2184,20 @@ body.fc-pdv-page .fc-cart-fab { display: none !important; }
     .fc-pdv-informe-table th,
     .fc-pdv-informe-table td { padding: 10px; }
 }
+
+/* ── Contador de caracteres de la tarjeta ──
+   Gemelo del de cart.css y panel.css. Avisa al pasar de 500 pero no bloquea:
+   la venta se cierra igual y el texto se ajusta al imprimir la tarjeta. */
+.fc-contador-tarjeta {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--pdv-muted);
+    text-align: right;
+}
+.fc-contador-tarjeta.excedido {
+    color: var(--pdv-danger);
+    font-weight: 700;
+}
+.fc-contador-tarjeta.excedido::before {
+    content: '\26A0 ';
+}

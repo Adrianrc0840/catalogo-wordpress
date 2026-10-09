@@ -1413,6 +1413,209 @@ function fc_handle_panel_post_login() {
 // ─────────────────────────────────────────────
 // Print / PDF page  (?fc_print_pedido=ID)
 // ─────────────────────────────────────────────
+/**
+ * Hoja de impresión de la tarjeta del regalo.
+ *
+ * Réplica del formato que la tienda venía usando en Word. Las medidas salieron
+ * de renderizar ese .docx y medir la imagen resultante píxel por píxel:
+ *
+ *   - Hoja carta, Arial 20 pt, centrado, sin bordes (los cuadros del Word son
+ *     invisibles: solo posicionan).
+ *   - Bloque de fecha y nombre: caja de 8.52 cm, centrada en 10.33 cm.
+ *   - Bloque del mensaje: caja de 8.26 cm, centrada en 10.20 cm.
+ *
+ * Ojo con el centro: NO coinciden con el centro de la hoja (10.80 cm), van
+ * medio centímetro a la izquierda. Es así en el original y se respeta.
+ *
+ * Los valores llegan por la URL y no se leen del pedido a propósito: la ventana
+ * del panel permite corregirlos antes de imprimir, y esas correcciones no deben
+ * alterar lo que el cliente pidió, que es el registro de la venta.
+ */
+add_action( 'template_redirect', 'fc_print_tarjeta_page' );
+function fc_print_tarjeta_page() {
+    $pedido_id = isset( $_GET['fc_print_tarjeta'] ) ? intval( $_GET['fc_print_tarjeta'] ) : 0;
+    if ( ! $pedido_id ) return;
+
+    if ( ! is_user_logged_in() ||
+         ( ! current_user_can( 'fc_ver_pedidos' ) && ! current_user_can( 'manage_options' ) ) ) {
+        wp_die( 'Acceso denegado.', 'Sin permiso', [ 'response' => 403 ] );
+    }
+
+    $post = get_post( $pedido_id );
+    if ( ! $post || $post->post_type !== 'pedido' ) {
+        wp_die( 'Pedido no encontrado.' );
+    }
+
+    $nombre = isset( $_GET['nombre'] ) ? sanitize_text_field( wp_unslash( $_GET['nombre'] ) ) : '';
+    $fecha  = isset( $_GET['fecha'] )  ? sanitize_text_field( wp_unslash( $_GET['fecha'] ) )  : '';
+    $texto  = isset( $_GET['texto'] )  ? sanitize_textarea_field( wp_unslash( $_GET['texto'] ) ) : '';
+
+    nocache_headers();
+    ?><!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="<?php bloginfo( 'charset' ); ?>">
+<title>Tarjeta<?php echo $nombre ? ' — ' . esc_html( $nombre ) : ''; ?></title>
+<style>
+  @page { size: letter; margin: 0; }
+
+  html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #000;
+      font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* La hoja completa, para poder posicionar desde su borde real */
+  .tj-hoja {
+      position: relative;
+      width: 21.59cm;
+      height: 27.94cm;
+      margin: 0 auto;
+      overflow: hidden;
+  }
+
+  /* Cajas invisibles: solo marcan dónde cae el texto. El overflow oculto es la
+     red de seguridad del autoajuste — si algo se pasara, se recorta en lugar de
+     empujar el resto de la hoja. */
+  .tj-caja {
+      position: absolute;
+      text-align: center;
+      font-size: 20pt;
+      line-height: 1.15;
+      overflow: hidden;
+      /* Margen interno del cuadro de texto de Word */
+      padding: 0 0.254cm;
+      box-sizing: border-box;
+  }
+
+  .tj-arriba { left: 6.07cm; width: 8.52cm; top: 5.26cm; height: 6.50cm; }
+
+  /* El mensaje se ancla por su borde INFERIOR. Así, cuando el texto no cabe,
+     la caja crece hacia arriba —hacia los ~5 cm libres que quedan debajo del
+     nombre— antes de tener que achicar la letra, y el mensaje se lee mejor.
+     Un mensaje corto no se mueve ni un milímetro: queda donde cae en el
+     formato original, porque solo crece si hace falta. */
+  .tj-mensaje { left: 6.07cm; width: 8.26cm; bottom: 1.93cm; height: 8.85cm; }
+
+  /* Separación entre la fecha y el nombre, tal como queda en el original */
+  .tj-nombre { margin-top: 1.75cm; }
+
+  /* Cada renglón que escribió el cliente es un párrafo. La separación de
+     0.45 cm es la que usa el Word entre párrafos; un renglón en blanco completo
+     se vería demasiado suelto. Los renglones vacíos se descartan al armar el
+     HTML, para que varios saltos seguidos no desbaraten el bloque. */
+  .tj-mensaje p { margin: 0 0 0.45cm; }
+  .tj-mensaje p:last-child { margin-bottom: 0; }
+
+  @media print {
+      .tj-no-print { display: none !important; }
+      .tj-hoja     { margin: 0; }
+  }
+
+  .tj-no-print {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 10;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  .tj-no-print button {
+      background: #c8185a;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="tj-no-print"><button onclick="window.print()">Imprimir</button></div>
+
+<div class="tj-hoja">
+    <div class="tj-caja tj-arriba" id="tj-arriba">
+        <div class="tj-fecha"><?php echo esc_html( $fecha ); ?></div>
+        <?php if ( $nombre ) : ?>
+        <div class="tj-nombre"><?php echo esc_html( $nombre ); ?></div>
+        <?php endif; ?>
+    </div>
+
+    <div class="tj-caja tj-mensaje" id="tj-mensaje"><?php
+        $lineas = preg_split( '/\R/u', $texto );
+        foreach ( $lineas as $linea ) {
+            $linea = trim( $linea );
+            if ( $linea === '' ) continue;
+            echo '<p>' . esc_html( $linea ) . '</p>';
+        }
+    ?></div>
+</div>
+
+<script>
+(function () {
+    /* Achica la letra hasta que el texto quepa en su caja.
+       Se hace midiendo y no calculando por número de caracteres: lo que decide
+       si cabe son los saltos de línea reales, y esos dependen de dónde corta
+       cada palabra. Un mensaje de 500 caracteres a 20 pt necesitaría unos 20
+       renglones, muy por encima de los que caben, así que esto no es un caso
+       raro: es lo normal en mensajes largos. */
+    function ajustar(el, maxPt, minPt) {
+        if (!el) return;
+        var pt = maxPt;
+        el.style.fontSize = pt + 'pt';
+        while (pt > minPt && el.scrollHeight > el.clientHeight) {
+            pt -= 0.5;
+            el.style.fontSize = pt + 'pt';
+        }
+    }
+
+    /* El mensaje tiene una salida antes de achicar la letra: estirar la caja
+       hacia arriba, que es espacio en blanco de todas formas. Primero se gana
+       alto, y solo cuando ya no queda, se reduce el tamaño. */
+    var ALTO_BASE = 8.85;   /* cm — el del formato original */
+    var ALTO_MAX  = 13.80;  /* cm — hasta justo debajo del bloque del nombre */
+
+    function ajustarMensaje(el) {
+        if (!el) return;
+        el.style.height   = ALTO_BASE + 'cm';
+        el.style.fontSize = '20pt';
+        if (el.scrollHeight <= el.clientHeight) return;
+
+        var alto = ALTO_BASE;
+        while (alto < ALTO_MAX && el.scrollHeight > el.clientHeight) {
+            alto = Math.min(alto + 0.25, ALTO_MAX);
+            el.style.height = alto + 'cm';
+        }
+
+        ajustar(el, 20, 8);
+    }
+
+    function ajustarTodo() {
+        ajustar(document.getElementById('tj-arriba'), 20, 9);
+        ajustarMensaje(document.getElementById('tj-mensaje'));
+    }
+
+    /* Las medidas sin la fuente ya cargada salen mal, así que se espera a que
+       Arial esté lista antes de ajustar. Si el navegador no soporta esa API,
+       se ajusta de inmediato: Arial es del sistema y no necesita descargarse. */
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(ajustarTodo);
+    } else {
+        ajustarTodo();
+    }
+})();
+</script>
+
+</body>
+</html>
+    <?php
+    exit;
+}
+
 add_action( 'template_redirect', 'fc_print_pedido_page' );
 function fc_print_pedido_page() {
     $pedido_id = isset( $_GET['fc_print_pedido'] ) ? intval( $_GET['fc_print_pedido'] ) : 0;
