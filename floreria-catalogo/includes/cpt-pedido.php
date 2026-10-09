@@ -1,6 +1,31 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+/**
+ * Primera letra en mayúscula y el resto en minúsculas.
+ *
+ * Los clientes y las floristas escriben estos campos como les acomoda —muchas
+ * veces TODO EN MAYÚSCULAS— y así se ven en pantalla. Esto arregla la
+ * presentación sin tocar lo guardado: en la base de datos el texto queda tal
+ * cual lo escribieron.
+ *
+ * Es el gemelo en PHP de `capitalize()` en panel.js, que hace lo mismo para las
+ * tarjetas del panel. Si se cambia el criterio, hay que cambiar los dos.
+ *
+ * Va con funciones multibyte a propósito: "JOSÉ" con `strtolower` quedaría
+ * "josÉ", porque la É ocupa dos bytes y la versión de bytes no la toca.
+ */
+function fc_capitalizar( $texto ) {
+    $texto = trim( (string) $texto );
+    if ( $texto === '' ) return '';
+
+    // Sin mbstring es preferible devolver el texto intacto que romper acentos.
+    if ( ! function_exists( 'mb_strtoupper' ) ) return $texto;
+
+    return mb_strtoupper( mb_substr( $texto, 0, 1, 'UTF-8' ), 'UTF-8' )
+         . mb_strtolower( mb_substr( $texto, 1, null, 'UTF-8' ), 'UTF-8' );
+}
+
 // ─────────────────────────────────────────────
 // Register CPT pedido
 // ─────────────────────────────────────────────
@@ -1813,10 +1838,10 @@ function fc_render_rastreo_pedido_sc() {
                             <span class="fc-item-modificaciones-value"><?php echo nl2br( esc_html( $it['notas'] ) ); ?></span>
                             <?php endif; ?>
                             <?php if ( $it['destinatario'] ) : ?>
-                            <span class="fc-item-card-dest">Para: <?php echo esc_html( $it['destinatario'] ); ?><?php echo $it['destinatario_telefono'] ? ' · ' . esc_html( $it['destinatario_telefono'] ) : ''; ?><?php echo $it['destinatario_telefono2'] ? ' · ' . esc_html( $it['destinatario_telefono2'] ) : ''; ?></span>
+                            <span class="fc-item-card-dest">Para: <?php echo esc_html( fc_capitalizar( $it['destinatario'] ) ); ?><?php echo $it['destinatario_telefono'] ? ' · ' . esc_html( $it['destinatario_telefono'] ) : ''; ?><?php echo $it['destinatario_telefono2'] ? ' · ' . esc_html( $it['destinatario_telefono2'] ) : ''; ?></span>
                             <?php endif; ?>
                             <?php if ( $it['mensaje_tarjeta'] ) : ?>
-                            <span class="fc-item-card-tarjeta">"<?php echo esc_html( $it['mensaje_tarjeta'] ); ?>"</span>
+                            <span class="fc-item-card-tarjeta">"<?php echo esc_html( fc_capitalizar( $it['mensaje_tarjeta'] ) ); ?>"</span>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -1866,7 +1891,7 @@ function fc_render_rastreo_pedido_sc() {
                     <?php if ( $referencias ) : ?>
                     <div class="fc-detail-row">
                         <span class="fc-detail-label">Referencias</span>
-                        <span class="fc-detail-value"><?php echo nl2br( esc_html( $referencias ) ); ?></span>
+                        <span class="fc-detail-value"><?php echo nl2br( esc_html( fc_capitalizar( $referencias ) ) ); ?></span>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -1878,13 +1903,13 @@ function fc_render_rastreo_pedido_sc() {
                     <?php if ( $first_item['destinatario'] ) : ?>
                     <div class="fc-detail-row">
                         <span class="fc-detail-label">Para</span>
-                        <span class="fc-detail-value"><?php echo esc_html( $first_item['destinatario'] ); ?><?php echo $first_item['destinatario_telefono'] ? ' · ' . esc_html( $first_item['destinatario_telefono'] ) : ''; ?><?php echo $first_item['destinatario_telefono2'] ? ' · ' . esc_html( $first_item['destinatario_telefono2'] ) : ''; ?></span>
+                        <span class="fc-detail-value"><?php echo esc_html( fc_capitalizar( $first_item['destinatario'] ) ); ?><?php echo $first_item['destinatario_telefono'] ? ' · ' . esc_html( $first_item['destinatario_telefono'] ) : ''; ?><?php echo $first_item['destinatario_telefono2'] ? ' · ' . esc_html( $first_item['destinatario_telefono2'] ) : ''; ?></span>
                     </div>
                     <?php endif; ?>
                     <?php if ( $first_item['mensaje_tarjeta'] ) : ?>
                     <div class="fc-detail-row">
                         <span class="fc-detail-label">Tarjeta</span>
-                        <span class="fc-detail-value">"<?php echo esc_html( $first_item['mensaje_tarjeta'] ); ?>"</span>
+                        <span class="fc-detail-value">"<?php echo esc_html( fc_capitalizar( $first_item['mensaje_tarjeta'] ) ); ?>"</span>
                     </div>
                     <?php endif; ?>
                     <?php if ( $nota ) : ?>

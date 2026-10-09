@@ -1825,7 +1825,7 @@ function fc_print_pedido_page() {
         <?php if ( $difunto ) : ?>
         <div class="fc-row">
             <span class="fc-row-label">Difunto</span>
-            <span class="fc-row-value"><?php echo esc_html( $difunto ); ?></span>
+            <span class="fc-row-value"><?php echo esc_html( fc_capitalizar( $difunto ) ); ?></span>
         </div>
         <?php endif; ?>
         <?php if ( $fecha_fmt ) : ?>
@@ -1922,13 +1922,13 @@ function fc_print_pedido_page() {
                 <div class="fc-item-print-name" style="font-size:12px;"><?php echo nl2br( esc_html( strtoupper( $item_notas ) ) ); ?></div>
                 <?php endif; ?>
                 <?php if ( $item_dest ) : ?>
-                <div class="fc-item-print-dest">Para: <?php echo esc_html( $item_dest ); ?><?php echo $item_tel ? ' · ' . esc_html( $item_tel ) : ''; ?><?php echo $item_tel2 ? ' · ' . esc_html( $item_tel2 ) : ''; ?></div>
+                <div class="fc-item-print-dest">Para: <?php echo esc_html( fc_capitalizar( $item_dest ) ); ?><?php echo $item_tel ? ' · ' . esc_html( $item_tel ) : ''; ?><?php echo $item_tel2 ? ' · ' . esc_html( $item_tel2 ) : ''; ?></div>
                 <?php endif; ?>
                 <?php if ( $item_banda ) : ?>
                 <div class="fc-item-print-dest" style="font-weight:700;">Banda: <?php echo esc_html( mb_strtoupper( $item_banda, 'UTF-8' ) ); ?></div>
                 <?php endif; ?>
                 <?php if ( $item_tarj ) : ?>
-                <div class="fc-item-print-tarjeta">"<?php echo esc_html( $item_tarj ); ?>"</div>
+                <div class="fc-item-print-tarjeta">"<?php echo esc_html( fc_capitalizar( $item_tarj ) ); ?>"</div>
                 <?php endif; ?>
             </div>
         </div>
