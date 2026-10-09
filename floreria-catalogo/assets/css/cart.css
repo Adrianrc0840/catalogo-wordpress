@@ -642,3 +642,21 @@
         flex-direction: column;
     }
 }
+
+/* ── Contador de caracteres de la tarjeta ──
+   La tarjeta impresa no admite más de 500 caracteres. El contador avisa pero
+   nunca bloquea: el pedido se puede enviar igual y se ajusta al imprimir.
+   Mismo bloque en pdv.css y panel.css, uno por pantalla. */
+.fc-contador-tarjeta {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #94a3b8;
+    text-align: right;
+}
+.fc-contador-tarjeta.excedido {
+    color: #dc2626;
+    font-weight: 700;
+}
+.fc-contador-tarjeta.excedido::before {
+    content: '\26A0 ';
+}

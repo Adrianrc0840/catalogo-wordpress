@@ -33,6 +33,33 @@
         return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
 
+    // ── Contador de la tarjeta ──
+    // La tarjeta impresa no admite más de 500 caracteres, así que el contador
+    // va a la vista desde que se escribe y no hasta imprimir. Solo avisa: nunca
+    // impide guardar, porque hay pedidos viejos más largos que ese tope.
+    //
+    // El mismo bloque existe en cart.js y panel.js, uno por pantalla, porque
+    // cada una carga su propio archivo y no comparten utilidades. Si cambia el
+    // tope, hay que cambiarlo en los tres.
+    const TARJETA_MAX = 500;
+
+    function contadorTarjetaHtml(texto) {
+        const n = String(texto || '').length;
+        return `<div class="fc-contador-tarjeta${n > TARJETA_MAX ? ' excedido' : ''}">${n} / ${TARJETA_MAX} caracteres</div>`;
+    }
+
+    // Se escucha en el documento y no en cada textarea: estos bloques se
+    // redibujan al agregar o quitar arreglos, y así no hay que reenganchar.
+    document.addEventListener('input', e => {
+        const ta = e.target.closest?.('.pdv-co-tarjeta');
+        if (!ta) return;
+        const el = ta.nextElementSibling;
+        if (!el || !el.classList.contains('fc-contador-tarjeta')) return;
+        const n = ta.value.length;
+        el.textContent = `${n} / ${TARJETA_MAX} caracteres`;
+        el.classList.toggle('excedido', n > TARJETA_MAX);
+    });
+
     function fmt(n) {
         return '$' + parseFloat(n || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
@@ -835,6 +862,7 @@
                     <label>Mensaje de tarjeta</label>
                     <textarea class="pdv-co-tarjeta" data-idx="${i}" rows="2"
                               placeholder="Mensaje para incluir en la tarjeta...">${escHtml(it.mensaje_tarjeta || '')}</textarea>
+                    ${contadorTarjetaHtml(it.mensaje_tarjeta)}
                 </div>
             </div>`).join('');
 

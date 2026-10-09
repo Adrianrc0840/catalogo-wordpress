@@ -1927,3 +1927,28 @@ gmp-place-autocomplete {
     color: #92400e;
 }
 
+
+/* ── Contador de caracteres de la tarjeta ──
+   Gemelo del de cart.css y pdv.css. Avisa al pasar de 500 pero no bloquea:
+   hay pedidos anteriores con mensajes más largos y deben poder guardarse. */
+.fc-contador-tarjeta {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #94a3b8;
+    text-align: right;
+}
+.fc-contador-tarjeta.excedido {
+    color: #dc2626;
+    font-weight: 700;
+}
+.fc-contador-tarjeta.excedido::before {
+    content: '\26A0 ';
+}
+
+/* Vista previa de cómo se transcribe la fecha en la tarjeta impresa */
+.fc-tj-fecha-prev {
+    margin-top: 5px;
+    font-size: 12px;
+    color: var(--fc-primary);
+    font-weight: 600;
+}
